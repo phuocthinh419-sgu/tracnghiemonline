@@ -161,7 +161,7 @@ function selectQuiz(quizId) {
 }
 
 function deleteQuiz(quizId) {
-    if (confirm("Bệ hạ (Giáo viên) có chắc chắn muốn xóa vĩnh viễn đề thi này không?")) {
+    if (confirm("Bạn có chắc chắn muốn xóa vĩnh viễn đề thi này không?")) {
         quizDatabase = quizDatabase.filter(q => q.id !== quizId);
         saveDB(); // Lưu vào LocalStorage
         renderHomeQuizList(); // Render lại giao diện
