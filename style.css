@@ -108,3 +108,46 @@ body {
     background-color: #dc2626;
     color: white;
 }
+/* --- BỔ SUNG DARK MODE --- */
+.dark body {
+    background-color: #111827;
+    background-image: radial-gradient(#374151 1px, transparent 1px);
+}
+
+.dark .option-btn {
+    background-color: #1f2937; /* gray-800 */
+    border-color: #374151; /* gray-700 */
+}
+
+.dark .option-btn:hover {
+    background-color: #374151;
+    border-color: #60a5fa; /* blue-400 */
+}
+
+.dark .option-btn.selected {
+    background-color: #1e3a8a; /* blue-900 */
+    border-color: #3b82f6; /* blue-500 */
+}
+
+.dark .option-btn.selected .option-label {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.dark .option-btn.correct {
+    background-color: #064e3b; /* Xanh lá tối */
+    border-color: #10b981; 
+}
+
+.dark .option-btn.correct .option-label {
+    background-color: #10b981;
+}
+
+.dark .option-btn.wrong {
+    background-color: #7f1d1d; /* Đỏ tối */
+    border-color: #ef4444;
+}
+
+.dark .option-btn.wrong .option-label {
+    background-color: #ef4444;
+}
