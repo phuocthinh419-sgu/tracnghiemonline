@@ -65,7 +65,7 @@ if (window.location.search.includes('mode=admin')) {
 function startQuiz(practice) {
     const nameInput = document.getElementById('student-name').value.trim();
     if (!nameInput) {
-        alert("Bệ hạ (hoặc sĩ tử) vui lòng nhập danh tính trước khi vào trường thi!");
+        alert("Bạn hãy vui lòng nhập danh tính trước khi vào trường thi!");
         return;
     }
     
