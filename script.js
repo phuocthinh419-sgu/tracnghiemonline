@@ -23,7 +23,7 @@ let tabSwitchCount = 0, timerInterval, timeLeft = 0;
 let userAnswers = [], flaggedQuestions = [];
 let currentRole = 'student';
 let currentFilter = 'all'; 
-let isLoginMode = true; // Trạng thái màn hình Xác thực (Đăng nhập / Đăng ký)
+let isLoginMode = true; 
 
 const screens = {
     auth: document.getElementById('auth-screen'),
@@ -34,29 +34,37 @@ const screens = {
     result: document.getElementById('result-screen')
 };
 
-// --- 3. THEO DÕI TRẠNG THÁI TÀI KHOẢN (REALTIME AUTH) ---
+// --- 3. THEO DÕI TRẠNG THÁI TÀI KHOẢN & XỬ LÝ LINK CHIA SẺ ---
 document.addEventListener("DOMContentLoaded", () => { 
     setupEventListeners(); 
     
-    // Lắng nghe xem người dùng đã đăng nhập hay chưa
+    // Lắng nghe trạng thái đăng nhập
     auth.onAuthStateChanged((user) => {
         if (user) {
-            // Đã đăng nhập: Tự động điền tên hiển thị vào ô Thí sinh nếu có
             if (user.displayName) {
                 document.getElementById('student-name').value = user.displayName;
             }
             setRole('student');
-            switchScreen('home');
+            
+            // Tải danh sách đề thi ngầm
             fetchQuizzesFromFirebase(); 
+
+            // Kiểm tra link chia sẻ (Sửa lỗi Race Condition tại đây)
+            const urlParams = new URLSearchParams(window.location.search);
+            const quizIdParam = urlParams.get('quiz');
+            
+            if (quizIdParam) {
+                checkUrlForSharedQuiz(quizIdParam);
+            } else {
+                switchScreen('home'); 
+            }
         } else {
-            // Chưa đăng nhập: Ép chuyển về màn hình Auth
             switchScreen('auth');
             toggleAuthMode(true); 
         }
     });
 });
 
-// Tải danh sách đề thi từ Cloud Firestore
 function fetchQuizzesFromFirebase() {
     db.collection("quizzes").onSnapshot((snapshot) => {
         quizDatabase = [];
@@ -64,27 +72,38 @@ function fetchQuizzesFromFirebase() {
             quizDatabase.push(doc.data());
         });
         renderHomeQuizList(); 
-        checkUrlForSharedQuiz(); 
+    }, (error) => {
+        console.error("Lỗi khi tải dữ liệu từ Firebase: ", error);
     });
 }
 
-function checkUrlForSharedQuiz() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const quizIdParam = urlParams.get('quiz');
-    if (quizIdParam && !screens.home.classList.contains('hidden')) {
-        selectQuiz(quizIdParam);
-    }
+// Truy vấn trực tiếp lên Cloud để tránh lỗi "Đề thi không tồn tại"
+function checkUrlForSharedQuiz(quizId) {
+    db.collection("quizzes").doc(quizId).get().then((doc) => {
+        if (doc.exists) {
+            activeQuiz = doc.data();
+            document.getElementById('selected-quiz-title').innerText = activeQuiz.title;
+            switchScreen('welcome');
+        } else {
+            alert("Đề thi này không tồn tại hoặc đã bị gỡ bỏ khỏi hệ thống!");
+            switchScreen('home');
+        }
+        // Xóa mã đề khỏi URL để không bị lặp lại lỗi khi F5
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }).catch(err => {
+        console.error("Lỗi khi truy xuất đề thi từ link: ", err);
+        switchScreen('home');
+    });
 }
 
 function copyLink(link) {
     navigator.clipboard.writeText(link).then(() => {
-        alert("Đã sao chép liên kết thành công! Bạn có thể gửi liên kết này cho học sinh.");
+        alert("Đã sao chép liên kết thành công! Bạn có thể dán để gửi liên kết này cho học sinh.");
     });
 }
 
 // --- 4. LOGIC XỬ LÝ ĐĂNG NHẬP / ĐĂNG KÝ / ĐĂNG XUẤT ---
 function setupEventListeners() {
-    // Sự kiện Auth
     document.getElementById('btn-auth-toggle').addEventListener('click', () => toggleAuthMode(!isLoginMode));
     document.getElementById('btn-auth-submit').addEventListener('click', handleAuthSubmit);
     document.getElementById('btn-logout').addEventListener('click', () => {
@@ -127,7 +146,6 @@ function toggleAuthMode(loginMode) {
     const toggleBtn = document.getElementById('btn-auth-toggle');
     const nameField = document.getElementById('div-auth-name');
 
-    // Xóa trống dữ liệu cũ trong form nhập
     document.getElementById('auth-email').value = '';
     document.getElementById('auth-password').value = '';
     document.getElementById('auth-name').value = '';
@@ -155,16 +173,13 @@ function handleAuthSubmit() {
     if (!email || !password) return alert("Vui lòng nhập đầy đủ Email và Mật khẩu!");
 
     if (isLoginMode) {
-        // Xử lý đăng nhập
         auth.signInWithEmailAndPassword(email, password)
             .catch(err => alert("Đăng nhập thất bại: " + err.message));
     } else {
-        // Xử lý đăng ký
-        if (!name) return alert("Vui lòng nhập Họ và tên để tạo hồ sơ người dùng!");
+        if (!name) return alert("Vui lòng nhập Họ và tên để thiết lập hồ sơ người dùng!");
         
         auth.createUserWithEmailAndPassword(email, password)
             .then((result) => {
-                // Cập nhật họ tên vào hồ sơ Firebase Auth
                 return result.user.updateProfile({ displayName: name });
             })
             .then(() => {
@@ -218,7 +233,7 @@ function renderHomeQuizList() {
     container.innerHTML = '';
     
     if (quizDatabase.length === 0) {
-        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Chưa có đề thi nào trên hệ thống. Vui lòng chuyển sang vai trò Giáo viên để tạo đề mới.</p>';
+        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Chưa có đề thi nào trên hệ thống đám mây. Vui lòng chuyển sang vai trò Giáo viên để tạo đề mới.</p>';
         return;
     }
 
@@ -647,4 +662,3 @@ function saveManualQuiz() {
         switchScreen('home'); 
     }).catch(err => alert("Lỗi kết nối lưu trữ: " + err));
 }
-
