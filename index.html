@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Khảo Thí Tiếng Anh</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="app" class="w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100">
+        
+        <div id="admin-zone" class="hidden p-8">
+            <div class="flex items-center gap-3 mb-6 border-b pb-4">
+                <i class="fas fa-crown text-amber-500 text-2xl"></i>
+                <h2 class="font-academic text-2xl text-blue-900 font-bold">Khu Vực Quản Trị Đề Thi</h2>
+            </div>
+            <div class="grid grid-cols-1 gap-6">
+                <div class="p-6 border-2 border-dashed border-gray-300 rounded-xl text-center hover:bg-gray-50 transition-colors cursor-pointer" onclick="document.getElementById('upload-docx').click()">
+                    <i class="fas fa-file-word text-blue-600 text-4xl mb-3"></i>
+                    <p class="text-gray-600 font-medium">Tải lên tệp DOCX để tạo đề mới</p>
+                    <input type="file" id="upload-docx" class="hidden" accept=".docx">
+                    <button class="mt-4 px-6 py-2 bg-blue-100 text-blue-900 rounded-lg font-semibold hover:bg-blue-200">Chọn Tệp</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="welcome-screen" class="px-8 py-16 text-center">
+            <div class="mb-6 flex justify-center">
+                <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-900 text-3xl">
+                    <i class="fas fa-university"></i>
+                </div>
+            </div>
+            <h1 class="font-academic text-4xl md:text-5xl text-blue-900 font-semibold mb-4 leading-tight">
+                Hệ Thống Khảo Thí<br>Tiếng Anh THCS - THPT
+            </h1>
+            <p class="text-gray-500 text-lg mb-10 max-w-lg mx-auto font-academic italic">
+                "Tri thức là chìa khóa mở ra mọi cánh cửa. Hãy chứng minh bản lĩnh của bạn."
+            </p>
+            
+            <div class="max-w-md mx-auto">
+                <input type="text" id="student-name" placeholder="Nhập họ và tên sĩ tử..." class="w-full px-5 py-4 border-2 border-gray-200 rounded-xl mb-6 text-lg focus:outline-none focus:border-blue-900 focus:ring-4 focus:ring-blue-100 transition-all font-medium text-gray-700">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button id="btn-practice" class="flex items-center justify-center gap-2 px-6 py-4 bg-white text-blue-900 border-2 border-blue-900 rounded-xl hover:bg-blue-50 font-semibold text-lg transition-all">
+                        <i class="fas fa-dumbbell"></i> Luyện tập
+                    </button>
+                    <button id="btn-mock" class="flex items-center justify-center gap-2 px-6 py-4 bg-blue-900 text-white border-2 border-blue-900 rounded-xl hover:bg-blue-800 hover:border-blue-800 font-semibold shadow-lg hover:shadow-xl text-lg transition-all">
+                        <i class="fas fa-graduation-cap"></i> Thi thử thật
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="quiz-screen" class="hidden flex flex-col h-full min-h-[600px]">
+            
+            <div class="bg-white px-8 pt-8 pb-6 border-b border-gray-100">
+                <div class="flex justify-between items-end mb-4">
+                    <div>
+                        <h2 id="quiz-title" class="font-academic text-2xl text-blue-900 font-bold mb-1">Đang tải đề thi...</h2>
+                        <p class="text-gray-500 text-sm">Sĩ tử: <span id="display-student-name" class="font-semibold text-blue-900"></span></p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-gray-500 text-sm uppercase tracking-wider font-semibold">Thời gian</span>
+                        <div id="time-text" class="font-mono font-bold text-3xl text-blue-900 tabular-nums">00:00</div>
+                    </div>
+                </div>
+                
+                <div class="energy-track">
+                    <div id="energy-fill" class="energy-fill" style="width: 100%;">
+                        <i id="energy-icon" class="fas fa-pen-nib icon-runner"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-8 flex-grow bg-gray-50/50">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <span id="question-counter" class="inline-flex items-center justify-center px-4 py-1.5 bg-blue-100 text-blue-900 rounded-full text-sm font-bold tracking-wide">
+                            Câu hỏi 0 / 0
+                        </span>
+                    </div>
+                    <button id="btn-hint" class="hidden text-amber-500 hover:text-amber-600 font-medium flex items-center gap-2 transition-colors">
+                        <i class="fas fa-lightbulb"></i> Gợi ý
+                    </button>
+                </div>
+                
+                <h3 id="question-content" class="font-academic text-2xl text-gray-900 leading-relaxed mb-8">
+                    </h3>
+                
+                <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    </div>
+                
+                <div id="explanation-box" class="hidden mt-6 p-5 bg-blue-50 border border-blue-100 rounded-xl">
+                    <h4 class="font-bold text-blue-900 mb-2 flex items-center gap-2"><i class="fas fa-info-circle"></i> Giải thích chi tiết:</h4>
+                    <p id="explanation-text" class="text-gray-700 font-academic leading-relaxed"></p>
+                </div>
+            </div>
+
+            <div class="bg-white px-8 py-5 border-t border-gray-200 flex justify-between items-center rounded-b-2xl">
+                <div class="flex gap-3">
+                    <button id="btn-prev" class="px-6 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50">
+                        <i class="fas fa-chevron-left mr-1"></i> Câu trước
+                    </button>
+                    <button id="btn-next" class="px-6 py-2.5 bg-blue-50 text-blue-900 font-semibold hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50">
+                        Câu sau <i class="fas fa-chevron-right ml-1"></i>
+                    </button>
+                </div>
+
+                <button id="btn-submit" class="px-8 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                    <i class="fas fa-check-double"></i> Nộp Bài
+                </button>
+            </div>
+        </div>
+
+        <div id="result-screen" class="hidden px-8 py-12 text-center">
+            <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-5xl mx-auto mb-6">
+                <i class="fas fa-trophy"></i>
+            </div>
+            <h2 class="font-academic text-4xl text-gray-900 font-bold mb-2">Hoàn Thành Bài Thi!</h2>
+            <p class="text-gray-500 mb-8">Sĩ tử <span id="result-student-name" class="font-semibold text-blue-900"></span> đã nộp bài thành công.</p>
+            
+            <div class="grid grid-cols-3 gap-6 max-w-lg mx-auto mb-10">
+                <div class="p-6 bg-blue-50 rounded-2xl border border-blue-100">
+                    <p class="text-gray-500 text-sm font-semibold uppercase mb-1">Điểm số</p>
+                    <p id="result-score" class="text-3xl font-bold text-blue-900">0/0</p>
+                </div>
+                <div class="p-6 bg-amber-50 rounded-2xl border border-amber-100">
+                    <p class="text-gray-500 text-sm font-semibold uppercase mb-1">Độ chính xác</p>
+                    <p id="result-percent" class="text-3xl font-bold text-amber-600">0%</p>
+                </div>
+                <div class="p-6 bg-purple-50 rounded-2xl border border-purple-100">
+                    <p class="text-gray-500 text-sm font-semibold uppercase mb-1">Thời gian</p>
+                    <p id="result-time" class="text-3xl font-bold text-purple-700">00:00</p>
+                </div>
+            </div>
+
+            <div class="flex justify-center gap-4">
+                <button id="btn-review" class="px-8 py-3 bg-blue-900 text-white rounded-xl hover:bg-blue-800 font-bold shadow-md transition-all flex items-center gap-2">
+                    <i class="fas fa-search"></i> Xem chi tiết & Giải thích
+                </button>
+                <button id="btn-home" class="px-8 py-3 bg-white text-gray-700 border-2 border-gray-200 rounded-xl hover:bg-gray-50 font-bold transition-all">
+                    Trang chủ
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="script.js" defer></script>
+</body>
+</html>
