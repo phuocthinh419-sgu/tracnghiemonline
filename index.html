@@ -69,7 +69,6 @@
                         <i class="fas fa-chalkboard-teacher mr-2"></i>Giáo Viên
                     </button>
                 </div>
-                
                 <div class="w-28 h-10"></div>
             </div>
 
@@ -79,10 +78,39 @@
 
             <div class="text-center mb-10 mt-6">
                 <h1 class="font-academic text-4xl text-blue-900 dark:text-white font-bold mb-3">Hệ Thống Luyện Thi Trực Tuyến</h1>
-                <p class="text-gray-500 dark:text-gray-400">Lựa chọn bộ đề để bắt đầu ôn tập và kiểm tra kiến thức</p>
+                <p class="text-gray-500 dark:text-gray-400">Vui lòng lựa chọn môn học hoặc kho lưu trữ đề để bắt đầu</p>
             </div>
             
             <div id="quiz-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+        </div>
+
+        <div id="subject-detail-screen" class="hidden p-8 relative h-[85vh] overflow-y-auto custom-scrollbar">
+            <button id="btn-back-to-home" class="mb-4 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors"><i class="fas fa-arrow-left mr-2"></i>Quay lại danh sách môn</button>
+            
+            <div class="mb-8">
+                <h2 id="subject-detail-title" class="font-academic text-3xl text-blue-900 dark:text-white font-bold mb-2">Tên Môn Học</h2>
+                <p class="text-gray-500 dark:text-gray-400 text-sm">Lựa chọn học theo từng chương hoặc thi thử trộn câu hỏi tổng hợp</p>
+            </div>
+
+            <div class="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-slate-700 rounded-2xl border border-blue-100 dark:border-gray-600 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center text-xl shadow-md"><i class="fas fa-shuffle"></i></div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white">Thi thử tổng hợp (Mock Test)</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-300">Hệ thống sẽ tự động gộp tất cả các chương và chọn lọc câu hỏi ngẫu nhiên</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <select id="mock-question-count" class="p-3 border rounded-xl outline-none bg-white dark:bg-gray-800 dark:text-white dark:border-gray-500 font-bold text-sm shadow-sm">
+                        <option value="40">Số lượng: 40 câu</option>
+                        <option value="50" selected>Số lượng: 50 câu</option>
+                    </select>
+                    <button id="btn-start-mock-generate" class="px-6 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 shadow-md transition-all whitespace-nowrap"><i class="fas fa-graduation-cap mr-2"></i>Bắt đầu trộn đề</button>
+                </div>
+            </div>
+
+            <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-4 text-lg"><i class="fas fa-list-ul mr-2"></i>Danh sách đề lẻ / Chương học ôn tập:</h3>
+            <div id="chapter-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
         </div>
 
         <div id="admin-zone" class="hidden p-8 dark:text-white h-[80vh] overflow-y-auto custom-scrollbar">
@@ -92,7 +120,6 @@
                     <i class="fas fa-file-import text-blue-600 text-2xl"></i>
                     <h2 class="font-academic text-2xl text-blue-900 dark:text-blue-400 font-bold">Xưởng Tạo Đề Thi</h2>
                 </div>
-                
                 <div class="flex gap-2">
                     <button id="tab-docx" onclick="switchAdminTab('docx')" class="px-4 py-2 font-bold rounded-lg bg-blue-100 text-blue-700">Tạo từ DOCX</button>
                     <button id="tab-manual" onclick="switchAdminTab('manual')" class="px-4 py-2 font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">Soạn Thủ Công</button>
@@ -116,21 +143,19 @@
             <div id="panel-manual" class="hidden max-w-3xl mx-auto">
                 <div class="grid grid-cols-2 gap-4 mb-6">
                     <div>
-                        <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300">Tên Đề Thi:</label>
-                        <input type="text" id="manual-title" placeholder="VD: Kiểm tra 15 phút..." class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none">
+                        <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300">Tên Đề Thi / Tên Chương:</label>
+                        <input type="text" id="manual-title" placeholder="VD: Chương 1 hoặc Đề số 1..." class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300">Thư mục (Folder):</label>
-                        <input type="text" id="manual-category" placeholder="VD: Sinh Học..." class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none">
+                        <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300">Tên Môn Học (Thư mục chứa):</label>
+                        <input type="text" id="manual-category" placeholder="VD: Tư tưởng HCM, Hóa Học..." class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none">
                     </div>
                     <div class="col-span-2">
                         <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300">Thời gian làm bài (Phút):</label>
                         <input type="number" id="manual-time" placeholder="VD: 45" class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none">
                     </div>
                 </div>
-
                 <div id="manual-questions-container" class="flex flex-col gap-6 mb-6"></div>
-
                 <div class="flex justify-between items-center border-t dark:border-gray-700 pt-6">
                     <button onclick="addManualQuestionForm()" class="px-6 py-3 bg-gray-100 dark:bg-gray-700 text-blue-700 dark:text-blue-400 font-bold rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
                         <i class="fas fa-plus mr-2"></i>Thêm Câu Hỏi
@@ -143,7 +168,7 @@
         </div>
 
         <div id="welcome-screen" class="hidden px-8 py-16 text-center">
-            <button id="btn-back-home" class="absolute top-8 left-8 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors"><i class="fas fa-arrow-left mr-2"></i> Quay lại</button>
+            <button id="btn-back-to-subject" class="absolute top-8 left-8 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors"><i class="fas fa-arrow-left mr-2"></i> Quay lại môn học</button>
             <h2 id="selected-quiz-title" class="font-academic text-3xl text-blue-900 dark:text-white font-semibold mb-8">Tên đề thi</h2>
             <div class="max-w-md mx-auto">
                 <input type="text" id="student-name" placeholder="Nhập họ và tên của bạn..." class="w-full px-5 py-4 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl mb-6 text-lg focus:outline-none focus:border-blue-900 transition-all font-medium">
@@ -240,4 +265,3 @@
     <script src="script.js"></script>
 </body>
 </html>
-
