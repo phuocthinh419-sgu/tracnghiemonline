@@ -8,9 +8,10 @@ const firebaseConfig = {
     appId: "1:1093935852039:web:8a0788e9252285b39518a2"
 };
 
-// Khởi tạo Firebase và Firestore
+// Khởi tạo Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const auth = firebase.auth();
 
 // --- 2. BIẾN TOÀN CỤC CỦA HỆ THỐNG ---
 let quizDatabase = []; 
@@ -22,8 +23,10 @@ let tabSwitchCount = 0, timerInterval, timeLeft = 0;
 let userAnswers = [], flaggedQuestions = [];
 let currentRole = 'student';
 let currentFilter = 'all'; 
+let isLoginMode = true; // Trạng thái màn hình Xác thực (Đăng nhập / Đăng ký)
 
 const screens = {
+    auth: document.getElementById('auth-screen'),
     home: document.getElementById('home-screen'),
     admin: document.getElementById('admin-zone'),
     welcome: document.getElementById('welcome-screen'),
@@ -31,14 +34,29 @@ const screens = {
     result: document.getElementById('result-screen')
 };
 
-// --- 3. KHỞI CHẠY KHI TẢI TRANG ---
+// --- 3. THEO DÕI TRẠNG THÁI TÀI KHOẢN (REALTIME AUTH) ---
 document.addEventListener("DOMContentLoaded", () => { 
-    setRole('student'); 
     setupEventListeners(); 
-    fetchQuizzesFromFirebase(); 
+    
+    // Lắng nghe xem người dùng đã đăng nhập hay chưa
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            // Đã đăng nhập: Tự động điền tên hiển thị vào ô Thí sinh nếu có
+            if (user.displayName) {
+                document.getElementById('student-name').value = user.displayName;
+            }
+            setRole('student');
+            switchScreen('home');
+            fetchQuizzesFromFirebase(); 
+        } else {
+            // Chưa đăng nhập: Ép chuyển về màn hình Auth
+            switchScreen('auth');
+            toggleAuthMode(true); 
+        }
+    });
 });
 
-// Tải danh sách đề thi từ Firebase Firestore theo thời gian thực
+// Tải danh sách đề thi từ Cloud Firestore
 function fetchQuizzesFromFirebase() {
     db.collection("quizzes").onSnapshot((snapshot) => {
         quizDatabase = [];
@@ -47,12 +65,9 @@ function fetchQuizzesFromFirebase() {
         });
         renderHomeQuizList(); 
         checkUrlForSharedQuiz(); 
-    }, (error) => {
-        console.error("Lỗi khi tải dữ liệu từ Firebase: ", error);
     });
 }
 
-// Tự động kiểm tra và mở đề thi nếu truy cập bằng liên kết chia sẻ (?quiz=ID)
 function checkUrlForSharedQuiz() {
     const urlParams = new URLSearchParams(window.location.search);
     const quizIdParam = urlParams.get('quiz');
@@ -61,34 +76,33 @@ function checkUrlForSharedQuiz() {
     }
 }
 
-// Hàm sao chép liên kết giao bài tập
 function copyLink(link) {
     navigator.clipboard.writeText(link).then(() => {
         alert("Đã sao chép liên kết thành công! Bạn có thể gửi liên kết này cho học sinh.");
-    }).catch(err => {
-        console.error("Không thể sao chép liên kết: ", err);
     });
 }
 
-// --- 4. QUẢN LÝ SỰ KIỆN GIAO DIỆN ---
+// --- 4. LOGIC XỬ LÝ ĐĂNG NHẬP / ĐĂNG KÝ / ĐĂNG XUẤT ---
 function setupEventListeners() {
+    // Sự kiện Auth
+    document.getElementById('btn-auth-toggle').addEventListener('click', () => toggleAuthMode(!isLoginMode));
+    document.getElementById('btn-auth-submit').addEventListener('click', handleAuthSubmit);
+    document.getElementById('btn-logout').addEventListener('click', () => {
+        if(confirm("Bạn có chắc chắn muốn đăng xuất tài khoản?")) auth.signOut();
+    });
+
     document.getElementById('role-student').addEventListener('click', () => setRole('student'));
     document.getElementById('role-teacher').addEventListener('click', () => setRole('teacher'));
     document.getElementById('btn-theme-toggle').addEventListener('click', toggleDarkMode);
     document.getElementById('btn-show-admin').addEventListener('click', () => switchScreen('admin'));
     
-    const goHome = () => { 
-        window.history.pushState({}, '', window.location.pathname); 
-        switchScreen('home'); 
-    };
+    const goHome = () => { window.history.pushState({}, '', window.location.pathname); switchScreen('home'); };
     document.getElementById('btn-back-home').addEventListener('click', goHome);
     document.getElementById('btn-home').addEventListener('click', goHome);
     
-    // Xử lý sự kiện khi nhấn nút Thoát lúc đang làm bài
     document.getElementById('btn-exit-quiz').addEventListener('click', () => {
         if (confirm("Bạn có chắc chắn muốn thoát? Toàn bộ kết quả làm bài của lượt này sẽ không được lưu lại.")) {
-            clearInterval(timerInterval); 
-            goHome();
+            clearInterval(timerInterval); goHome();
         }
     });
 
@@ -105,7 +119,63 @@ function setupEventListeners() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 }
 
-// Cấu hình vai trò người dùng (Học sinh / Giáo viên)
+function toggleAuthMode(loginMode) {
+    isLoginMode = loginMode;
+    const title = document.getElementById('auth-title');
+    const btnSubmit = document.getElementById('btn-auth-submit');
+    const toggleMsg = document.getElementById('auth-toggle-msg');
+    const toggleBtn = document.getElementById('btn-auth-toggle');
+    const nameField = document.getElementById('div-auth-name');
+
+    // Xóa trống dữ liệu cũ trong form nhập
+    document.getElementById('auth-email').value = '';
+    document.getElementById('auth-password').value = '';
+    document.getElementById('auth-name').value = '';
+
+    if (isLoginMode) {
+        title.innerText = "Đăng Nhập Hệ Thống";
+        btnSubmit.innerText = "Đăng Nhập";
+        toggleMsg.innerText = "Chưa có tài khoản?";
+        toggleBtn.innerText = "Đăng ký ngay";
+        nameField.classList.add('hidden');
+    } else {
+        title.innerText = "Đăng Ký Tài Khoản";
+        btnSubmit.innerText = "Tạo Tài Khoản";
+        toggleMsg.innerText = "Đã có tài khoản?";
+        toggleBtn.innerText = "Đăng nhập ngay";
+        nameField.classList.remove('hidden');
+    }
+}
+
+function handleAuthSubmit() {
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value.trim();
+    const name = document.getElementById('auth-name').value.trim();
+
+    if (!email || !password) return alert("Vui lòng nhập đầy đủ Email và Mật khẩu!");
+
+    if (isLoginMode) {
+        // Xử lý đăng nhập
+        auth.signInWithEmailAndPassword(email, password)
+            .catch(err => alert("Đăng nhập thất bại: " + err.message));
+    } else {
+        // Xử lý đăng ký
+        if (!name) return alert("Vui lòng nhập Họ và tên để tạo hồ sơ người dùng!");
+        
+        auth.createUserWithEmailAndPassword(email, password)
+            .then((result) => {
+                // Cập nhật họ tên vào hồ sơ Firebase Auth
+                return result.user.updateProfile({ displayName: name });
+            })
+            .then(() => {
+                alert("Đăng ký tài khoản mới thành công!");
+                auth.currentUser.reload();
+            })
+            .catch(err => alert("Đăng ký thất bại: " + err.message));
+    }
+}
+
+// --- 5. ĐIỀU HƯỚNG MÀN HÌNH & PHÂN QUYỀN ---
 function setRole(role) {
     currentRole = role;
     const btnStudent = document.getElementById('role-student');
@@ -142,7 +212,7 @@ function switchScreen(screenName) {
     }
 }
 
-// --- 5. HIỂN THỊ DANH SÁCH ĐỀ THI THEO THƯ MỤC ---
+// --- 6. HIỂN THỊ DANH SÁCH ĐỀ THI ---
 function renderHomeQuizList() {
     const container = document.getElementById('quiz-list-container');
     container.innerHTML = '';
@@ -154,13 +224,11 @@ function renderHomeQuizList() {
 
     const categories = [...new Set(quizDatabase.map(q => q.category))];
     categories.forEach(category => {
-        // Tạo tiêu đề thư mục
         const folderHeader = document.createElement('div');
         folderHeader.className = 'col-span-full mt-6 mb-2 border-b-2 border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-3';
         folderHeader.innerHTML = `<i class="fas fa-folder-open text-amber-500 text-2xl"></i> <h2 class="text-2xl font-bold text-gray-800 dark:text-white">${category}</h2>`;
         container.appendChild(folderHeader);
 
-        // Tạo danh sách thẻ đề thi thuộc thư mục
         const quizzesInFolder = quizDatabase.filter(q => q.category === category);
         quizzesInFolder.forEach(quiz => {
             const card = document.createElement('div');
@@ -198,13 +266,11 @@ function selectQuiz(quizId) {
 
 function deleteQuiz(quizId) {
     if (confirm("Xác nhận xóa vĩnh viễn đề thi này khỏi hệ thống cơ sở dữ liệu?")) {
-        db.collection("quizzes").doc(quizId).delete().catch(err => {
-            alert("Đã xảy ra lỗi khi xóa dữ liệu: " + err);
-        });
+        db.collection("quizzes").doc(quizId).delete().catch(err => alert("Lỗi khi xóa dữ liệu: " + err));
     }
 }
 
-// --- 6. LOGIC TRƯỜNG THI & ĐIỀU HƯỚNG BỘ LỌC ---
+// --- 7. LOGIC THI VÀ LUỒNG BỘ LỌC ĐỀ ---
 function startQuiz(practice) {
     const nameInput = document.getElementById('student-name').value.trim();
     if (!nameInput) return alert("Vui lòng nhập họ và tên của bạn trước khi bắt đầu làm bài!");
@@ -421,7 +487,7 @@ function reviewQuiz() {
     loadQuestion(0);
 }
 
-// --- 7. LOGIC QUẢN TRỊ (TẠO ĐỀ & ĐẨY LÊN FIREBASE CLOUD) ---
+// --- 8. LOGIC SOẠN ĐỀ (ADMIN ZONE) ---
 function switchAdminTab(tabName) {
     const btnDocx = document.getElementById('tab-docx');
     const btnManual = document.getElementById('tab-manual');
@@ -441,7 +507,6 @@ function switchAdminTab(tabName) {
     }
 }
 
-// Xử lý đọc và tách dữ liệu từ file DOCX Word
 function handleDocxImport(event) {
     const file = event.target.files[0];
     const categoryInput = document.getElementById('docx-category').value.trim() || 'Chưa phân loại';
@@ -465,7 +530,7 @@ function handleDocxImport(event) {
                     parsedQuestions.push({
                         content: parts[0].trim(),
                         options: [parts[1].trim(), parts[2].trim(), parts[3].trim(), parts[4].split("Đáp án")[0].trim()],
-                        correctAnswer: 0, // DOCX thô mặc định vị trí A là đúng, giáo viên có thể bổ sung regex nếu cần nâng cấp
+                        correctAnswer: 0, 
                         explanation: "Tạo tự động từ tệp DOCX Word."
                     });
                 }
@@ -476,11 +541,10 @@ function handleDocxImport(event) {
                     id: "QZ-DOCX-" + Date.now(),
                     title: file.name.replace('.docx', ''),
                     category: categoryInput,
-                    timeLimit: 1800, // Mặc định thời gian làm bài là 30 phút
+                    timeLimit: 1800, 
                     questions: parsedQuestions
                 };
                 
-                // Đồng bộ đẩy dữ liệu thẳng lên đám mây Firestore
                 db.collection("quizzes").doc(newQuiz.id).set(newQuiz).then(() => {
                     document.getElementById('docx-category').value = ''; 
                     statusDiv.innerText = `Hoàn tất! Đã lưu đề thi mới lên đám mây trong thư mục "${categoryInput}".`;
@@ -501,7 +565,6 @@ function handleDocxImport(event) {
     reader.readAsArrayBuffer(file);
 }
 
-// Xử lý tạo cấu trúc đề thi thủ công bằng Form nhập liệu
 function addManualQuestionForm() {
     const container = document.getElementById('manual-questions-container');
     const qDiv = document.createElement('div');
@@ -574,7 +637,6 @@ function saveManualQuiz() {
         questions: questions
     };
 
-    // Đẩy dữ liệu đề thi thủ công lên Firestore
     db.collection("quizzes").doc(newQuiz.id).set(newQuiz).then(() => {
         alert(`Đề thi mới đã được lưu trữ thành công lên máy chủ đám mây tại thư mục môn học: "${category}".`);
         document.getElementById('manual-title').value = '';
@@ -583,7 +645,5 @@ function saveManualQuiz() {
         document.getElementById('manual-questions-container').innerHTML = '';
         window.history.pushState({}, '', window.location.pathname);
         switchScreen('home'); 
-    }).catch(err => {
-        alert("Lỗi kết nối lưu trữ: " + err);
-    });
+    }).catch(err => alert("Lỗi kết nối lưu trữ: " + err));
 }
