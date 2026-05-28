@@ -41,22 +41,65 @@
                 <h1 class="font-academic text-4xl text-blue-900 dark:text-white font-bold mb-3">Hệ Thống Luyện Thi Trực Tuyến</h1>
                 <p class="text-gray-500 dark:text-gray-400">Lựa chọn bộ đề để bắt đầu ôn tập và kiểm tra kiến thức</p>
             </div>
+            
             <div id="quiz-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
         </div>
 
-        <div id="admin-zone" class="hidden p-8 dark:text-white">
+        <div id="admin-zone" class="hidden p-8 dark:text-white h-[80vh] overflow-y-auto custom-scrollbar">
             <button onclick="switchScreen('home')" class="mb-4 text-gray-500 hover:text-blue-900 dark:hover:text-white"><i class="fas fa-arrow-left"></i> Về Trang chủ</button>
-            <div class="flex items-center gap-3 mb-6 border-b dark:border-gray-700 pb-4">
-                <i class="fas fa-file-import text-blue-600 text-2xl"></i>
-                <h2 class="font-academic text-2xl text-blue-900 dark:text-blue-400 font-bold">Tạo Đề Thi Mới (Từ file DOCX)</h2>
+            <div class="flex justify-between items-center mb-6 border-b dark:border-gray-700 pb-4">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-file-import text-blue-600 text-2xl"></i>
+                    <h2 class="font-academic text-2xl text-blue-900 dark:text-blue-400 font-bold">Xưởng Tạo Đề Thi</h2>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button id="tab-docx" onclick="switchAdminTab('docx')" class="px-4 py-2 font-bold rounded-lg bg-blue-100 text-blue-700">Tạo từ DOCX</button>
+                    <button id="tab-manual" onclick="switchAdminTab('manual')" class="px-4 py-2 font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">Soạn Thủ Công</button>
+                </div>
             </div>
-            <div class="p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer" onclick="document.getElementById('upload-docx').click()">
-                <i class="fas fa-file-word text-blue-600 text-5xl mb-4"></i>
-                <p class="text-gray-700 dark:text-gray-300 font-bold text-lg">Bấm vào đây để tải lên tệp DOCX</p>
-                <p class="text-gray-500 text-sm mt-2">Hệ thống sẽ tự động nhận diện câu hỏi và đáp án</p>
-                <input type="file" id="upload-docx" class="hidden" accept=".docx">
+
+            <div id="panel-docx" class="block">
+                <div class="max-w-xl mx-auto mb-6">
+                    <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300">Tên Thư mục / Môn học:</label>
+                    <input type="text" id="docx-category" placeholder="Ví dụ: Hóa Học, Lịch Sử..." class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none">
+                </div>
+                <div class="max-w-xl mx-auto p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer" onclick="document.getElementById('upload-docx').click()">
+                    <i class="fas fa-file-word text-blue-600 text-5xl mb-4"></i>
+                    <p class="text-gray-700 dark:text-gray-300 font-bold text-lg">Bấm vào đây để tải lên tệp DOCX</p>
+                    <p class="text-gray-500 text-sm mt-2">Đảm bảo cấu trúc: Câu 1:, A., B., C., D.</p>
+                    <input type="file" id="upload-docx" class="hidden" accept=".docx">
+                </div>
+                <div id="import-status" class="mt-4 text-center font-bold hidden"></div>
             </div>
-            <div id="import-status" class="mt-4 text-center font-bold hidden"></div>
+
+            <div id="panel-manual" class="hidden max-w-3xl mx-auto">
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300">Tên Đề Thi:</label>
+                        <input type="text" id="manual-title" placeholder="VD: Kiểm tra 15 phút..." class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300">Thư mục (Folder):</label>
+                        <input type="text" id="manual-category" placeholder="VD: Sinh Học..." class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300">Thời gian làm bài (Phút):</label>
+                        <input type="number" id="manual-time" placeholder="VD: 45" class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none">
+                    </div>
+                </div>
+
+                <div id="manual-questions-container" class="flex flex-col gap-6 mb-6"></div>
+
+                <div class="flex justify-between items-center border-t dark:border-gray-700 pt-6">
+                    <button onclick="addManualQuestionForm()" class="px-6 py-3 bg-gray-100 dark:bg-gray-700 text-blue-700 dark:text-blue-400 font-bold rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                        <i class="fas fa-plus mr-2"></i>Thêm Câu Hỏi
+                    </button>
+                    <button onclick="saveManualQuiz()" class="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 shadow-lg transition-all">
+                        <i class="fas fa-save mr-2"></i>Lưu Bộ Đề
+                    </button>
+                </div>
+            </div>
         </div>
 
         <div id="welcome-screen" class="hidden px-8 py-16 text-center">
@@ -74,7 +117,7 @@
         <div id="quiz-screen" class="hidden flex h-full min-h-[600px]">
             <div class="flex-grow flex flex-col border-r border-gray-200 dark:border-gray-700 w-3/4">
                 <div class="bg-white dark:bg-gray-800 px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-700">
-                   <div class="flex justify-between items-start mb-4">
+                    <div class="flex justify-between items-start mb-4">
                         <div class="flex items-start gap-4">
                             <button id="btn-exit-quiz" class="mt-1 text-gray-400 hover:text-red-500 transition-colors" title="Thoát về Trang Chủ">
                                 <i class="fas fa-arrow-left text-2xl"></i>
