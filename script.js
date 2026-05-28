@@ -1,23 +1,19 @@
-// Dữ liệu mẫu ban đầu (Nếu chưa có dữ liệu trong LocalStorage)
-const defaultQuizDatabase = [
-    {
-        id: "QZ-ENG-01", title: "Đề Thi Tiếng Anh THPT", category: "Tiếng Anh", timeLimit: 120,
-        questions: [{ content: "Mark the letter A, B, C, or D: The government has launched a new ________.", options: ["initiative", "initiation", "initiator", "initial"], correctAnswer: 0, hint: "Từ cần điền mang nghĩa 'sáng kiến'.", explanation: "'initiative' là sáng kiến." }]
-    },
-    {
-        id: "QZ-HIS-01", title: "Chiến Dịch Điện Biên Phủ", category: "Lịch Sử", timeLimit: 120,
-        questions: [{ content: "Chiến dịch Điện Biên Phủ lịch sử kết thúc thắng lợi vào ngày tháng năm nào?", options: ["30/04/1975", "07/05/1954", "02/09/1945", "20/11/1953"], correctAnswer: 1, hint: "Tháng 5 năm 1954.", explanation: "Tướng de Castries đầu hàng vào chiều 07/05/1954." }]
-    }
-];
+// --- 1. CẤU HÌNH FIREBASE ---
+const firebaseConfig = {
+    apiKey: "AIzaSyDyIvKhuxDw8uP1RmMutvdGd1o042XKYAM",
+    authDomain: "multiple-choice-6704b.firebaseapp.com",
+    projectId: "multiple-choice-6704b",
+    storageBucket: "multiple-choice-6704b.firebasestorage.app",
+    messagingSenderId: "1093935852039",
+    appId: "1:1093935852039:web:8a0788e9252285b39518a2"
+};
 
-// --- HỆ THỐNG LƯU TRỮ CỤC BỘ (LocalStorage) ---
-let quizDatabase = JSON.parse(localStorage.getItem('khaoThiDB')) || defaultQuizDatabase;
+// Khởi tạo Firebase và Firestore
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-function saveDB() {
-    localStorage.setItem('khaoThiDB', JSON.stringify(quizDatabase));
-}
-
-// --- BIẾN TOÀN CỤC ---
+// --- 2. BIẾN TOÀN CỤC CỦA HỆ THỐNG ---
+let quizDatabase = []; 
 let activeQuiz = null; 
 let currentQuestionIndex = 0;
 let studentName = "";
@@ -35,26 +31,64 @@ const screens = {
     result: document.getElementById('result-screen')
 };
 
+// --- 3. KHỞI CHẠY KHI TẢI TRANG ---
 document.addEventListener("DOMContentLoaded", () => { 
     setRole('student'); 
-    renderHomeQuizList(); 
     setupEventListeners(); 
+    fetchQuizzesFromFirebase(); 
 });
 
+// Tải danh sách đề thi từ Firebase Firestore theo thời gian thực
+function fetchQuizzesFromFirebase() {
+    db.collection("quizzes").onSnapshot((snapshot) => {
+        quizDatabase = [];
+        snapshot.forEach((doc) => {
+            quizDatabase.push(doc.data());
+        });
+        renderHomeQuizList(); 
+        checkUrlForSharedQuiz(); 
+    }, (error) => {
+        console.error("Lỗi khi tải dữ liệu từ Firebase: ", error);
+    });
+}
+
+// Tự động kiểm tra và mở đề thi nếu truy cập bằng liên kết chia sẻ (?quiz=ID)
+function checkUrlForSharedQuiz() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const quizIdParam = urlParams.get('quiz');
+    if (quizIdParam && !screens.home.classList.contains('hidden')) {
+        selectQuiz(quizIdParam);
+    }
+}
+
+// Hàm sao chép liên kết giao bài tập
+function copyLink(link) {
+    navigator.clipboard.writeText(link).then(() => {
+        alert("Đã sao chép liên kết thành công! Bạn có thể gửi liên kết này cho học sinh.");
+    }).catch(err => {
+        console.error("Không thể sao chép liên kết: ", err);
+    });
+}
+
+// --- 4. QUẢN LÝ SỰ KIỆN GIAO DIỆN ---
 function setupEventListeners() {
     document.getElementById('role-student').addEventListener('click', () => setRole('student'));
     document.getElementById('role-teacher').addEventListener('click', () => setRole('teacher'));
-
     document.getElementById('btn-theme-toggle').addEventListener('click', toggleDarkMode);
     document.getElementById('btn-show-admin').addEventListener('click', () => switchScreen('admin'));
-    document.getElementById('btn-back-home').addEventListener('click', () => switchScreen('home'));
-    document.getElementById('btn-home').addEventListener('click', () => switchScreen('home'));
     
-    // Nút thoát khi đang thi
+    const goHome = () => { 
+        window.history.pushState({}, '', window.location.pathname); 
+        switchScreen('home'); 
+    };
+    document.getElementById('btn-back-home').addEventListener('click', goHome);
+    document.getElementById('btn-home').addEventListener('click', goHome);
+    
+    // Xử lý sự kiện khi nhấn nút Thoát lúc đang làm bài
     document.getElementById('btn-exit-quiz').addEventListener('click', () => {
-        if (confirm("Bạn có chắc chắn muốn thoát? Quá trình làm bài hiện tại sẽ bị hủy.")) {
-            clearInterval(timerInterval);
-            switchScreen('home');
+        if (confirm("Bạn có chắc chắn muốn thoát? Toàn bộ kết quả làm bài của lượt này sẽ không được lưu lại.")) {
+            clearInterval(timerInterval); 
+            goHome();
         }
     });
 
@@ -67,11 +101,11 @@ function setupEventListeners() {
     document.getElementById('btn-hint').addEventListener('click', () => document.getElementById('hint-box').classList.remove('hidden'));
     document.getElementById('btn-flag').addEventListener('click', toggleFlag);
     document.getElementById('upload-docx').addEventListener('change', handleDocxImport);
-
+    
     document.addEventListener('visibilitychange', handleVisibilityChange);
 }
 
-// --- LOGIC PHÂN QUYỀN ---
+// Cấu hình vai trò người dùng (Học sinh / Giáo viên)
 function setRole(role) {
     currentRole = role;
     const btnStudent = document.getElementById('role-student');
@@ -90,8 +124,6 @@ function setRole(role) {
         btnAdmin.classList.add('animate-bounce');
         setTimeout(() => btnAdmin.classList.remove('animate-bounce'), 1500);
     }
-    
-    // Cập nhật lại danh sách để ẩn/hiện nút xóa
     renderHomeQuizList(); 
 }
 
@@ -106,47 +138,48 @@ function switchScreen(screenName) {
     if(screenName === 'home') renderHomeQuizList();
     if(screenName === 'admin') {
         switchAdminTab('docx');
-        document.getElementById('manual-questions-container').innerHTML = ''; // Clear form cũ
+        document.getElementById('manual-questions-container').innerHTML = '';
     }
 }
 
-// --- LOGIC HIỂN THỊ THƯ MỤC VÀ XÓA ĐỀ NGOÀI TRANG CHỦ ---
+// --- 5. HIỂN THỊ DANH SÁCH ĐỀ THI THEO THƯ MỤC ---
 function renderHomeQuizList() {
     const container = document.getElementById('quiz-list-container');
     container.innerHTML = '';
     
-    // Lấy danh sách các Thư mục (Category) duy nhất
-    const categories = [...new Set(quizDatabase.map(q => q.category))];
-
-    if (categories.length === 0) {
-        container.innerHTML = '<p class="col-span-full text-center text-gray-500">Chưa có đề thi nào trong kho lưu trữ.</p>';
+    if (quizDatabase.length === 0) {
+        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Chưa có đề thi nào trên hệ thống. Vui lòng chuyển sang vai trò Giáo viên để tạo đề mới.</p>';
         return;
     }
 
+    const categories = [...new Set(quizDatabase.map(q => q.category))];
     categories.forEach(category => {
-        // Render Header cho từng Folder
+        // Tạo tiêu đề thư mục
         const folderHeader = document.createElement('div');
-        folderHeader.className = 'col-span-full mt-8 mb-2 border-b-2 border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-3';
+        folderHeader.className = 'col-span-full mt-6 mb-2 border-b-2 border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-3';
         folderHeader.innerHTML = `<i class="fas fa-folder-open text-amber-500 text-2xl"></i> <h2 class="text-2xl font-bold text-gray-800 dark:text-white">${category}</h2>`;
         container.appendChild(folderHeader);
 
-        // Render các Đề thi thuộc Folder này
+        // Tạo danh sách thẻ đề thi thuộc thư mục
         const quizzesInFolder = quizDatabase.filter(q => q.category === category);
         quizzesInFolder.forEach(quiz => {
             const card = document.createElement('div');
             card.className = 'relative p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-lg transition-all group';
             
-            // Nút Xóa (Chỉ hiện cho Giáo viên)
-            let deleteBtnHTML = '';
+            let actionBtnsHTML = '';
             if (currentRole === 'teacher') {
-                deleteBtnHTML = `<button onclick="deleteQuiz('${quiz.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Xóa đề này"><i class="fas fa-trash-alt"></i></button>`;
+                const shareLink = `${window.location.origin}${window.location.pathname}?quiz=${quiz.id}`;
+                actionBtnsHTML = `
+                    <button onclick="copyLink('${shareLink}')" class="absolute top-4 right-14 text-gray-400 hover:text-blue-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Sao chép liên kết chia sẻ đề thi"><i class="fas fa-link"></i></button>
+                    <button onclick="deleteQuiz('${quiz.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Xóa đề thi này"><i class="fas fa-trash-alt"></i></button>
+                `;
             }
 
             card.innerHTML = `
-                ${deleteBtnHTML}
+                ${actionBtnsHTML}
                 <span class="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">${quiz.category}</span>
                 <h3 class="mt-4 text-xl font-bold dark:text-white cursor-pointer hover:text-blue-600" onclick="selectQuiz('${quiz.id}')">${quiz.title}</h3>
-                <p class="mt-2 text-sm text-gray-500"><i class="far fa-clock"></i> ${Math.floor(quiz.timeLimit / 60)} phút • ${quiz.questions.length} câu</p>
+                <p class="mt-2 text-sm text-gray-500"><i class="far fa-clock"></i> ${Math.floor(quiz.timeLimit / 60)} phút • ${quiz.questions.length} câu hỏi</p>
             `;
             container.appendChild(card);
         });
@@ -155,23 +188,28 @@ function renderHomeQuizList() {
 
 function selectQuiz(quizId) {
     activeQuiz = quizDatabase.find(q => q.id === quizId);
-    if (!activeQuiz) return;
+    if (!activeQuiz) {
+        alert("Đề thi này không tồn tại hoặc đã bị gỡ bỏ khỏi hệ thống!");
+        return;
+    }
     document.getElementById('selected-quiz-title').innerText = activeQuiz.title;
     switchScreen('welcome');
 }
 
 function deleteQuiz(quizId) {
-    if (confirm("Bạn có chắc chắn muốn xóa vĩnh viễn đề thi này không?")) {
-        quizDatabase = quizDatabase.filter(q => q.id !== quizId);
-        saveDB(); // Lưu vào LocalStorage
-        renderHomeQuizList(); // Render lại giao diện
+    if (confirm("Xác nhận xóa vĩnh viễn đề thi này khỏi hệ thống cơ sở dữ liệu?")) {
+        db.collection("quizzes").doc(quizId).delete().catch(err => {
+            alert("Đã xảy ra lỗi khi xóa dữ liệu: " + err);
+        });
     }
 }
 
-// --- LOGIC TRƯỜNG THI & BỘ LỌC ---
+// --- 6. LOGIC TRƯỜNG THI & ĐIỀU HƯỚNG BỘ LỌC ---
 function startQuiz(practice) {
-    if (!document.getElementById('student-name').value.trim()) return alert("Vui lòng nhập họ và tên của bạn trước khi bắt đầu!");
-    studentName = document.getElementById('student-name').value.trim();
+    const nameInput = document.getElementById('student-name').value.trim();
+    if (!nameInput) return alert("Vui lòng nhập họ và tên của bạn trước khi bắt đầu làm bài!");
+    
+    studentName = nameInput;
     isPracticeMode = practice; isReviewMode = false; tabSwitchCount = 0;
     userAnswers = new Array(activeQuiz.questions.length).fill(null);
     flaggedQuestions = new Array(activeQuiz.questions.length).fill(false);
@@ -258,10 +296,10 @@ function loadQuestion(index) {
     
     const btnFlag = document.getElementById('btn-flag');
     if (flaggedQuestions[index]) {
-        btnFlag.classList.replace('bg-yellow-100', 'bg-yellow-400');
-        btnFlag.innerHTML = `<i class="fas fa-flag"></i> Đã phân vân`;
+        btnFlag.className = 'flex items-center gap-2 px-4 py-2 bg-yellow-400 text-yellow-900 rounded-lg font-bold transition-colors border border-yellow-500';
+        btnFlag.innerHTML = `<i class="fas fa-flag"></i> Đang phân vân`;
     } else {
-        btnFlag.classList.replace('bg-yellow-400', 'bg-yellow-100');
+        btnFlag.className = 'flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-400 rounded-lg font-bold hover:bg-yellow-200 transition-colors border border-yellow-300 dark:border-yellow-700';
         btnFlag.innerHTML = `<i class="far fa-flag"></i> Đánh dấu phân vân`;
     }
     
@@ -303,7 +341,7 @@ function loadQuestion(index) {
         }
         for (let el of siblings) el.style.pointerEvents = 'none';
         
-        document.getElementById('explanation-text').innerText = q.explanation || "Chưa có giải thích.";
+        document.getElementById('explanation-text').innerText = q.explanation || "Chưa có lời giải thích chi tiết cho câu hỏi này.";
         explanationBox.classList.remove('hidden');
         hintBtn.classList.add('hidden');
     } else {
@@ -338,7 +376,7 @@ function startTimer() {
 
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
-            alert("Đã hết giờ làm bài! Hệ thống tự động thu bài.");
+            alert("Thời gian làm bài đã kết thúc! Hệ thống sẽ tự động nộp bài làm của bạn.");
             submitQuiz(true);
         }
     }, 1000);
@@ -347,15 +385,17 @@ function startTimer() {
 function handleVisibilityChange() {
     if (document.hidden && !isPracticeMode && !isReviewMode && !screens.quiz.classList.contains('hidden')) {
         if (++tabSwitchCount >= 2) { 
-            alert("CẢNH BÁO VI PHẠM: Rời khỏi màn hình làm bài quá 2 lần. Hệ thống tự động hủy và thu bài thi!"); 
+            alert("VI PHẠM QUY CHẾ: Bạn đã rời khỏi màn hình làm bài thi quá 2 lần. Hệ thống tự động khóa và thu bài làm!"); 
             submitQuiz(true); 
         } 
-        else alert("CẢNH BÁO: Không được chuyển tab hoặc rời khỏi màn hình khi đang thi thử. Vi phạm lần nữa sẽ bị hủy bài thi!");
+        else {
+            alert("CẢNH BÁO QUAN TRỌNG: Không được chuyển tab hoặc rời khỏi trình duyệt khi đang trong chế độ thi thử. Vi phạm lần kế tiếp hệ thống sẽ hủy bài thi!");
+        }
     }
 }
 
 function submitQuiz(force) {
-    if (force || confirm("Bạn có chắc chắn muốn nộp bài?")) {
+    if (force || confirm("Bạn có chắc chắn muốn nộp bài làm hiện tại không?")) {
         clearInterval(timerInterval);
         let correctCount = userAnswers.filter((ans, i) => ans === activeQuiz.questions[i].correctAnswer).length;
         switchScreen('result');
@@ -381,7 +421,7 @@ function reviewQuiz() {
     loadQuestion(0);
 }
 
-// --- LOGIC KHU VỰC ADMIN (TẠO ĐỀ) ---
+// --- 7. LOGIC QUẢN TRỊ (TẠO ĐỀ & ĐẨY LÊN FIREBASE CLOUD) ---
 function switchAdminTab(tabName) {
     const btnDocx = document.getElementById('tab-docx');
     const btnManual = document.getElementById('tab-manual');
@@ -401,6 +441,7 @@ function switchAdminTab(tabName) {
     }
 }
 
+// Xử lý đọc và tách dữ liệu từ file DOCX Word
 function handleDocxImport(event) {
     const file = event.target.files[0];
     const categoryInput = document.getElementById('docx-category').value.trim() || 'Chưa phân loại';
@@ -408,7 +449,7 @@ function handleDocxImport(event) {
     
     const statusDiv = document.getElementById('import-status');
     statusDiv.classList.remove('hidden');
-    statusDiv.innerText = "Đang xử lý đề thi, vui lòng đợi giây lát...";
+    statusDiv.innerText = "Hệ thống đang kết nối máy chủ Firebase và xử lý tệp tin...";
     statusDiv.className = "mt-4 text-center font-bold text-amber-600";
 
     const reader = new FileReader();
@@ -424,60 +465,64 @@ function handleDocxImport(event) {
                     parsedQuestions.push({
                         content: parts[0].trim(),
                         options: [parts[1].trim(), parts[2].trim(), parts[3].trim(), parts[4].split("Đáp án")[0].trim()],
-                        correctAnswer: 0, // DOCX thô mặc định là A
-                        explanation: "Tạo tự động từ tệp DOCX."
+                        correctAnswer: 0, // DOCX thô mặc định vị trí A là đúng, giáo viên có thể bổ sung regex nếu cần nâng cấp
+                        explanation: "Tạo tự động từ tệp DOCX Word."
                     });
                 }
             });
 
             if(parsedQuestions.length > 0) {
-                quizDatabase.push({
+                const newQuiz = {
                     id: "QZ-DOCX-" + Date.now(),
                     title: file.name.replace('.docx', ''),
                     category: categoryInput,
-                    timeLimit: 1800, // Mặc định 30 phút
+                    timeLimit: 1800, // Mặc định thời gian làm bài là 30 phút
                     questions: parsedQuestions
+                };
+                
+                // Đồng bộ đẩy dữ liệu thẳng lên đám mây Firestore
+                db.collection("quizzes").doc(newQuiz.id).set(newQuiz).then(() => {
+                    document.getElementById('docx-category').value = ''; 
+                    statusDiv.innerText = `Hoàn tất! Đã lưu đề thi mới lên đám mây trong thư mục "${categoryInput}".`;
+                    statusDiv.className = "mt-4 text-center font-bold text-green-600";
+                }).catch(err => {
+                    statusDiv.innerText = "Lỗi đường truyền Firebase: " + err;
+                    statusDiv.className = "mt-4 text-center font-bold text-red-600";
                 });
-                saveDB();
-                document.getElementById('docx-category').value = ''; // Xóa trắng
-                statusDiv.innerText = `Hoàn tất! Đã lưu vào thư mục "${categoryInput}" với ${parsedQuestions.length} câu hỏi.`;
-                statusDiv.className = "mt-4 text-center font-bold text-green-600";
+                
             } else {
-                statusDiv.innerText = "Lỗi định dạng: Không tìm thấy cấu trúc Câu 1:, A., B., C., D.";
+                statusDiv.innerText = "Lỗi cấu trúc tệp Word: Hệ thống không tìm thấy định dạng chuẩn 'Câu 1:', 'A.', 'B.', 'C.', 'D.'";
                 statusDiv.className = "mt-4 text-center font-bold text-red-600";
             }
         }).catch(err => {
-            statusDiv.innerText = "Có lỗi xảy ra khi đọc tệp.";
+            statusDiv.innerText = "Đã xảy ra lỗi không xác định trong quá trình bóc tách dữ liệu.";
         });
     };
     reader.readAsArrayBuffer(file);
 }
 
-// --- SOẠN ĐỀ THỦ CÔNG ---
-let manualQuestionCount = 0;
-
+// Xử lý tạo cấu trúc đề thi thủ công bằng Form nhập liệu
 function addManualQuestionForm() {
-    manualQuestionCount++;
     const container = document.getElementById('manual-questions-container');
     const qDiv = document.createElement('div');
     qDiv.className = 'manual-q-block p-6 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl relative';
     qDiv.innerHTML = `
-        <button onclick="this.parentElement.remove()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
-        <h4 class="font-bold mb-4 dark:text-white">Câu Hỏi Mới</h4>
-        <textarea placeholder="Nhập nội dung câu hỏi..." class="q-content w-full p-3 mb-4 border rounded outline-none focus:border-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600" rows="2"></textarea>
+        <button onclick="this.parentElement.remove()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"><i class="fas fa-times text-xl"></i></button>
+        <h4 class="font-bold mb-4 dark:text-white text-blue-600">Nội dung câu hỏi nhập liệu</h4>
+        <textarea placeholder="Nhập nội dung câu hỏi chính tại đây..." class="q-content w-full p-3 mb-4 border rounded outline-none focus:border-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600" rows="2"></textarea>
         <div class="grid grid-cols-2 gap-3 mb-4">
-            <input type="text" placeholder="Đáp án A" class="q-opt-0 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none">
-            <input type="text" placeholder="Đáp án B" class="q-opt-1 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none">
-            <input type="text" placeholder="Đáp án C" class="q-opt-2 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none">
-            <input type="text" placeholder="Đáp án D" class="q-opt-3 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none">
+            <input type="text" placeholder="Lựa chọn A" class="q-opt-0 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none">
+            <input type="text" placeholder="Lựa chọn B" class="q-opt-1 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none">
+            <input type="text" placeholder="Lựa chọn C" class="q-opt-2 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none">
+            <input type="text" placeholder="Lựa chọn D" class="q-opt-3 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none">
         </div>
         <div class="flex gap-4 items-center">
-            <label class="font-bold dark:text-gray-300">Đáp án đúng:</label>
+            <label class="font-bold dark:text-gray-300">Xác định đáp án chính xác:</label>
             <select class="q-correct p-2 border rounded outline-none dark:bg-gray-800 dark:text-white dark:border-gray-600">
                 <option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option>
             </select>
         </div>
-        <input type="text" placeholder="Giải thích đáp án (Tùy chọn)..." class="q-expl w-full p-2 mt-4 border rounded outline-none dark:bg-gray-800 dark:text-white dark:border-gray-600">
+        <input type="text" placeholder="Nhập lời giải thích đáp án (Nếu có)..." class="q-expl w-full p-2 mt-4 border rounded outline-none dark:bg-gray-800 dark:text-white dark:border-gray-600">
     `;
     container.appendChild(qDiv);
 }
@@ -485,14 +530,15 @@ function addManualQuestionForm() {
 function saveManualQuiz() {
     const title = document.getElementById('manual-title').value.trim();
     const category = document.getElementById('manual-category').value.trim();
-    const timeLimit = parseInt(document.getElementById('manual-time').value) * 60; // Đổi ra giây
+    const manualMinutes = document.getElementById('manual-time').value;
+    const timeLimit = parseInt(manualMinutes) * 60; 
 
-    if (!title || !category || isNaN(timeLimit)) {
-        return alert("Vui lòng điền đầy đủ Tên đề, Thư mục và Thời gian làm bài!");
+    if (!title || !category || isNaN(timeLimit) || timeLimit <= 0) {
+        return alert("Vui lòng điền đầy đủ và chính xác tên đề thi, tên thư mục môn học cùng thời gian làm bài!");
     }
 
     const qBlocks = document.querySelectorAll('.manual-q-block');
-    if (qBlocks.length === 0) return alert("Vui lòng thêm ít nhất 1 câu hỏi!");
+    if (qBlocks.length === 0) return alert("Vui lòng tạo ít nhất 1 khối câu hỏi trước khi lưu đề!");
 
     let questions = [];
     let isValid = true;
@@ -506,7 +552,7 @@ function saveManualQuiz() {
             block.querySelector('.q-opt-3').value.trim()
         ];
         const correct = parseInt(block.querySelector('.q-correct').value);
-        const expl = block.querySelector('.q-expl').value.trim() || "Chưa có giải thích cụ thể.";
+        const expl = block.querySelector('.q-expl').value.trim() || "Chưa có giải thích cụ thể cho câu hỏi này.";
 
         if (!content || opts.some(o => o === "")) isValid = false;
 
@@ -518,24 +564,26 @@ function saveManualQuiz() {
         });
     });
 
-    if (!isValid) return alert("Vui lòng điền đầy đủ nội dung và 4 đáp án cho tất cả các câu hỏi!");
+    if (!isValid) return alert("Vui lòng nhập đầy đủ câu hỏi và toàn bộ 4 đáp án lựa chọn!");
 
-    quizDatabase.push({
+    const newQuiz = {
         id: "QZ-MANUAL-" + Date.now(),
         title: title,
         category: category,
         timeLimit: timeLimit,
         questions: questions
-    });
+    };
 
-    saveDB();
-    alert("Đã lưu Bộ Đề mới thành công vào Thư mục: " + category);
-    
-    // Reset Form
-    document.getElementById('manual-title').value = '';
-    document.getElementById('manual-category').value = '';
-    document.getElementById('manual-time').value = '';
-    document.getElementById('manual-questions-container').innerHTML = '';
-    
-    switchScreen('home'); // Quay về trang chủ để ngắm tác phẩm
+    // Đẩy dữ liệu đề thi thủ công lên Firestore
+    db.collection("quizzes").doc(newQuiz.id).set(newQuiz).then(() => {
+        alert(`Đề thi mới đã được lưu trữ thành công lên máy chủ đám mây tại thư mục môn học: "${category}".`);
+        document.getElementById('manual-title').value = '';
+        document.getElementById('manual-category').value = '';
+        document.getElementById('manual-time').value = '';
+        document.getElementById('manual-questions-container').innerHTML = '';
+        window.history.pushState({}, '', window.location.pathname);
+        switchScreen('home'); 
+    }).catch(err => {
+        alert("Lỗi kết nối lưu trữ: " + err);
+    });
 }
