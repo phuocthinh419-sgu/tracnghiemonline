@@ -4,7 +4,7 @@ const quizDatabase = [
         id: "QZ-ENG-01",
         title: "Đề Thi Tiếng Anh THPT Quốc Gia",
         category: "Tiếng Anh",
-        timeLimit: 120, // 2 phút để test
+        timeLimit: 120,
         questions: [
             {
                 content: "Mark the letter A, B, C, or D: The government has launched a new ________ to promote renewable energy.",
@@ -73,29 +73,28 @@ window.onload = () => {
 };
 
 function setupEventListeners() {
-    // Sáng/Tối
     document.getElementById('btn-theme-toggle').addEventListener('click', toggleDarkMode);
     
-    // Nút chức năng
+    // Sửa lỗi điều hướng Trang Chủ
     document.getElementById('btn-back-home').addEventListener('click', () => switchScreen('home'));
-    document.getElementById('btn-home').addEventListener('click', () => location.reload());
+    document.getElementById('btn-home').addEventListener('click', () => {
+        // Reset lại toàn bộ và về trang chủ thay vì reload trang gây giật lác
+        switchScreen('home');
+    });
+    
     document.getElementById('btn-practice').addEventListener('click', () => startQuiz(true));
     document.getElementById('btn-mock').addEventListener('click', () => startQuiz(false));
     
-    // Điều hướng câu hỏi
     document.getElementById('btn-prev').addEventListener('click', () => loadQuestion(currentQuestionIndex - 1));
     document.getElementById('btn-next').addEventListener('click', () => loadQuestion(currentQuestionIndex + 1));
     document.getElementById('btn-submit').addEventListener('click', () => submitQuiz(false));
     
-    // Tính năng được sửa chữa
     document.getElementById('btn-review').addEventListener('click', reviewQuiz);
     document.getElementById('btn-hint').addEventListener('click', showHint);
 
-    // Chống chuyển tab
     document.addEventListener('visibilitychange', handleVisibilityChange);
 }
 
-// --- LOGIC GIAO DIỆN SÁNG / TỐI ---
 function toggleDarkMode() {
     const htmlElement = document.documentElement;
     htmlElement.classList.toggle('dark');
@@ -112,11 +111,9 @@ function switchScreen(screenName) {
     screens[screenName].classList.remove('hidden');
 }
 
-// --- LOGIC TRANG CHỦ ---
 function renderHomeQuizList() {
     const container = document.getElementById('quiz-list-container');
     container.innerHTML = '';
-
     quizDatabase.forEach(quiz => {
         const card = document.createElement('div');
         card.className = 'p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-lg transition-all cursor-pointer group';
@@ -136,7 +133,6 @@ function selectQuiz(quiz) {
     switchScreen('welcome');
 }
 
-// --- LOGIC TRƯỜNG THI ---
 function startQuiz(practice) {
     const nameInput = document.getElementById('student-name').value.trim();
     if (!nameInput) {
@@ -161,6 +157,7 @@ function startQuiz(practice) {
     startTimer();
 }
 
+// --- FIX: HIỂN THỊ RÕ ĐÁP ÁN ĐÃ CHỌN ---
 function loadQuestion(index) {
     if(index < 0 || index >= activeQuiz.questions.length) return;
     
@@ -176,17 +173,26 @@ function loadQuestion(index) {
     const labels = ['A', 'B', 'C', 'D'];
     q.options.forEach((optText, optIndex) => {
         const btn = document.createElement('button');
-        btn.className = 'option-btn text-left p-4 rounded-xl flex items-center gap-4 group border-2 border-gray-200 dark:border-gray-600';
+        // Mặc định là xám nhạt
+        btn.className = 'option-btn text-left p-4 rounded-xl flex items-center gap-4 group border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 transition-all';
         btn.innerHTML = `
-            <span class="option-label w-10 h-10 flex flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 font-bold text-gray-500 transition-colors">${labels[optIndex]}</span>
+            <span class="option-label w-10 h-10 flex flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-700 font-bold text-gray-500 dark:text-gray-300 transition-colors">${labels[optIndex]}</span>
             <span class="text-lg font-academic text-gray-800 dark:text-gray-200">${optText}</span>
         `;
-        if (userAnswers[index] === optIndex) btn.classList.add('selected');
+        
+        // Nếu đã chọn thì ép màu đậm lên
+        if (userAnswers[index] === optIndex) {
+            btn.classList.add('ring-4', 'ring-blue-100', 'border-blue-600', 'bg-blue-50', 'dark:bg-blue-900', 'dark:border-blue-400', 'dark:ring-blue-900');
+            btn.querySelector('.option-label').classList.replace('bg-gray-100', 'bg-blue-600');
+            btn.querySelector('.option-label').classList.replace('text-gray-500', 'text-white');
+            btn.querySelector('.option-label').classList.replace('dark:bg-gray-700', 'dark:bg-blue-600');
+            btn.querySelector('.option-label').classList.replace('dark:text-gray-300', 'dark:text-white');
+        }
+
         btn.onclick = () => selectOption(optIndex, btn);
         optionsContainer.appendChild(btn);
     });
 
-    // Ẩn/Hiện nút Gợi ý
     const hintBtn = document.getElementById('btn-hint');
     const hintBox = document.getElementById('hint-box');
     hintBox.classList.add('hidden');
@@ -196,7 +202,6 @@ function loadQuestion(index) {
         hintBtn.classList.add('hidden');
     }
 
-    // Điều hướng
     document.getElementById('btn-prev').disabled = index === 0;
     if (index === activeQuiz.questions.length - 1) {
         document.getElementById('btn-next').classList.add('hidden');
@@ -206,15 +211,17 @@ function loadQuestion(index) {
         document.getElementById('btn-submit').classList.add('hidden');
     }
 
-    // Xử lý Giải thích (Review/Practice)
     const explanationBox = document.getElementById('explanation-box');
     if (isReviewMode || (isPracticeMode && userAnswers[index] !== null)) {
         const siblings = optionsContainer.children;
         const userAnswer = userAnswers[index];
         
-        siblings[q.correctAnswer].classList.add('correct'); 
+        siblings[q.correctAnswer].classList.replace('border-gray-200', 'border-green-500');
+        siblings[q.correctAnswer].classList.add('bg-green-50', 'dark:bg-green-900/30');
+        
         if (userAnswer !== null && userAnswer !== q.correctAnswer) {
-            siblings[userAnswer].classList.add('wrong'); 
+            siblings[userAnswer].classList.replace('border-blue-600', 'border-red-500');
+            siblings[userAnswer].classList.replace('bg-blue-50', 'bg-red-50');
         }
         for (let el of siblings) el.style.pointerEvents = 'none'; 
         
@@ -227,25 +234,13 @@ function loadQuestion(index) {
 
 function selectOption(optIndex, btnElement) {
     userAnswers[currentQuestionIndex] = optIndex;
-    const siblings = document.getElementById('options-container').children;
-    for (let el of siblings) {
-        el.classList.remove('selected', 'correct', 'wrong');
-        if (isPracticeMode) el.style.pointerEvents = 'none'; 
-    }
-    btnElement.classList.add('selected');
+    
+    // Vẽ lại câu hỏi để cập nhật hiệu ứng chọn màu đậm
+    loadQuestion(currentQuestionIndex);
 
     if (isPracticeMode) {
-        const q = activeQuiz.questions[currentQuestionIndex];
-        if (optIndex === q.correctAnswer) {
-            btnElement.classList.replace('selected', 'correct');
-        } else {
-            btnElement.classList.replace('selected', 'wrong');
-            siblings[q.correctAnswer].classList.add('correct');
-        }
         document.getElementById('btn-hint').classList.add('hidden');
         document.getElementById('hint-box').classList.add('hidden');
-        document.getElementById('explanation-text').innerText = q.explanation;
-        document.getElementById('explanation-box').classList.remove('hidden');
     }
 }
 
@@ -257,7 +252,6 @@ function showHint() {
     document.getElementById('btn-hint').classList.add('hidden');
 }
 
-// --- LOGIC THỜI GIAN & CHỐNG CHUYỂN TAB ---
 function startTimer() {
     const energyFill = document.getElementById('energy-fill');
     const timeText = document.getElementById('time-text');
@@ -277,8 +271,10 @@ function startTimer() {
             timeText.className = 'font-mono font-bold text-3xl text-red-600 tabular-nums';
         } else if (percentage <= 50) {
             energyFill.className = 'energy-fill bg-warn';
+            timeText.className = 'font-mono font-bold text-3xl text-amber-600 tabular-nums';
         } else {
             energyFill.className = 'energy-fill bg-safe';
+            timeText.className = 'font-mono font-bold text-3xl text-blue-900 dark:text-white tabular-nums';
         }
 
         if (timeLeft <= 0) {
@@ -301,7 +297,6 @@ function handleVisibilityChange() {
     }
 }
 
-// --- LOGIC NỘP BÀI & XEM LẠI ---
 function submitQuiz(forceSubmit = false) {
     if (forceSubmit || confirm("Sĩ tử muốn nộp bài?")) {
         clearInterval(timerInterval);
