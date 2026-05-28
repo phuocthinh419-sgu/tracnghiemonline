@@ -44,6 +44,13 @@ function setupEventListeners() {
     document.getElementById('btn-show-admin').addEventListener('click', () => switchScreen('admin'));
     document.getElementById('btn-back-home').addEventListener('click', () => switchScreen('home'));
     document.getElementById('btn-home').addEventListener('click', () => switchScreen('home'));
+    // Sự kiện thoát bài thi giữa chừng
+    document.getElementById('btn-exit-quiz').addEventListener('click', () => {
+        if (confirm("Bạn có chắc chắn muốn thoát? Quá trình làm bài hiện tại sẽ không được lưu lại.")) {
+            clearInterval(timerInterval); // Dừng đồng hồ
+            switchScreen('home'); // Về thẳng trang chủ
+        }
+    });
     document.getElementById('btn-practice').addEventListener('click', () => startQuiz(true));
     document.getElementById('btn-mock').addEventListener('click', () => startQuiz(false));
     document.getElementById('btn-prev').addEventListener('click', () => loadQuestion(currentQuestionIndex - 1));
