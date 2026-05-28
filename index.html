@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Luyện Tập Trắc Nghiệm</title>
+    <title>Hệ thống luyện tập trắc nghiệm</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = { darkMode: 'class' } // Kích hoạt Dark Mode bằng class
+        tailwind.config = { darkMode: 'class' }
     </script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -22,52 +22,40 @@
 
     <div id="app" class="w-full max-w-4xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-colors duration-300">
         
-        <div id="admin-zone" class="hidden p-8 dark:text-white">
-            <div class="flex items-center gap-3 mb-6 border-b dark:border-gray-700 pb-4">
-                <i class="fas fa-crown text-amber-500 text-2xl"></i>
-                <h2 class="font-academic text-2xl text-blue-900 dark:text-blue-400 font-bold">Khu Vực Quản Trị Đề Thi</h2>
+        <div id="home-screen" class="p-8">
+            <div class="text-center mb-10">
+                <h1 class="font-academic text-4xl text-blue-900 dark:text-white font-bold mb-3">Tàng Kinh Các Khảo Thí</h1>
+                <p class="text-gray-500 dark:text-gray-400">Lựa chọn bộ đề để bắt đầu rèn luyện bản lĩnh</p>
             </div>
-            <div class="grid grid-cols-1 gap-6">
-                <div class="p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer" onclick="document.getElementById('upload-docx').click()">
-                    <i class="fas fa-file-word text-blue-600 text-4xl mb-3"></i>
-                    <p class="text-gray-600 dark:text-gray-300 font-medium">Tải lên tệp DOCX để tạo đề mới</p>
-                    <input type="file" id="upload-docx" class="hidden" accept=".docx">
+            <div id="quiz-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 </div>
-            </div>
         </div>
 
-        <div id="welcome-screen" class="px-8 py-16 text-center">
-            <div class="mb-6 flex justify-center">
-                <div class="w-16 h-16 bg-blue-50 dark:bg-gray-700 rounded-full flex items-center justify-center text-blue-900 dark:text-blue-400 text-3xl">
-                    <i class="fas fa-university"></i>
-                </div>
-            </div>
-            <h1 class="font-academic text-4xl md:text-5xl text-blue-900 dark:text-white font-semibold mb-4 leading-tight">
-                Hệ Thống Trắc Nghiệm Online
-            </h1>
-            <p class="text-gray-500 dark:text-gray-400 text-lg mb-10 max-w-lg mx-auto font-academic italic">
-                "Học, học nữa, học mãi"-Chủ tịch Hồ Chí Minh
-            </p>
+        <div id="welcome-screen" class="hidden px-8 py-16 text-center">
+            <button id="btn-back-home" class="absolute top-8 left-8 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors">
+                <i class="fas fa-arrow-left mr-2"></i> Quay lại
+            </button>
+            <h2 id="selected-quiz-title" class="font-academic text-3xl text-blue-900 dark:text-white font-semibold mb-8">Tên đề thi</h2>
             
             <div class="max-w-md mx-auto">
                 <input type="text" id="student-name" placeholder="Nhập họ và tên sĩ tử..." class="w-full px-5 py-4 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl mb-6 text-lg focus:outline-none focus:border-blue-900 transition-all font-medium">
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button id="btn-practice" class="flex items-center justify-center gap-2 px-6 py-4 bg-white dark:bg-gray-700 text-blue-900 dark:text-white border-2 border-blue-900 dark:border-gray-500 rounded-xl font-semibold text-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-all">
+                    <button id="btn-practice" class="flex items-center justify-center gap-2 px-6 py-4 bg-white dark:bg-gray-700 text-blue-900 dark:text-white border-2 border-blue-900 dark:border-gray-500 rounded-xl font-semibold hover:bg-gray-100 transition-all">
                         <i class="fas fa-dumbbell"></i> Luyện tập
                     </button>
-                    <button id="btn-mock" class="flex items-center justify-center gap-2 px-6 py-4 bg-blue-900 dark:bg-blue-600 text-white border-2 border-blue-900 dark:border-blue-600 rounded-xl font-semibold shadow-lg text-lg hover:bg-blue-800 transition-all">
-                        <i class="fas fa-graduation-cap"></i> Thi thử thật
+                    <button id="btn-mock" class="flex items-center justify-center gap-2 px-6 py-4 bg-blue-900 dark:bg-blue-600 text-white border-2 border-blue-900 dark:border-blue-600 rounded-xl font-semibold shadow-lg hover:bg-blue-800 transition-all">
+                        <i class="fas fa-graduation-cap"></i> Thi thử
                     </button>
                 </div>
             </div>
         </div>
 
         <div id="quiz-screen" class="hidden flex flex-col h-full min-h-[600px]">
-            <div id="quiz-header" class="bg-white dark:bg-gray-800 px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-700">
+            <div class="bg-white dark:bg-gray-800 px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-700">
                 <div class="flex justify-between items-end mb-4">
                     <div>
-                        <h2 id="quiz-title" class="font-academic text-2xl text-blue-900 dark:text-white font-bold mb-1">Đang tải đề thi...</h2>
+                        <h2 id="quiz-header-title" class="font-academic text-2xl text-blue-900 dark:text-white font-bold mb-1">Đang tải đề thi...</h2>
                         <p class="text-gray-500 dark:text-gray-400 text-sm">Sĩ tử: <span id="display-student-name" class="font-semibold text-blue-900 dark:text-blue-400"></span></p>
                     </div>
                     <div class="text-right">
@@ -75,22 +63,28 @@
                         <div id="time-text" class="font-mono font-bold text-3xl text-blue-900 dark:text-white tabular-nums">00:00</div>
                     </div>
                 </div>
-                <div class="energy-track">
+                <div id="energy-bar-container" class="energy-track">
                     <div id="energy-fill" class="energy-fill bg-safe" style="width: 100%;">
                         <i id="energy-icon" class="fas fa-pen-nib icon-runner"></i>
                     </div>
                 </div>
             </div>
 
-            <div class="p-8 flex-grow bg-gray-50/50 dark:bg-gray-900/50">
-                <div class="mb-6">
+            <div class="p-8 flex-grow bg-gray-50/50 dark:bg-gray-900/50 relative">
+                <div class="flex justify-between items-center mb-6">
                     <span id="question-counter" class="inline-flex items-center justify-center px-4 py-1.5 bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100 rounded-full text-sm font-bold tracking-wide">
                         Câu hỏi 0 / 0
                     </span>
+                    <button id="btn-hint" class="hidden text-amber-500 hover:text-amber-600 font-bold flex items-center gap-2 transition-colors bg-amber-50 dark:bg-gray-800 px-4 py-2 rounded-lg border border-amber-200 dark:border-gray-600">
+                        <i class="fas fa-lightbulb"></i> Xem gợi ý
+                    </button>
                 </div>
+                
                 <h3 id="question-content" class="font-academic text-2xl text-gray-900 dark:text-white leading-relaxed mb-8"></h3>
                 <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                 
+                <div id="hint-box" class="hidden mt-4 p-4 bg-amber-50 dark:bg-gray-800 border border-amber-200 dark:border-gray-600 rounded-xl text-amber-800 dark:text-amber-400 font-medium italic"></div>
+
                 <div id="explanation-box" class="hidden mt-6 p-5 bg-blue-50 dark:bg-gray-700 border border-blue-100 dark:border-gray-600 rounded-xl">
                     <h4 class="font-bold text-blue-900 dark:text-blue-400 mb-2 flex items-center gap-2"><i class="fas fa-info-circle"></i> Giải thích chi tiết:</h4>
                     <p id="explanation-text" class="text-gray-700 dark:text-gray-200 font-academic leading-relaxed"></p>
@@ -139,11 +133,12 @@
                     <i class="fas fa-search"></i> Xem chi tiết & Giải thích
                 </button>
                 <button id="btn-home" class="px-8 py-3 bg-white dark:bg-gray-700 text-gray-700 dark:text-white border-2 border-gray-200 dark:border-gray-600 rounded-xl font-bold transition-all">
-                    Trang chủ
+                    Về Trang Chủ
                 </button>
             </div>
         </div>
     </div>
-    <script src="script.js" defer></script>
+    
+    <script src="script.js"></script>
 </body>
 </html>
