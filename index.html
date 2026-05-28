@@ -10,6 +10,7 @@
     
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -24,8 +25,42 @@
 
     <div id="app" class="w-full max-w-5xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-colors duration-300">
         
-        <div id="home-screen" class="p-8 relative">
-            <div class="flex justify-center mb-6">
+        <div id="auth-screen" class="hidden p-8 max-w-md mx-auto py-16 text-center">
+            <div class="mb-6 flex justify-center">
+                <div class="w-16 h-16 bg-blue-50 dark:bg-gray-700 rounded-full flex items-center justify-center text-blue-900 dark:text-blue-400 text-3xl">
+                    <i class="fas fa-user-lock"></i>
+                </div>
+            </div>
+            <h2 id="auth-title" class="font-academic text-3xl text-blue-900 dark:text-white font-bold mb-6">Đăng Nhập Hệ Thống</h2>
+            
+            <div class="flex flex-col gap-4 text-left">
+                <div id="div-auth-name" class="hidden">
+                    <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Họ và tên:</label>
+                    <input type="text" id="auth-name" placeholder="Nhập họ và tên của bạn..." class="w-full p-3 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600 outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Email:</label>
+                    <input type="email" id="auth-email" placeholder="example@gmail.com" class="w-full p-3 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600 outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Mật khẩu:</label>
+                    <input type="password" id="auth-password" placeholder="••••••••" class="w-full p-3 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600 outline-none focus:border-blue-500">
+                </div>
+                <button id="btn-auth-submit" class="w-full py-3 bg-blue-900 text-white rounded-lg font-bold mt-2 hover:bg-blue-800 transition-all shadow-md">Đăng Nhập</button>
+                
+                <p class="text-sm text-gray-500 text-center mt-4">
+                    <span id="auth-toggle-msg">Chưa có tài khoản?</span>
+                    <button id="btn-auth-toggle" class="text-blue-600 font-bold hover:underline bg-transparent border-none p-0 cursor-pointer">Đăng ký ngay</button>
+                </p>
+            </div>
+        </div>
+
+        <div id="home-screen" class="hidden p-8 relative">
+            <div class="flex justify-between items-center mb-6">
+                <button id="btn-logout" class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-lg font-bold hover:bg-gray-200 transition-colors shadow-sm">
+                    <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                </button>
+
                 <div class="bg-gray-100 dark:bg-gray-700 p-1 rounded-xl inline-flex shadow-inner">
                     <button id="role-student" class="px-8 py-2.5 rounded-lg font-bold transition-all text-gray-500 hover:text-gray-700 dark:text-gray-400">
                         <i class="fas fa-user-graduate mr-2"></i>Học Sinh
@@ -34,6 +69,8 @@
                         <i class="fas fa-chalkboard-teacher mr-2"></i>Giáo Viên
                     </button>
                 </div>
+                
+                <div class="w-28 h-10"></div>
             </div>
 
             <button id="btn-show-admin" class="hidden absolute top-8 right-8 flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg font-bold hover:bg-blue-200 transition-colors shadow-sm">
