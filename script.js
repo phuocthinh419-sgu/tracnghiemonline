@@ -24,35 +24,33 @@ let userAnswers = [], flaggedQuestions = [];
 let currentRole = 'student';
 let currentFilter = 'all'; 
 let isLoginMode = true; 
+let currentSelectedCategory = ""; // Tên môn học hiện tại đang xem chi tiết
 
 const screens = {
     auth: document.getElementById('auth-screen'),
     home: document.getElementById('home-screen'),
-    admin: document.getElementById('admin-zone'),
+    subjectDetail: document.getElementById('subject-detail-screen'),
     welcome: document.getElementById('welcome-screen'),
     quiz: document.getElementById('quiz-screen'),
-    result: document.getElementById('result-screen')
+    result: document.getElementById('result-screen'),
+    admin: document.getElementById('admin-zone')
 };
 
 // --- 3. THEO DÕI TRẠNG THÁI TÀI KHOẢN & XỬ LÝ LINK CHIA SẺ ---
 document.addEventListener("DOMContentLoaded", () => { 
     setupEventListeners(); 
     
-    // Lắng nghe trạng thái đăng nhập
     auth.onAuthStateChanged((user) => {
         if (user) {
             if (user.displayName) {
                 document.getElementById('student-name').value = user.displayName;
             }
             setRole('student');
-            
-            // Tải danh sách đề thi ngầm
             fetchQuizzesFromFirebase(); 
 
-            // Kiểm tra link chia sẻ (Sửa lỗi Race Condition tại đây)
+            // Giải quyết Race Condition cho link chia sẻ (?quiz=ID)
             const urlParams = new URLSearchParams(window.location.search);
             const quizIdParam = urlParams.get('quiz');
-            
             if (quizIdParam) {
                 checkUrlForSharedQuiz(quizIdParam);
             } else {
@@ -71,13 +69,13 @@ function fetchQuizzesFromFirebase() {
         snapshot.forEach((doc) => {
             quizDatabase.push(doc.data());
         });
-        renderHomeQuizList(); 
+        if (!screens.home.classList.contains('hidden')) renderHomeQuizList(); 
+        if (!screens.subjectDetail.classList.contains('hidden')) renderSubjectDetailView(currentSelectedCategory);
     }, (error) => {
         console.error("Lỗi khi tải dữ liệu từ Firebase: ", error);
     });
 }
 
-// Truy vấn trực tiếp lên Cloud để tránh lỗi "Đề thi không tồn tại"
 function checkUrlForSharedQuiz(quizId) {
     db.collection("quizzes").doc(quizId).get().then((doc) => {
         if (doc.exists) {
@@ -88,10 +86,9 @@ function checkUrlForSharedQuiz(quizId) {
             alert("Đề thi này không tồn tại hoặc đã bị gỡ bỏ khỏi hệ thống!");
             switchScreen('home');
         }
-        // Xóa mã đề khỏi URL để không bị lặp lại lỗi khi F5
         window.history.replaceState({}, document.title, window.location.pathname);
     }).catch(err => {
-        console.error("Lỗi khi truy xuất đề thi từ link: ", err);
+        console.error("Lỗi khi truy xuất link: ", err);
         switchScreen('home');
     });
 }
@@ -102,7 +99,7 @@ function copyLink(link) {
     });
 }
 
-// --- 4. LOGIC XỬ LÝ ĐĂNG NHẬP / ĐĂNG KÝ / ĐĂNG XUẤT ---
+// --- 4. CẤU HÌNH SỰ KIỆN GIAO DIỆN ---
 function setupEventListeners() {
     document.getElementById('btn-auth-toggle').addEventListener('click', () => toggleAuthMode(!isLoginMode));
     document.getElementById('btn-auth-submit').addEventListener('click', handleAuthSubmit);
@@ -116,14 +113,18 @@ function setupEventListeners() {
     document.getElementById('btn-show-admin').addEventListener('click', () => switchScreen('admin'));
     
     const goHome = () => { window.history.pushState({}, '', window.location.pathname); switchScreen('home'); };
-    document.getElementById('btn-back-home').addEventListener('click', goHome);
+    document.getElementById('btn-back-to-home').addEventListener('click', goHome);
+    document.getElementById('btn-back-to-subject').addEventListener('click', () => switchScreen('subjectDetail'));
     document.getElementById('btn-home').addEventListener('click', goHome);
     
     document.getElementById('btn-exit-quiz').addEventListener('click', () => {
         if (confirm("Bạn có chắc chắn muốn thoát? Toàn bộ kết quả làm bài của lượt này sẽ không được lưu lại.")) {
-            clearInterval(timerInterval); goHome();
+            clearInterval(timerInterval); 
+            switchScreen('subjectDetail');
         }
     });
+
+    document.getElementById('btn-start-mock-generate').addEventListener('click', generateSubjectMockTest);
 
     document.getElementById('btn-practice').addEventListener('click', () => startQuiz(true));
     document.getElementById('btn-mock').addEventListener('click', () => startQuiz(false));
@@ -173,24 +174,18 @@ function handleAuthSubmit() {
     if (!email || !password) return alert("Vui lòng nhập đầy đủ Email và Mật khẩu!");
 
     if (isLoginMode) {
-        auth.signInWithEmailAndPassword(email, password)
-            .catch(err => alert("Đăng nhập thất bại: " + err.message));
+        auth.signInWithEmailAndPassword(email, password).catch(err => alert("Đăng nhập thất bại: " + err.message));
     } else {
         if (!name) return alert("Vui lòng nhập Họ và tên để thiết lập hồ sơ người dùng!");
-        
-        auth.createUserWithEmailAndPassword(email, password)
-            .then((result) => {
-                return result.user.updateProfile({ displayName: name });
-            })
-            .then(() => {
-                alert("Đăng ký tài khoản mới thành công!");
-                auth.currentUser.reload();
-            })
-            .catch(err => alert("Đăng ký thất bại: " + err.message));
+        auth.createUserWithEmailAndPassword(email, password).then((result) => {
+            return result.user.updateProfile({ displayName: name });
+        }).then(() => {
+            alert("Đăng ký tài khoản mới thành công!");
+            auth.currentUser.reload();
+        }).catch(err => alert("Đăng ký thất bại: " + err.message));
     }
 }
 
-// --- 5. ĐIỀU HƯỚNG MÀN HÌNH & PHÂN QUYỀN ---
 function setRole(role) {
     currentRole = role;
     const btnStudent = document.getElementById('role-student');
@@ -206,10 +201,9 @@ function setRole(role) {
     } else {
         btnTeacher.classList.add('bg-white', 'shadow-md', 'text-blue-900', 'dark:bg-gray-800', 'dark:text-white');
         btnAdmin.classList.remove('hidden');
-        btnAdmin.classList.add('animate-bounce');
-        setTimeout(() => btnAdmin.classList.remove('animate-bounce'), 1500);
     }
-    renderHomeQuizList(); 
+    if (!screens.home.classList.contains('hidden')) renderHomeQuizList(); 
+    if (!screens.subjectDetail.classList.contains('hidden')) renderSubjectDetailView(currentSelectedCategory);
 }
 
 function toggleDarkMode() {
@@ -221,71 +215,148 @@ function switchScreen(screenName) {
     Object.values(screens).forEach(screen => screen.classList.add('hidden'));
     screens[screenName].classList.remove('hidden');
     if(screenName === 'home') renderHomeQuizList();
+    if(screenName === 'subjectDetail') renderSubjectDetailView(currentSelectedCategory);
     if(screenName === 'admin') {
         switchAdminTab('docx');
         document.getElementById('manual-questions-container').innerHTML = '';
     }
 }
 
-// --- 6. HIỂN THỊ DANH SÁCH ĐỀ THI ---
+// --- 5. RENDER DANH SÁCH MÔN HỌC (TRANG CHỦ) ---
 function renderHomeQuizList() {
     const container = document.getElementById('quiz-list-container');
     container.innerHTML = '';
     
     if (quizDatabase.length === 0) {
-        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Chưa có đề thi nào trên hệ thống đám mây. Vui lòng chuyển sang vai trò Giáo viên để tạo đề mới.</p>';
+        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Chưa có dữ liệu nào trên hệ thống đám mây. Vui lòng chuyển vai trò Giáo viên để tạo.</p>';
         return;
     }
 
+    // Trích xuất danh sách các Môn Học (Category) duy nhất
     const categories = [...new Set(quizDatabase.map(q => q.category))];
+    
     categories.forEach(category => {
-        const folderHeader = document.createElement('div');
-        folderHeader.className = 'col-span-full mt-6 mb-2 border-b-2 border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-3';
-        folderHeader.innerHTML = `<i class="fas fa-folder-open text-amber-500 text-2xl"></i> <h2 class="text-2xl font-bold text-gray-800 dark:text-white">${category}</h2>`;
-        container.appendChild(folderHeader);
+        const totalQuizzes = quizDatabase.filter(q => q.category === category).length;
+        const card = document.createElement('div');
+        card.className = 'p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-xl transition-all cursor-pointer flex items-center justify-between group';
+        card.innerHTML = `
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 bg-blue-50 dark:bg-gray-800 text-blue-900 dark:text-blue-400 rounded-xl flex items-center justify-center text-2xl group-hover:bg-blue-900 group-hover:text-white transition-colors">
+                    <i class="fas fa-folder"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-gray-800 dark:text-white group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors">${category}</h3>
+                    <p class="text-sm text-gray-400 mt-1">Gồm có ${totalQuizzes} thư mục dữ liệu nhỏ/chương lẻ</p>
+                </div>
+            </div>
+            <div class="text-gray-300 group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors"><i class="fas fa-chevron-right text-xl"></i></div>
+        `;
+        card.onclick = () => {
+            currentSelectedCategory = category;
+            switchScreen('subjectDetail');
+        };
+        container.appendChild(card);
+    });
+}
 
-        const quizzesInFolder = quizDatabase.filter(q => q.category === category);
-        quizzesInFolder.forEach(quiz => {
-            const card = document.createElement('div');
-            card.className = 'relative p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-lg transition-all group';
-            
-            let actionBtnsHTML = '';
-            if (currentRole === 'teacher') {
-                const shareLink = `${window.location.origin}${window.location.pathname}?quiz=${quiz.id}`;
-                actionBtnsHTML = `
-                    <button onclick="copyLink('${shareLink}')" class="absolute top-4 right-14 text-gray-400 hover:text-blue-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Sao chép liên kết chia sẻ đề thi"><i class="fas fa-link"></i></button>
-                    <button onclick="deleteQuiz('${quiz.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Xóa đề thi này"><i class="fas fa-trash-alt"></i></button>
-                `;
-            }
+// --- 6. RENDER CHI TIẾT MÔN HỌC (FOLDER CHƯƠNG LẺ & ĐỀ THI) ---
+function renderSubjectDetailView(category) {
+    document.getElementById('subject-detail-title').innerText = "Môn học: " + category;
+    const container = document.getElementById('chapter-list-container');
+    container.innerHTML = '';
 
-            card.innerHTML = `
-                ${actionBtnsHTML}
-                <span class="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">${quiz.category}</span>
-                <h3 class="mt-4 text-xl font-bold dark:text-white cursor-pointer hover:text-blue-600" onclick="selectQuiz('${quiz.id}')">${quiz.title}</h3>
-                <p class="mt-2 text-sm text-gray-500"><i class="far fa-clock"></i> ${Math.floor(quiz.timeLimit / 60)} phút • ${quiz.questions.length} câu hỏi</p>
+    const quizzesInFolder = quizDatabase.filter(q => q.category === category);
+    
+    if(quizzesInFolder.length === 0) {
+        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-4">Thư mục môn học này hiện đang trống.</p>';
+        return;
+    }
+
+    quizzesInFolder.forEach(quiz => {
+        const card = document.createElement('div');
+        card.className = 'relative p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-lg transition-all group';
+        
+        let actionBtnsHTML = '';
+        if (currentRole === 'teacher') {
+            const shareLink = `${window.location.origin}${window.location.pathname}?quiz=${quiz.id}`;
+            actionBtnsHTML = `
+                <button onclick="copyLink('${shareLink}')" class="absolute top-4 right-14 text-gray-400 hover:text-blue-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Sao chép liên kết chia sẻ đề thi"><i class="fas fa-link"></i></button>
+                <button onclick="deleteQuiz('${quiz.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Xóa đề thi này"><i class="fas fa-trash-alt"></i></button>
             `;
-            container.appendChild(card);
-        });
+        }
+
+        card.innerHTML = `
+            ${actionBtnsHTML}
+            <span class="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold rounded-full border dark:border-gray-500">Đề bài lẻ</span>
+            <h3 class="mt-4 text-xl font-bold dark:text-white cursor-pointer hover:text-blue-600" onclick="selectQuiz('${quiz.id}')">${quiz.title}</h3>
+            <p class="mt-2 text-sm text-gray-500"><i class="far fa-clock"></i> ${Math.floor(quiz.timeLimit / 60)} phút • ${quiz.questions.length} câu hỏi</p>
+        `;
+        container.appendChild(card);
     });
 }
 
 function selectQuiz(quizId) {
     activeQuiz = quizDatabase.find(q => q.id === quizId);
-    if (!activeQuiz) {
-        alert("Đề thi này không tồn tại hoặc đã bị gỡ bỏ khỏi hệ thống!");
-        return;
-    }
+    if (!activeQuiz) return alert("Đề thi này không tồn tại!");
     document.getElementById('selected-quiz-title').innerText = activeQuiz.title;
     switchScreen('welcome');
 }
 
 function deleteQuiz(quizId) {
     if (confirm("Xác nhận xóa vĩnh viễn đề thi này khỏi hệ thống cơ sở dữ liệu?")) {
-        db.collection("quizzes").doc(quizId).delete().catch(err => alert("Lỗi khi xóa dữ liệu: " + err));
+        db.collection("quizzes").doc(quizId).delete().then(() => {
+            renderSubjectDetailView(currentSelectedCategory);
+        }).catch(err => alert("Lỗi khi xóa dữ liệu: " + err));
     }
 }
 
-// --- 7. LOGIC THI VÀ LUỒNG BỘ LỌC ĐỀ ---
+// --- 7. THUẬT TOÁN SHUFFLE TRỘN ĐỀ TỔNG HỢP (MOCK TEST) ---
+function generateSubjectMockTest() {
+    const countSelect = parseInt(document.getElementById('mock-question-count').value);
+    const quizzesInFolder = quizDatabase.filter(q => q.category === currentSelectedCategory);
+    
+    // Thu thập tất cả câu hỏi từ các chương
+    let poolQuestions = [];
+    quizzesInFolder.forEach(quiz => {
+        if(quiz.questions && Array.isArray(quiz.questions)) {
+            poolQuestions = poolQuestions.concat(quiz.questions);
+        }
+    });
+
+    if (poolQuestions.length === 0) {
+        return alert("Môn học này hiện chưa có câu hỏi nào để tiến hành trộn đề!");
+    }
+
+    // Thuật toán xáo trộn Fisher-Yates xáo trộn mảng câu hỏi khổng lồ
+    let currentIndex = poolQuestions.length, randomIndex;
+    while (currentIndex != 0) {
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+        [poolQuestions[currentIndex], poolQuestions[randomIndex]] = [poolQuestions[randomIndex], poolQuestions[currentIndex]];
+    }
+
+    // Cắt lấy số lượng câu hỏi chỉ định
+    const finalCount = Math.min(countSelect, poolQuestions.length);
+    const slicedQuestions = poolQuestions.slice(0, finalCount);
+
+    if(finalCount < countSelect) {
+        alert(`Kho dữ liệu môn này chỉ có tổng cộng ${poolQuestions.length} câu hỏi, hệ thống sẽ lấy tối đa hiện có.`);
+    }
+
+    // Khởi tạo một đề thi giả lập trực tiếp trên RAM, không lưu đè lên Cloud
+    activeQuiz = {
+        id: "MOCK-GENERATED-" + Date.now(),
+        title: `Đề Tổng Hợp Ngẫu Nhiên Môn ${currentSelectedCategory}`,
+        category: currentSelectedCategory,
+        timeLimit: finalCount * 60, // Phân phối mặc định 1 phút mỗi câu
+        questions: slicedQuestions
+    };
+
+    document.getElementById('selected-quiz-title').innerText = activeQuiz.title;
+    switchScreen('welcome');
+}
+
+// --- 8. LOGIC TRƯỜNG THI & BỘ LỌC ĐỀ BÀI ---
 function startQuiz(practice) {
     const nameInput = document.getElementById('student-name').value.trim();
     if (!nameInput) return alert("Vui lòng nhập họ và tên của bạn trước khi bắt đầu làm bài!");
@@ -502,7 +573,7 @@ function reviewQuiz() {
     loadQuestion(0);
 }
 
-// --- 8. LOGIC SOẠN ĐỀ (ADMIN ZONE) ---
+// --- 9. LOGIC SOẠN ĐỀ (ADMIN ZONE) ---
 function switchAdminTab(tabName) {
     const btnDocx = document.getElementById('tab-docx');
     const btnManual = document.getElementById('tab-manual');
@@ -652,7 +723,14 @@ function saveManualQuiz() {
         questions: questions
     };
 
+    const btnSave = document.querySelector('button[onclick="saveManualQuiz()"]');
+    const originalText = btnSave.innerHTML;
+    btnSave.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang lưu lên Cloud...';
+    btnSave.disabled = true;
+
     db.collection("quizzes").doc(newQuiz.id).set(newQuiz).then(() => {
+        btnSave.innerHTML = originalText;
+        btnSave.disabled = false;
         alert(`Đề thi mới đã được lưu trữ thành công lên máy chủ đám mây tại thư mục môn học: "${category}".`);
         document.getElementById('manual-title').value = '';
         document.getElementById('manual-category').value = '';
@@ -660,5 +738,10 @@ function saveManualQuiz() {
         document.getElementById('manual-questions-container').innerHTML = '';
         window.history.pushState({}, '', window.location.pathname);
         switchScreen('home'); 
-    }).catch(err => alert("Lỗi kết nối lưu trữ: " + err));
+    }).catch(err => {
+        btnSave.innerHTML = originalText;
+        btnSave.disabled = false;
+        console.error("Lỗi hệ thống Firebase: ", err);
+        alert("Lỗi kết nối lưu trữ: " + err.message);
+    });
 }
