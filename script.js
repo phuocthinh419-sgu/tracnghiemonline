@@ -1,7 +1,15 @@
 let quizDatabase = [
     {
         id: "QZ-ENG-01", title: "Đề Thi Tiếng Anh THPT", category: "Tiếng Anh", timeLimit: 120,
-        questions: [{ content: "Mark the letter A, B, C, or D: The government has launched a new ________.", options: ["initiative", "initiation", "initiator", "initial"], correctAnswer: 0, explanation: "'initiative' là sáng kiến." }]
+        questions: [{ content: "Mark the letter A, B, C, or D: The government has launched a new ________.", options: ["initiative", "initiation", "initiator", "initial"], correctAnswer: 0, hint: "Từ cần điền mang nghĩa 'sáng kiến'.", explanation: "'initiative' là sáng kiến." }]
+    },
+    {
+        id: "QZ-HIS-01", title: "Chiến Dịch Điện Biên Phủ", category: "Lịch Sử", timeLimit: 120,
+        questions: [{ content: "Chiến dịch Điện Biên Phủ lịch sử kết thúc thắng lợi vào ngày tháng năm nào?", options: ["30/04/1975", "07/05/1954", "02/09/1945", "20/11/1953"], correctAnswer: 1, hint: "Tháng 5 năm 1954.", explanation: "Tướng de Castries đầu hàng vào chiều 07/05/1954." }]
+    },
+    {
+        id: "QZ-SPO-01", title: "Kỷ Lục Bóng Đá", category: "Thể Thao", timeLimit: 120,
+        questions: [{ content: "Bayern Munich giành cú ăn 6 (Sextuple) lịch sử vào năm nào?", options: ["2013", "2020", "1999", "2001"], correctAnswer: 1, hint: "Dưới thời HLV Hansi Flick.", explanation: "Bayern Munich giành cú ăn 6 vĩ đại vào năm 2020." }]
     }
 ];
 
@@ -10,9 +18,9 @@ let currentQuestionIndex = 0;
 let studentName = "";
 let isPracticeMode = false, isReviewMode = false;
 let tabSwitchCount = 0, timerInterval, timeLeft = 0;
-let userAnswers = [];
-let flaggedQuestions = [];
+let userAnswers = [], flaggedQuestions = [];
 let currentRole = 'student';
+let currentFilter = 'all'; 
 
 const screens = {
     home: document.getElementById('home-screen'),
@@ -22,11 +30,11 @@ const screens = {
     result: document.getElementById('result-screen')
 };
 
-window.onload = () => { 
+document.addEventListener("DOMContentLoaded", () => { 
     setRole('student'); 
     renderHomeQuizList(); 
     setupEventListeners(); 
-};
+});
 
 function setupEventListeners() {
     document.getElementById('role-student').addEventListener('click', () => setRole('student'));
@@ -55,14 +63,17 @@ function setRole(role) {
     const btnTeacher = document.getElementById('role-teacher');
     const btnAdmin = document.getElementById('btn-show-admin');
 
+    btnStudent.className = 'px-8 py-2.5 rounded-lg font-bold transition-all text-gray-500 hover:text-gray-700 dark:text-gray-400';
+    btnTeacher.className = 'px-8 py-2.5 rounded-lg font-bold transition-all text-gray-500 hover:text-gray-700 dark:text-gray-400';
+
     if (role === 'student') {
-        btnStudent.className = 'px-8 py-2.5 rounded-lg font-bold transition-all bg-white shadow-md text-blue-900 dark:bg-gray-800 dark:text-white';
-        btnTeacher.className = 'px-8 py-2.5 rounded-lg font-bold transition-all text-gray-500 hover:text-gray-700 dark:text-gray-400';
+        btnStudent.classList.add('bg-white', 'shadow-md', 'text-blue-900', 'dark:bg-gray-800', 'dark:text-white');
         btnAdmin.classList.add('hidden');
     } else {
-        btnTeacher.className = 'px-8 py-2.5 rounded-lg font-bold transition-all bg-white shadow-md text-blue-900 dark:bg-gray-800 dark:text-white';
-        btnStudent.className = 'px-8 py-2.5 rounded-lg font-bold transition-all text-gray-500 hover:text-gray-700 dark:text-gray-400';
+        btnTeacher.classList.add('bg-white', 'shadow-md', 'text-blue-900', 'dark:bg-gray-800', 'dark:text-white');
         btnAdmin.classList.remove('hidden');
+        btnAdmin.classList.add('animate-bounce');
+        setTimeout(() => btnAdmin.classList.remove('animate-bounce'), 1500);
     }
 }
 
@@ -82,8 +93,8 @@ function renderHomeQuizList() {
     container.innerHTML = '';
     quizDatabase.forEach(quiz => {
         const card = document.createElement('div');
-        card.className = 'p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-lg cursor-pointer';
-        card.innerHTML = `<span class="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">${quiz.category}</span><h3 class="mt-4 text-xl font-bold dark:text-white">${quiz.title}</h3><p class="mt-2 text-sm text-gray-500">${quiz.questions.length} câu</p>`;
+        card.className = 'p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-lg cursor-pointer transition-all';
+        card.innerHTML = `<span class="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">${quiz.category}</span><h3 class="mt-4 text-xl font-bold dark:text-white hover:text-blue-600">${quiz.title}</h3><p class="mt-2 text-sm text-gray-500">${quiz.questions.length} câu</p>`;
         card.onclick = () => { activeQuiz = quiz; document.getElementById('selected-quiz-title').innerText = quiz.title; switchScreen('welcome'); };
         container.appendChild(card);
     });
@@ -97,36 +108,62 @@ function startQuiz(practice) {
     flaggedQuestions = new Array(activeQuiz.questions.length).fill(false);
     timeLeft = activeQuiz.timeLimit;
     
-    document.getElementById('legend-correct').classList.add('hidden');
-    document.getElementById('legend-wrong').classList.add('hidden');
+    currentFilter = 'all';
+    document.getElementById('filter-tabs-practice').classList.replace('hidden', 'grid');
+    document.getElementById('filter-tabs-review').classList.replace('grid', 'hidden');
+    resetFilterButtons(document.getElementById('filter-tabs-practice'));
+
+    document.getElementById('display-student-name').innerText = studentName;
+    document.getElementById('quiz-header-title').innerText = activeQuiz.title;
+    document.getElementById('energy-bar-container').classList.remove('hidden');
 
     switchScreen('quiz');
     loadQuestion(0);
     startTimer();
 }
 
+function setFilter(type, btnElement) {
+    currentFilter = type;
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-1'));
+    btnElement.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1');
+    renderNavigator();
+}
+
+function resetFilterButtons(container) {
+    container.querySelectorAll('.filter-btn').forEach((btn, index) => {
+        btn.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-1');
+        if (index === 0) btn.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1'); 
+    });
+}
+
 function renderNavigator() {
     const grid = document.getElementById('navigator-grid');
     grid.innerHTML = '';
+    
     activeQuiz.questions.forEach((_, i) => {
+        let isDone = userAnswers[i] !== null;
+        let isFlagged = flaggedQuestions[i];
+        let isCorrect = isDone && userAnswers[i] === activeQuiz.questions[i].correctAnswer;
+        let isWrong = isDone && userAnswers[i] !== activeQuiz.questions[i].correctAnswer;
+
+        if (currentFilter === 'pending' && isDone) return;
+        if (currentFilter === 'done' && !isDone) return;
+        if (currentFilter === 'flagged' && !isFlagged) return;
+        if (currentFilter === 'correct' && (!isDone || !isCorrect)) return;
+        if (currentFilter === 'wrong' && (!isDone || !isWrong)) return;
+
         const btn = document.createElement('button');
         btn.innerText = i + 1;
         let baseClass = 'w-10 h-10 rounded-lg font-bold text-sm flex items-center justify-center transition-all border-2 border-transparent ';
         
         if (isReviewMode) {
-            if (userAnswers[i] === activeQuiz.questions[i].correctAnswer) {
-                baseClass += 'bg-green-500 text-white shadow-md';
-            } else {
-                baseClass += 'bg-red-500 text-white shadow-md';
-            }
+            if (isCorrect) baseClass += 'bg-green-500 text-white shadow-md';
+            else if (isWrong) baseClass += 'bg-red-500 text-white shadow-md';
+            else baseClass += 'bg-gray-200 text-gray-500 dark:bg-gray-700'; 
         } else {
-            if (flaggedQuestions[i]) {
-                baseClass += 'bg-yellow-400 text-yellow-900 shadow-md'; 
-            } else if (userAnswers[i] !== null) {
-                baseClass += 'bg-blue-600 text-white shadow-md'; 
-            } else {
-                baseClass += 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'; 
-            }
+            if (isFlagged) baseClass += 'bg-yellow-400 text-yellow-900 shadow-md'; 
+            else if (isDone) baseClass += 'bg-blue-600 text-white shadow-md'; 
+            else baseClass += 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'; 
         }
 
         if (i === currentQuestionIndex) baseClass += ' ring-2 ring-offset-2 ring-gray-800 dark:ring-white';
@@ -139,6 +176,7 @@ function renderNavigator() {
 function toggleFlag() {
     flaggedQuestions[currentQuestionIndex] = !flaggedQuestions[currentQuestionIndex];
     loadQuestion(currentQuestionIndex); 
+    if (currentFilter === 'flagged') renderNavigator(); 
 }
 
 function loadQuestion(index) {
@@ -175,10 +213,17 @@ function loadQuestion(index) {
         optionsContainer.appendChild(btn);
     });
 
+    const hintBtn = document.getElementById('btn-hint');
+    const hintBox = document.getElementById('hint-box');
+    hintBox.classList.add('hidden');
+    if (isPracticeMode && !isReviewMode && q.hint && userAnswers[index] === null) hintBtn.classList.remove('hidden');
+    else hintBtn.classList.add('hidden');
+
     document.getElementById('btn-prev').disabled = index === 0;
     document.getElementById('btn-next').classList.toggle('hidden', index === activeQuiz.questions.length - 1);
     document.getElementById('btn-submit').classList.toggle('hidden', index !== activeQuiz.questions.length - 1 || isReviewMode);
 
+    const explanationBox = document.getElementById('explanation-box');
     if (isReviewMode || (isPracticeMode && userAnswers[index] !== null)) {
         const siblings = optionsContainer.children;
         siblings[q.correctAnswer].classList.replace('border-gray-200', 'border-green-500');
@@ -188,20 +233,42 @@ function loadQuestion(index) {
             siblings[userAnswers[index]].classList.add('bg-red-50');
         }
         for (let el of siblings) el.style.pointerEvents = 'none';
+        
         document.getElementById('explanation-text').innerText = q.explanation || "Chưa có giải thích.";
-        document.getElementById('explanation-box').classList.remove('hidden');
+        explanationBox.classList.remove('hidden');
+        hintBtn.classList.add('hidden');
     } else {
-        document.getElementById('explanation-box').classList.add('hidden');
+        explanationBox.classList.add('hidden');
     }
     
     renderNavigator(); 
 }
 
 function startTimer() {
+    const energyFill = document.getElementById('energy-fill');
+    const timeText = document.getElementById('time-text');
+    const totalTime = activeQuiz.timeLimit;
+
     timerInterval = setInterval(() => {
         timeLeft--;
-        document.getElementById('time-text').innerText = `${Math.floor(timeLeft / 60).toString().padStart(2, '0')}:${(timeLeft % 60).toString().padStart(2, '0')}`;
+        let percentage = (timeLeft / totalTime) * 100;
+        energyFill.style.width = percentage + '%';
+        
+        timeText.innerText = `${Math.floor(timeLeft / 60).toString().padStart(2, '0')}:${(timeLeft % 60).toString().padStart(2, '0')}`;
+
+        if (percentage <= 15) {
+            energyFill.className = 'energy-fill bg-danger pulse-active';
+            timeText.className = 'font-mono font-bold text-3xl text-red-600 tabular-nums';
+        } else if (percentage <= 50) {
+            energyFill.className = 'energy-fill bg-warn';
+            timeText.className = 'font-mono font-bold text-3xl text-amber-600 tabular-nums';
+        } else {
+            energyFill.className = 'energy-fill bg-safe';
+            timeText.className = 'font-mono font-bold text-3xl text-blue-900 dark:text-white tabular-nums';
+        }
+
         if (timeLeft <= 0) {
+            clearInterval(timerInterval);
             alert("Đã hết giờ làm bài! Hệ thống tự động thu bài.");
             submitQuiz(true);
         }
@@ -225,15 +292,23 @@ function submitQuiz(force) {
         switchScreen('result');
         document.getElementById('result-score').innerText = `${correctCount}/${activeQuiz.questions.length}`;
         document.getElementById('result-percent').innerText = `${Math.round((correctCount / activeQuiz.questions.length) * 100)}%`;
+        
+        const timeUsed = activeQuiz.timeLimit - (timeLeft > 0 ? timeLeft : 0);
+        document.getElementById('result-time').innerText = `${Math.floor(timeUsed / 60).toString().padStart(2, '0')}:${(timeUsed % 60).toString().padStart(2, '0')}`;
     }
 }
 
 function reviewQuiz() {
     isReviewMode = true;
     switchScreen('quiz');
+    document.getElementById('energy-bar-container').classList.add('hidden');
     document.getElementById('btn-submit').classList.add('hidden');
-    document.getElementById('legend-correct').classList.remove('hidden');
-    document.getElementById('legend-wrong').classList.remove('hidden');
+    
+    currentFilter = 'all';
+    document.getElementById('filter-tabs-practice').classList.replace('grid', 'hidden');
+    document.getElementById('filter-tabs-review').classList.replace('hidden', 'grid');
+    resetFilterButtons(document.getElementById('filter-tabs-review'));
+
     loadQuestion(0);
 }
 
@@ -260,7 +335,7 @@ function handleDocxImport(event) {
                         content: parts[0].trim(),
                         options: [parts[1].trim(), parts[2].trim(), parts[3].trim(), parts[4].split("Đáp án")[0].trim()],
                         correctAnswer: 0,
-                        explanation: "Tạo tự động từ DOCX."
+                        explanation: "Tạo tự động từ tệp DOCX."
                     });
                 }
             });
@@ -273,6 +348,7 @@ function handleDocxImport(event) {
                     timeLimit: 1800,
                     questions: parsedQuestions
                 });
+                renderHomeQuizList(); // Cập nhật lại danh sách ngoài trang chủ
                 statusDiv.innerText = `Hoàn tất! Đã nhận diện thành công ${parsedQuestions.length} câu hỏi.`;
                 statusDiv.className = "mt-4 text-center font-bold text-green-600";
             } else {
