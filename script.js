@@ -761,7 +761,10 @@ function handleDocxImport(event) {
     const reader = new FileReader();
     reader.onload = function(e) {
         mammoth.extractRawText({arrayBuffer: e.target.result}).then(function(result) {
-            const text = result.value;
+            let text = result.value;
+            // 1. Quét sạch mọi khoảng trắng tàng hình/kí tự lạ do Word sinh ra
+            text = text.replace(/[\u00A0\u200B-\u200D\uFEFF]/g, ' ');
+
             const regex = /(?=\[Bài đọc\]|\[Hết bài đọc\]|Câu \d+[:.])/i;
             const blocks = text.split(regex).filter(q => q.trim().length > 0);
             
@@ -777,43 +780,49 @@ function handleDocxImport(event) {
                     currentPassage = "";
                 } else if (trimmed.match(/^Câu \d+[:.]/i)) {
                     
-                    // Nâng cấp: Tách nội dung câu hỏi kể cả khi có khoảng trắng thừa hoặc dấu ngoặc
-                    let contentPart = trimmed.split(/(?=(?:\s|^)\*?\s*A\s*[.)])/i)[0];
-                    let content = contentPart.replace(/^Câu \d+[:.]/i, '').trim();
-                    
-                    let options = [];
-                    let correctIndex = 0; 
-                    let labels = ['A', 'B', 'C', 'D'];
-                    let isValid = true;
+                    // 2. Ép tất cả các đáp án A, B, C, D phải rớt xuống đầu dòng mới 
+                    // (Tránh lỗi dính chữ hoặc gõ nhiều đáp án trên 1 dòng)
+                    trimmed = trimmed.replace(/(^|\s)(\*?\s*[A-D]\s*[.)])/ig, '\n$2');
 
-                    for(let i = 0; i < 4; i++) {
-                        let currentLabel = labels[i];
-                        let nextLabel = i < 3 ? labels[i+1] : null;
+                    let lines = trimmed.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+                    let content = "";
+                    let options = ["", "", "", ""];
+                    let correctIndex = 0;
+                    let currentOpt = -1; // -1: đang đọc câu hỏi, 0: A, 1: B, 2: C, 3: D
+                    let foundLabels = new Set();
+
+                    // 3. Xử lý logic cày từng dòng một
+                    lines.forEach(line => {
+                        let matchOpt = line.match(/^(\*?)\s*([A-D])\s*[.)](.*)/i);
                         
-                        // Nâng cấp: Cho phép khoảng trắng giữa dấu * và đáp án (VD: * B. hoặc *C) và hỗ trợ cả dấu )
-                        let regexStr = nextLabel 
-                            ? `(?:^|\\s)\\*?\\s*${currentLabel}\\s*[.)]([\\s\\S]*?)(?=(?:\\s|^)\\*?\\s*${nextLabel}\\s*[.)]|$)` 
-                            : `(?:^|\\s)\\*?\\s*${currentLabel}\\s*[.)]([\\s\\S]*?)$`;
-                        
-                        let match = trimmed.match(new RegExp(regexStr, 'i')); 
-                        
-                        if(match) {
-                            // Nhận diện đáp án đúng kể cả khi có khoảng trắng
-                            let starCheck = trimmed.match(new RegExp(`(?:^|\\s)(\\*?)\\s*${currentLabel}\\s*[.)]`, 'i'));
-                            if(starCheck && starCheck[1] === '*') {
-                                correctIndex = i;
-                            }
-                            
-                            let optText = match[1].trim();
-                            if(i === 3) optText = optText.split(/Đáp án/i)[0].trim();
-                            
-                            options.push(optText);
+                        if (matchOpt) {
+                            // Nếu dòng này là bắt đầu một đáp án mới
+                            let star = matchOpt[1];
+                            let label = matchOpt[2].toUpperCase();
+                            let textOpt = matchOpt[3].trim();
+                            let idx = label.charCodeAt(0) - 65; 
+
+                            currentOpt = idx;
+                            foundLabels.add(label);
+                            if (star === '*') correctIndex = idx;
+                            options[idx] = textOpt;
                         } else {
-                            isValid = false; 
+                            // Nếu dòng này không phải đáp án, nó là văn bản nối tiếp của dòng trên
+                            if (currentOpt === -1) {
+                                content += (content ? "\n" : "") + line;
+                            } else {
+                                options[currentOpt] += " " + line;
+                            }
                         }
+                    });
+
+                    content = content.replace(/^Câu \d+[:.]/i, '').trim();
+                    if(options[3].toLowerCase().includes("đáp án")) {
+                        options[3] = options[3].split(/đáp án/i)[0].trim();
                     }
 
-                    if(isValid) {
+                    // Chỉ lưu khi đã thu thập đủ 4 mảnh ghép A, B, C, D
+                    if (foundLabels.has('A') && foundLabels.has('B') && foundLabels.has('C') && foundLabels.has('D')) {
                         parsedQuestions.push({
                             content: content,
                             options: options,
@@ -838,7 +847,7 @@ function handleDocxImport(event) {
                 db.collection("quizzes").doc(newQuiz.id).set(newQuiz).then(() => {
                     document.getElementById('docx-category').value = ''; 
                     document.getElementById('docx-test-only').checked = false;
-                    statusDiv.innerText = `Hoàn tất! Đã lưu đề thi lên đám mây trong thư mục "${categoryInput}".`;
+                    statusDiv.innerText = `Hoàn tất! Đã lưu thành công ${parsedQuestions.length} câu lên đám mây.`;
                     statusDiv.className = "mt-4 text-center font-bold text-green-600";
                 }).catch(err => {
                     statusDiv.innerText = "Lỗi đường truyền Firebase: " + err;
@@ -846,11 +855,11 @@ function handleDocxImport(event) {
                 });
                 
             } else {
-                statusDiv.innerText = "Lỗi cấu trúc Word: Hệ thống không thể neo được các đáp án A., B., C., D. (Hãy tắt tự động đánh dấu đầu dòng - Auto Numbering trong Word).";
+                statusDiv.innerText = "Lỗi cấu trúc Word: Hệ thống vẫn không thể chốt được 4 khối A, B, C, D.";
                 statusDiv.className = "mt-4 text-center font-bold text-red-600";
             }
         }).catch(err => {
-            statusDiv.innerText = "Đã xảy ra lỗi không xác định trong quá trình bóc tách dữ liệu.";
+            statusDiv.innerText = "Lỗi bóc tách tệp: Định dạng Word gặp sự cố không xác định.";
         });
     };
     reader.readAsArrayBuffer(file);
