@@ -244,7 +244,7 @@ function renderHomeQuizList() {
                 </div>
                 <div>
                     <h3 class="text-xl font-bold text-gray-800 dark:text-white group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors">${category}</h3>
-                    <p class="text-sm text-gray-400 mt-1">Gồm có ${totalQuizzes} thư mục dữ liệu nhỏ/chương lẻ</p>
+                    <p class="text-sm text-gray-400 mt-1">Gồm có ${totalQuizzes} bộ dữ liệu/chương lẻ</p>
                 </div>
             </div>
             <div class="text-gray-300 group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors"><i class="fas fa-chevron-right text-xl"></i></div>
@@ -257,7 +257,7 @@ function renderHomeQuizList() {
     });
 }
 
-// --- 6. RENDER CHI TIẾT MÔN HỌC (FOLDER CHƯƠNG LẺ & ĐỀ THI) ---
+// --- 6. RENDER CHI TIẾT MÔN HỌC ---
 function renderSubjectDetailView(category) {
     document.getElementById('subject-detail-title').innerText = "Môn học: " + category;
     const container = document.getElementById('chapter-list-container');
@@ -350,7 +350,7 @@ function generateSubjectMockTest() {
     switchScreen('welcome');
 }
 
-// --- 8. LOGIC TRƯỜNG THI & GIAO DIỆN CHIA ĐÔI READING ---
+// --- 8. LOGIC TRƯỜNG THI & TỰ ĐỘNG GHI ĐIỂM ĐÁM MÂY ---
 function startQuiz(practice) {
     const nameInput = document.getElementById('student-name').value.trim();
     if (!nameInput) return alert("Vui lòng nhập họ và tên của bạn trước khi bắt đầu làm bài!");
@@ -440,7 +440,6 @@ function loadQuestion(index) {
     document.getElementById('question-counter').innerText = `Câu hỏi ${index + 1} / ${activeQuiz.questions.length}`;
     document.getElementById('question-content').innerHTML = q.content;
     
-    // Giao diện tự động thích ứng với dạng bài Reading
     const passageContainer = document.getElementById('passage-container');
     const questionWrapper = document.getElementById('question-wrapper');
     const passageText = document.getElementById('passage-text');
@@ -555,16 +554,40 @@ function handleVisibilityChange() {
     }
 }
 
+// Hàm Nộp bài: Đồng bộ đẩy bảng điểm trực tiếp lên Firebase Cloud
 function submitQuiz(force) {
     if (force || confirm("Bạn có chắc chắn muốn nộp bài làm hiện tại không?")) {
         clearInterval(timerInterval);
         let correctCount = userAnswers.filter((ans, i) => ans === activeQuiz.questions[i].correctAnswer).length;
-        switchScreen('result');
-        document.getElementById('result-score').innerText = `${correctCount}/${activeQuiz.questions.length}`;
-        document.getElementById('result-percent').innerText = `${Math.round((correctCount / activeQuiz.questions.length) * 100)}%`;
         
         const timeUsed = activeQuiz.timeLimit - (timeLeft > 0 ? timeLeft : 0);
-        document.getElementById('result-time').innerText = `${Math.floor(timeUsed / 60).toString().padStart(2, '0')}:${(timeUsed % 60).toString().padStart(2, '0')}`;
+        const timeUsedStr = `${Math.floor(timeUsed / 60).toString().padStart(2, '0')}:${(timeUsed % 60).toString().padStart(2, '0')}`;
+        const percent = Math.round((correctCount / activeQuiz.questions.length) * 100);
+
+        switchScreen('result');
+        document.getElementById('result-score').innerText = `${correctCount}/${activeQuiz.questions.length}`;
+        document.getElementById('result-percent').innerText = `${percent}%`;
+        document.getElementById('result-time').innerText = timeUsedStr;
+
+        // TIẾN HÀNH ĐẨY DỮ LIỆU ĐIỂM LÊN ĐÁM MÂY
+        const scorePayload = {
+            quizId: activeQuiz.id,
+            quizTitle: activeQuiz.title,
+            category: activeQuiz.category,
+            studentName: studentName,
+            email: auth.currentUser ? auth.currentUser.email : "Ẩn danh",
+            uid: auth.currentUser ? auth.currentUser.uid : null,
+            score: `${correctCount}/${activeQuiz.questions.length}`,
+            percentage: percent,
+            timeUsed: timeUsedStr,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        db.collection("results").add(scorePayload).then(() => {
+            console.log("Đã lưu tiến trình học lực thành công lên hệ thống.");
+        }).catch(err => {
+            console.error("Lỗi khi đồng bộ điểm lên Cloud: ", err);
+        });
     }
 }
 
@@ -582,24 +605,72 @@ function reviewQuiz() {
     loadQuestion(0);
 }
 
-// --- 9. LOGIC SOẠN ĐỀ (ADMIN ZONE TÍCH HỢP ĐỌC HIỂU) ---
+// --- 9. LOGIC BẢNG ĐIỀU KHIỂN & ĐỌC ĐIỂM (ADMIN ZONE) ---
 function switchAdminTab(tabName) {
     const btnDocx = document.getElementById('tab-docx');
     const btnManual = document.getElementById('tab-manual');
+    const btnStats = document.getElementById('tab-stats');
     const panelDocx = document.getElementById('panel-docx');
     const panelManual = document.getElementById('panel-manual');
+    const panelStats = document.getElementById('panel-stats');
+
+    // Khởi tạo lại trạng thái giao diện nút
+    [btnDocx, btnManual, btnStats].forEach(btn => {
+        if(btn) btn.className = 'px-4 py-2 font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700';
+    });
+    [panelDocx, panelManual, panelStats].forEach(panel => {
+        if(panel) panel.classList.replace('block', 'hidden');
+    });
 
     if (tabName === 'docx') {
         btnDocx.className = 'px-4 py-2 font-bold rounded-lg bg-blue-100 text-blue-700';
-        btnManual.className = 'px-4 py-2 font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700';
         panelDocx.classList.replace('hidden', 'block');
-        panelManual.classList.replace('block', 'hidden');
-    } else {
+    } else if (tabName === 'manual') {
         btnManual.className = 'px-4 py-2 font-bold rounded-lg bg-blue-100 text-blue-700';
-        btnDocx.className = 'px-4 py-2 font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700';
         panelManual.classList.replace('hidden', 'block');
-        panelDocx.classList.replace('block', 'hidden');
+    } else if (tabName === 'stats') {
+        btnStats.className = 'px-4 py-2 font-bold rounded-lg bg-blue-100 text-blue-700';
+        panelStats.classList.replace('hidden', 'block');
+        fetchResultsFromFirebase(); // Kích hoạt nạp dữ liệu bảng điểm
     }
+}
+
+// Truy xuất dữ liệu tiến độ làm bài của học sinh
+function fetchResultsFromFirebase() {
+    const tableBody = document.getElementById('stats-table-body');
+    tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Hệ thống đang đồng bộ dữ liệu điểm số từ đám mây...</td></tr>';
+
+    db.collection("results").orderBy("timestamp", "desc").get().then((snapshot) => {
+        tableBody.innerHTML = '';
+        if (snapshot.empty) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">Hiện tại chưa có học sinh nào nộp bài thi.</td></tr>';
+            return;
+        }
+
+        snapshot.forEach((doc) => {
+            const res = doc.data();
+            // Định dạng ngày giờ nộp bài của học sinh
+            const formatStr = res.timestamp ? new Date(res.timestamp.seconds * 1000).toLocaleString('vi-VN') : "Vừa xong";
+            const row = document.createElement('tr');
+            row.className = 'border-b dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors';
+            
+            row.innerHTML = `
+                <td class="p-3 font-semibold text-gray-900 dark:text-gray-100">${res.studentName}</td>
+                <td class="p-3 text-gray-600 dark:text-gray-400">
+                    <span class="font-medium">${res.quizTitle}</span>
+                    <span class="text-xs px-2 py-0.5 bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full ml-1 font-bold">${res.category}</span>
+                </td>
+                <td class="p-3 font-mono font-bold text-blue-600 dark:text-blue-400">${res.score}</td>
+                <td class="p-3 font-bold ${res.percentage >= 50 ? 'text-green-600' : 'text-red-500'}">${res.percentage}%</td>
+                <td class="p-3 text-gray-500 dark:text-gray-400">${res.timeUsed}</td>
+                <td class="p-3 text-gray-400 text-xs">${formatStr}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }).catch(err => {
+        console.error("Lỗi khi truy xuất tiến trình học lực: ", err);
+        tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-500">Đường truyền gặp sự cố, không thể kết nối tệp điểm.</td></tr>';
+    });
 }
 
 function handleDocxImport(event) {
@@ -616,7 +687,6 @@ function handleDocxImport(event) {
     reader.onload = function(e) {
         mammoth.extractRawText({arrayBuffer: e.target.result}).then(function(result) {
             const text = result.value;
-            // Tách dữ liệu linh hoạt bằng cả ký hiệu Bài đọc hoặc Câu
             const regex = /(?=\[Bài đọc\]|\[Hết bài đọc\]|Câu \d+:)/i;
             const blocks = text.split(regex).filter(q => q.trim().length > 0);
             
@@ -625,17 +695,11 @@ function handleDocxImport(event) {
             
             blocks.forEach(block => {
                 let trimmed = block.trim();
-                
-                // Nhận diện cấu trúc đoạn văn Reading
                 if (trimmed.match(/^\[Bài đọc\]/i)) {
                     currentPassage = trimmed.replace(/^\[Bài đọc\]/i, '').trim();
-                } 
-                // Kích hoạt việc ngắt đoạn văn
-                else if (trimmed.match(/^\[Hết bài đọc\]/i)) {
+                } else if (trimmed.match(/^\[Hết bài đọc\]/i)) {
                     currentPassage = "";
-                } 
-                // Nhận diện câu hỏi
-                else if (trimmed.match(/^Câu \d+:/i)) {
+                } else if (trimmed.match(/^Câu \d+:/i)) {
                     const parts = trimmed.split(/[A-D]\./);
                     if(parts.length >= 5) {
                         parsedQuestions.push({
