@@ -694,7 +694,7 @@ function fetchResultsFromFirebase() {
 function handleDocxImport(event) {
     const file = event.target.files[0];
     const categoryInput = document.getElementById('docx-category').value.trim() || 'Chưa phân loại';
-    const isTestOnly = document.getElementById('docx-test-only').checked; // Đọc trạng thái công tắc
+    const isTestOnly = document.getElementById('docx-test-only').checked; 
     
     if (!file) return;
     
@@ -707,7 +707,8 @@ function handleDocxImport(event) {
     reader.onload = function(e) {
         mammoth.extractRawText({arrayBuffer: e.target.result}).then(function(result) {
             const text = result.value;
-            const regex = /(?=\[Bài đọc\]|\[Hết bài đọc\]|Câu \d+:)/i;
+            // Nâng cấp 1: Chấp nhận cả dấu chấm và dấu hai chấm ở chữ "Câu"
+            const regex = /(?=\[Bài đọc\]|\[Hết bài đọc\]|Câu \d+[:.])/i;
             const blocks = text.split(regex).filter(q => q.trim().length > 0);
             
             let parsedQuestions = [];
@@ -719,13 +720,39 @@ function handleDocxImport(event) {
                     currentPassage = trimmed.replace(/^\[Bài đọc\]/i, '').trim();
                 } else if (trimmed.match(/^\[Hết bài đọc\]/i)) {
                     currentPassage = "";
-                } else if (trimmed.match(/^Câu \d+:/i)) {
-                    const parts = trimmed.split(/[A-D]\./);
+                } else if (trimmed.match(/^Câu \d+[:.]/i)) {
+                    
+                    // Nâng cấp 2: Tách đáp án kể cả khi có dấu sao ở trước
+                    const parts = trimmed.split(/(?=[*]?[A-D]\.)/i);
+                    
                     if(parts.length >= 5) {
+                        let content = parts[0].replace(/^Câu \d+[:.]/i, '').trim();
+                        let options = [];
+                        let correctIndex = 0; // Mặc định là A nếu quên đánh dấu sao
+
+                        // Vòng lặp quét 4 đáp án
+                        for(let i = 1; i <= 4; i++) {
+                            let optText = parts[i].trim();
+                            
+                            // Kiểm tra nếu có dấu sao thì lưu lại làm đáp án đúng
+                            if(optText.startsWith('*')) {
+                                correctIndex = i - 1;
+                                optText = optText.substring(1); // Cắt bỏ dấu sao đi
+                            }
+                            
+                            // Cắt bỏ luôn ký tự A., B., C., D. ở đầu đáp án
+                            optText = optText.replace(/^[A-D]\./i, '').trim();
+                            
+                            // Dọn dẹp chữ "Đáp án" nếu bị dính ở câu D
+                            if(i === 4) optText = optText.split(/Đáp án/i)[0].trim();
+                            
+                            options.push(optText);
+                        }
+
                         parsedQuestions.push({
-                            content: parts[0].trim(),
-                            options: [parts[1].trim(), parts[2].trim(), parts[3].trim(), parts[4].split("Đáp án")[0].trim()],
-                            correctAnswer: 0, 
+                            content: content,
+                            options: options,
+                            correctAnswer: correctIndex, 
                             explanation: "Tạo tự động từ tệp DOCX Word.",
                             passage: currentPassage 
                         });
@@ -740,7 +767,7 @@ function handleDocxImport(event) {
                     category: categoryInput,
                     timeLimit: 1800, 
                     questions: parsedQuestions,
-                    isTestOnly: isTestOnly // Gắn cờ Khóa Luyện tập
+                    isTestOnly: isTestOnly
                 };
                 
                 db.collection("quizzes").doc(newQuiz.id).set(newQuiz).then(() => {
@@ -754,7 +781,7 @@ function handleDocxImport(event) {
                 });
                 
             } else {
-                statusDiv.innerText = "Lỗi cấu trúc tệp Word: Hãy đảm bảo có đầy đủ 'Câu 1:', 'A.', 'B.', 'C.', 'D.'";
+                statusDiv.innerText = "Lỗi cấu trúc tệp Word: Hãy đảm bảo có đầy đủ 'Câu 1:' (hoặc 'Câu 1.'), 'A.', 'B.', 'C.', 'D.'";
                 statusDiv.className = "mt-4 text-center font-bold text-red-600";
             }
         }).catch(err => {
