@@ -79,8 +79,7 @@ function checkUrlForSharedQuiz(quizId) {
     db.collection("quizzes").doc(quizId).get().then((doc) => {
         if (doc.exists) {
             activeQuiz = doc.data();
-            document.getElementById('selected-quiz-title').innerText = activeQuiz.title;
-            switchScreen('welcome');
+            prepareWelcomeScreen();
         } else {
             alert("Đề thi này không tồn tại hoặc đã bị gỡ bỏ khỏi hệ thống!");
             switchScreen('home');
@@ -218,6 +217,8 @@ function switchScreen(screenName) {
     if(screenName === 'admin') {
         switchAdminTab('docx');
         document.getElementById('manual-questions-container').innerHTML = '';
+        document.getElementById('docx-test-only').checked = false;
+        document.getElementById('manual-test-only').checked = false;
     }
 }
 
@@ -275,6 +276,11 @@ function renderSubjectDetailView(category) {
         card.className = 'relative p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-lg transition-all group';
         
         let actionBtnsHTML = '';
+        // Đánh dấu thẻ là đề Kiểm tra nếu có isTestOnly
+        let badgeHTML = quiz.isTestOnly ? 
+            '<span class="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold rounded-full border dark:border-red-800">Đề Kiểm Tra</span>' : 
+            '<span class="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold rounded-full border dark:border-gray-500">Đề bài lẻ</span>';
+
         if (currentRole === 'teacher') {
             const shareLink = `${window.location.origin}${window.location.pathname}?quiz=${quiz.id}`;
             actionBtnsHTML = `
@@ -285,7 +291,7 @@ function renderSubjectDetailView(category) {
 
         card.innerHTML = `
             ${actionBtnsHTML}
-            <span class="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold rounded-full border dark:border-gray-500">Đề bài lẻ</span>
+            ${badgeHTML}
             <h3 class="mt-4 text-xl font-bold dark:text-white cursor-pointer hover:text-blue-600" onclick="selectQuiz('${quiz.id}')">${quiz.title}</h3>
             <p class="mt-2 text-sm text-gray-500"><i class="far fa-clock"></i> ${Math.floor(quiz.timeLimit / 60)} phút • ${quiz.questions.length} câu hỏi</p>
         `;
@@ -296,8 +302,7 @@ function renderSubjectDetailView(category) {
 function selectQuiz(quizId) {
     activeQuiz = quizDatabase.find(q => q.id === quizId);
     if (!activeQuiz) return alert("Đề thi này không tồn tại!");
-    document.getElementById('selected-quiz-title').innerText = activeQuiz.title;
-    switchScreen('welcome');
+    prepareWelcomeScreen();
 }
 
 function deleteQuiz(quizId) {
@@ -343,10 +348,28 @@ function generateSubjectMockTest() {
         title: `Đề Tổng Hợp Ngẫu Nhiên Môn ${currentSelectedCategory}`,
         category: currentSelectedCategory,
         timeLimit: finalCount * 60, 
-        questions: slicedQuestions
+        questions: slicedQuestions,
+        isTestOnly: false // Mock Test từ nhiều chương mặc định cho phép luyện tập
     };
 
+    prepareWelcomeScreen();
+}
+
+// Hàm chuẩn bị Xử lý Ẩn/Hiện nút Luyện tập dựa vào cờ isTestOnly
+function prepareWelcomeScreen() {
     document.getElementById('selected-quiz-title').innerText = activeQuiz.title;
+    
+    const btnPractice = document.getElementById('btn-practice');
+    const gridContainer = document.getElementById('welcome-action-buttons');
+    
+    if (activeQuiz.isTestOnly) {
+        btnPractice.classList.add('hidden');
+        gridContainer.classList.replace('md:grid-cols-2', 'md:grid-cols-1');
+    } else {
+        btnPractice.classList.remove('hidden');
+        gridContainer.classList.replace('md:grid-cols-1', 'md:grid-cols-2');
+    }
+
     switchScreen('welcome');
 }
 
@@ -554,7 +577,6 @@ function handleVisibilityChange() {
     }
 }
 
-// Hàm Nộp bài: Đồng bộ đẩy bảng điểm trực tiếp lên Firebase Cloud
 function submitQuiz(force) {
     if (force || confirm("Bạn có chắc chắn muốn nộp bài làm hiện tại không?")) {
         clearInterval(timerInterval);
@@ -569,7 +591,6 @@ function submitQuiz(force) {
         document.getElementById('result-percent').innerText = `${percent}%`;
         document.getElementById('result-time').innerText = timeUsedStr;
 
-        // TIẾN HÀNH ĐẨY DỮ LIỆU ĐIỂM LÊN ĐÁM MÂY
         const scorePayload = {
             quizId: activeQuiz.id,
             quizTitle: activeQuiz.title,
@@ -614,7 +635,6 @@ function switchAdminTab(tabName) {
     const panelManual = document.getElementById('panel-manual');
     const panelStats = document.getElementById('panel-stats');
 
-    // Khởi tạo lại trạng thái giao diện nút
     [btnDocx, btnManual, btnStats].forEach(btn => {
         if(btn) btn.className = 'px-4 py-2 font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700';
     });
@@ -631,11 +651,10 @@ function switchAdminTab(tabName) {
     } else if (tabName === 'stats') {
         btnStats.className = 'px-4 py-2 font-bold rounded-lg bg-blue-100 text-blue-700';
         panelStats.classList.replace('hidden', 'block');
-        fetchResultsFromFirebase(); // Kích hoạt nạp dữ liệu bảng điểm
+        fetchResultsFromFirebase(); 
     }
 }
 
-// Truy xuất dữ liệu tiến độ làm bài của học sinh
 function fetchResultsFromFirebase() {
     const tableBody = document.getElementById('stats-table-body');
     tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Hệ thống đang đồng bộ dữ liệu điểm số từ đám mây...</td></tr>';
@@ -649,7 +668,6 @@ function fetchResultsFromFirebase() {
 
         snapshot.forEach((doc) => {
             const res = doc.data();
-            // Định dạng ngày giờ nộp bài của học sinh
             const formatStr = res.timestamp ? new Date(res.timestamp.seconds * 1000).toLocaleString('vi-VN') : "Vừa xong";
             const row = document.createElement('tr');
             row.className = 'border-b dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors';
@@ -676,6 +694,8 @@ function fetchResultsFromFirebase() {
 function handleDocxImport(event) {
     const file = event.target.files[0];
     const categoryInput = document.getElementById('docx-category').value.trim() || 'Chưa phân loại';
+    const isTestOnly = document.getElementById('docx-test-only').checked; // Đọc trạng thái công tắc
+    
     if (!file) return;
     
     const statusDiv = document.getElementById('import-status');
@@ -719,12 +739,14 @@ function handleDocxImport(event) {
                     title: file.name.replace('.docx', ''),
                     category: categoryInput,
                     timeLimit: 1800, 
-                    questions: parsedQuestions
+                    questions: parsedQuestions,
+                    isTestOnly: isTestOnly // Gắn cờ Khóa Luyện tập
                 };
                 
                 db.collection("quizzes").doc(newQuiz.id).set(newQuiz).then(() => {
                     document.getElementById('docx-category').value = ''; 
-                    statusDiv.innerText = `Hoàn tất! Đã lưu đề thi mới lên đám mây trong thư mục "${categoryInput}".`;
+                    document.getElementById('docx-test-only').checked = false;
+                    statusDiv.innerText = `Hoàn tất! Đã lưu đề thi lên đám mây trong thư mục "${categoryInput}".`;
                     statusDiv.className = "mt-4 text-center font-bold text-green-600";
                 }).catch(err => {
                     statusDiv.innerText = "Lỗi đường truyền Firebase: " + err;
@@ -780,6 +802,7 @@ function saveManualQuiz() {
     const category = document.getElementById('manual-category').value.trim();
     const manualMinutes = document.getElementById('manual-time').value;
     const timeLimit = parseInt(manualMinutes) * 60; 
+    const isTestOnly = document.getElementById('manual-test-only').checked; // Đọc cờ khóa luyện tập
 
     if (!title || !category || isNaN(timeLimit) || timeLimit <= 0) {
         return alert("Vui lòng điền đầy đủ và chính xác tên đề thi, tên thư mục môn học cùng thời gian làm bài!");
@@ -821,7 +844,8 @@ function saveManualQuiz() {
         title: title,
         category: category,
         timeLimit: timeLimit,
-        questions: questions
+        questions: questions,
+        isTestOnly: isTestOnly // Gắn cờ Khóa Luyện tập
     };
 
     const btnSave = document.querySelector('button[onclick="saveManualQuiz()"]');
@@ -836,6 +860,7 @@ function saveManualQuiz() {
         document.getElementById('manual-title').value = '';
         document.getElementById('manual-category').value = '';
         document.getElementById('manual-time').value = '';
+        document.getElementById('manual-test-only').checked = false;
         document.getElementById('manual-questions-container').innerHTML = '';
         window.history.pushState({}, '', window.location.pathname);
         switchScreen('home'); 
