@@ -755,14 +755,14 @@ function handleDocxImport(event) {
     
     const statusDiv = document.getElementById('import-status');
     statusDiv.classList.remove('hidden');
-    statusDiv.innerText = "Hệ thống đang kết nối máy chủ Firebase và xử lý tệp tin...";
+    statusDiv.innerText = "Đang rà quét tệp Word bằng thuật toán tối thượng...";
     statusDiv.className = "mt-4 text-center font-bold text-amber-600";
 
     const reader = new FileReader();
     reader.onload = function(e) {
         mammoth.extractRawText({arrayBuffer: e.target.result}).then(function(result) {
             let text = result.value;
-            // 1. Quét sạch mọi khoảng trắng tàng hình/kí tự lạ do Word sinh ra
+            // Diệt cỏ tận gốc mọi ký tự tàng hình
             text = text.replace(/[\u00A0\u200B-\u200D\uFEFF]/g, ' ');
 
             const regex = /(?=\[Bài đọc\]|\[Hết bài đọc\]|Câu \d+[:.])/i;
@@ -770,8 +770,9 @@ function handleDocxImport(event) {
             
             let parsedQuestions = [];
             let currentPassage = "";
+            let errorLog = "";
             
-            blocks.forEach(block => {
+            blocks.forEach((block) => {
                 let trimmed = block.trim();
                 
                 if (trimmed.match(/^\[Bài đọc\]/i)) {
@@ -780,49 +781,34 @@ function handleDocxImport(event) {
                     currentPassage = "";
                 } else if (trimmed.match(/^Câu \d+[:.]/i)) {
                     
-                    // 2. Ép tất cả các đáp án A, B, C, D phải rớt xuống đầu dòng mới 
-                    // (Tránh lỗi dính chữ hoặc gõ nhiều đáp án trên 1 dòng)
-                    trimmed = trimmed.replace(/(^|\s)(\*?\s*[A-D]\s*[.)])/ig, '\n$2');
-
-                    let lines = trimmed.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-                    let content = "";
+                    let contentPart = trimmed.split(/(?=(?:\s|^)\*?\s*A\s*[.)])/i)[0];
+                    let content = contentPart.replace(/^Câu \d+[:.]/i, '').trim();
+                    
                     let options = ["", "", "", ""];
-                    let correctIndex = 0;
-                    let currentOpt = -1; // -1: đang đọc câu hỏi, 0: A, 1: B, 2: C, 3: D
-                    let foundLabels = new Set();
+                    let correctIndex = 0; 
+                    let foundLabels = 0;
 
-                    // 3. Xử lý logic cày từng dòng một
-                    lines.forEach(line => {
-                        let matchOpt = line.match(/^(\*?)\s*([A-D])\s*[.)](.*)/i);
+                    let labels = ['A', 'B', 'C', 'D'];
+                    for(let i = 0; i < 4; i++) {
+                        let curr = labels[i];
+                        let next = i < 3 ? labels[i+1] : null;
                         
-                        if (matchOpt) {
-                            // Nếu dòng này là bắt đầu một đáp án mới
-                            let star = matchOpt[1];
-                            let label = matchOpt[2].toUpperCase();
-                            let textOpt = matchOpt[3].trim();
-                            let idx = label.charCodeAt(0) - 65; 
-
-                            currentOpt = idx;
-                            foundLabels.add(label);
-                            if (star === '*') correctIndex = idx;
-                            options[idx] = textOpt;
-                        } else {
-                            // Nếu dòng này không phải đáp án, nó là văn bản nối tiếp của dòng trên
-                            if (currentOpt === -1) {
-                                content += (content ? "\n" : "") + line;
-                            } else {
-                                options[currentOpt] += " " + line;
-                            }
+                        let optRegexStr = next 
+                            ? `(?:^|\\s)(\\*?)\\s*${curr}\\s*[.)]([\\s\\S]*?)(?=(?:\\s|^)\\*?\\s*${next}\\s*[.)]|$)` 
+                            : `(?:^|\\s)(\\*?)\\s*${curr}\\s*[.)]([\\s\\S]*?)$`;
+                        
+                        let match = trimmed.match(new RegExp(optRegexStr, 'i')); 
+                        if (match) {
+                            foundLabels++;
+                            if (match[1] === '*') correctIndex = i;
+                            
+                            let optText = match[2].trim();
+                            if (i === 3) optText = optText.split(/Đáp án/i)[0].trim();
+                            options[i] = optText;
                         }
-                    });
-
-                    content = content.replace(/^Câu \d+[:.]/i, '').trim();
-                    if(options[3].toLowerCase().includes("đáp án")) {
-                        options[3] = options[3].split(/đáp án/i)[0].trim();
                     }
 
-                    // Chỉ lưu khi đã thu thập đủ 4 mảnh ghép A, B, C, D
-                    if (foundLabels.has('A') && foundLabels.has('B') && foundLabels.has('C') && foundLabels.has('D')) {
+                    if (foundLabels === 4) {
                         parsedQuestions.push({
                             content: content,
                             options: options,
@@ -830,11 +816,13 @@ function handleDocxImport(event) {
                             explanation: "Tạo tự động từ tệp DOCX Word.",
                             passage: currentPassage 
                         });
+                    } else {
+                        errorLog += `\n- Lỗi ở: ${content.substring(0, 30)}... (Chỉ gom được ${foundLabels}/4 đáp án)`;
                     }
                 }
             });
 
-            if(parsedQuestions.length > 0) {
+            if(parsedQuestions.length > 0 && errorLog === "") {
                 const newQuiz = {
                     id: "QZ-DOCX-" + Date.now(),
                     title: file.name.replace('.docx', ''),
@@ -847,19 +835,22 @@ function handleDocxImport(event) {
                 db.collection("quizzes").doc(newQuiz.id).set(newQuiz).then(() => {
                     document.getElementById('docx-category').value = ''; 
                     document.getElementById('docx-test-only').checked = false;
-                    statusDiv.innerText = `Hoàn tất! Đã lưu thành công ${parsedQuestions.length} câu lên đám mây.`;
+                    statusDiv.innerText = `Thắng lợi! Đã nạp thành công ${parsedQuestions.length} câu lên đám mây.`;
                     statusDiv.className = "mt-4 text-center font-bold text-green-600";
                 }).catch(err => {
                     statusDiv.innerText = "Lỗi đường truyền Firebase: " + err;
                     statusDiv.className = "mt-4 text-center font-bold text-red-600";
                 });
                 
+            } else if (parsedQuestions.length > 0 && errorLog !== "") {
+                statusDiv.innerText = `Nạp được ${parsedQuestions.length} câu, nhưng từ chối một số câu do lỗi: ${errorLog}`;
+                statusDiv.className = "mt-4 text-center font-bold text-amber-600";
             } else {
-                statusDiv.innerText = "Lỗi cấu trúc Word: Hệ thống vẫn không thể chốt được 4 khối A, B, C, D.";
+                statusDiv.innerText = `Thất bại toàn tập. Chi tiết lỗi: ${errorLog}`;
                 statusDiv.className = "mt-4 text-center font-bold text-red-600";
             }
         }).catch(err => {
-            statusDiv.innerText = "Lỗi bóc tách tệp: Định dạng Word gặp sự cố không xác định.";
+            statusDiv.innerText = "Lỗi bóc tách tệp: Đuôi file DOCX bị hỏng hoặc không đọc được.";
         });
     };
     reader.readAsArrayBuffer(file);
