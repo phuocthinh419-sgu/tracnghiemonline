@@ -762,7 +762,6 @@ function handleDocxImport(event) {
     reader.onload = function(e) {
         mammoth.extractRawText({arrayBuffer: e.target.result}).then(function(result) {
             const text = result.value;
-            // Tách các khối câu hỏi và bài đọc
             const regex = /(?=\[Bài đọc\]|\[Hết bài đọc\]|Câu \d+[:.])/i;
             const blocks = text.split(regex).filter(q => q.trim().length > 0);
             
@@ -778,7 +777,6 @@ function handleDocxImport(event) {
                     currentPassage = "";
                 } else if (trimmed.match(/^Câu \d+[:.]/i)) {
                     
-                    // Lấy riêng phần nội dung câu hỏi (nằm trước chữ A.)
                     let contentPart = trimmed.split(/(?=(?:\s|^)\*?A\.)/i)[0];
                     let content = contentPart.replace(/^Câu \d+[:.]/i, '').trim();
                     
@@ -787,32 +785,29 @@ function handleDocxImport(event) {
                     let labels = ['A', 'B', 'C', 'D'];
                     let isValid = true;
 
-                    // Thuật toán "Neo Tọa Độ" chính xác đáp án A, B, C, D
                     for(let i = 0; i < 4; i++) {
                         let currentLabel = labels[i];
                         let nextLabel = i < 3 ? labels[i+1] : null;
                         
-                        // Khóa chặt khoảng không gian giữa 2 đáp án (VD: từ B. đến C.)
+                        // ĐIỂM CHỐT HẠ: Dùng [\s\S]*? để đọc xuyên thấu mọi dấu ngắt dòng Enter
                         let regexStr = nextLabel 
-                            ? `(?:^|\\s)\\*?${currentLabel}\\.(.*?)(?=(?:\\s|^)\\*?${nextLabel}\\.|$)` 
-                            : `(?:^|\\s)\\*?${currentLabel}\\.(.*?)$`;
+                            ? `(?:^|\\s)\\*?${currentLabel}\\.([\\s\\S]*?)(?=(?:\\s|^)\\*?${nextLabel}\\.|$)` 
+                            : `(?:^|\\s)\\*?${currentLabel}\\.([\\s\\S]*?)$`;
                         
-                        let match = trimmed.match(new RegExp(regexStr, 'is'));
+                        let match = trimmed.match(new RegExp(regexStr, 'i')); 
                         
                         if(match) {
-                            // Phát hiện dấu sao * để đánh dấu đáp án đúng
                             let starCheck = trimmed.match(new RegExp(`(?:^|\\s)(\\*?)${currentLabel}\\.`, 'i'));
                             if(starCheck && starCheck[1] === '*') {
                                 correctIndex = i;
                             }
                             
                             let optText = match[1].trim();
-                            // Dọn dẹp chữ "Đáp án" nếu bị dính ở câu D
                             if(i === 3) optText = optText.split(/Đáp án/i)[0].trim();
                             
                             options.push(optText);
                         } else {
-                            isValid = false; // Báo lỗi nếu thiếu bất kỳ đáp án nào trong A, B, C, D
+                            isValid = false; 
                         }
                     }
 
