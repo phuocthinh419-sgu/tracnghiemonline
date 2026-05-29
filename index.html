@@ -25,7 +25,6 @@
 
     <div id="app" class="w-full max-w-[98vw] 2xl:max-w-[1600px] min-h-[90vh] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-colors duration-300">
         
-        <!-- MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ -->
         <div id="auth-screen" class="hidden p-8 max-w-md mx-auto py-16 text-center">
             <div class="mb-6 flex justify-center">
                 <div class="w-16 h-16 bg-blue-50 dark:bg-gray-700 rounded-full flex items-center justify-center text-blue-900 dark:text-blue-400 text-3xl">
@@ -56,7 +55,6 @@
             </div>
         </div>
 
-        <!-- TRANG CHỦ (DANH SÁCH MÔN HỌC) -->
         <div id="home-screen" class="hidden p-8 relative">
             <div class="flex justify-between items-center mb-6">
                 <button id="btn-logout" class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-lg font-bold hover:bg-gray-200 transition-colors shadow-sm">
@@ -86,7 +84,6 @@
             <div id="quiz-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
         </div>
 
-        <!-- MÀN HÌNH CHI TIẾT MÔN HỌC -->
         <div id="subject-detail-screen" class="hidden p-8 relative h-[85vh] overflow-y-auto custom-scrollbar">
             <button id="btn-back-to-home" class="mb-4 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors"><i class="fas fa-arrow-left mr-2"></i>Quay lại danh sách môn</button>
             
@@ -116,7 +113,6 @@
             <div id="chapter-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
         </div>
 
-        <!-- KHU VỰC QUẢN TRỊ & XƯỞNG TẠO ĐỀ (Giáo viên) -->
         <div id="admin-zone" class="hidden p-8 dark:text-white h-[85vh] overflow-y-auto custom-scrollbar">
             <button onclick="switchScreen('home')" class="mb-4 text-gray-500 hover:text-blue-900 dark:hover:text-white"><i class="fas fa-arrow-left"></i> Về Trang chủ</button>
             <div class="flex justify-between items-center mb-6 border-b dark:border-gray-700 pb-4">
@@ -132,11 +128,17 @@
             </div>
 
             <div id="panel-docx" class="block">
-                <div class="max-w-xl mx-auto mb-6">
-                    <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300">Tên Thư mục / Môn học:</label>
-                    <input type="text" id="docx-category" placeholder="Ví dụ: Luyện Thi THPTQG..." class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-xl mx-auto mb-6">
+                    <div>
+                        <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300">Tên Thư mục / Môn học:</label>
+                        <input type="text" id="docx-category" placeholder="Ví dụ: Luyện Thi THPTQG..." class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300">Thời gian (Phút):</label>
+                        <input type="number" id="docx-time" placeholder="Mặc định: 30 phút" class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none">
+                    </div>
                 </div>
-                <!-- CÔNG TẮC ĐỀ KIỂM TRA (DOCX) -->
+
                 <div class="max-w-xl mx-auto mb-6 flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                     <input type="checkbox" id="docx-test-only" class="w-5 h-5 cursor-pointer accent-red-600">
                     <label for="docx-test-only" class="font-bold text-red-700 dark:text-red-400 cursor-pointer">Bật Chế độ Kiểm tra (Khóa chức năng Luyện tập của học sinh)</label>
@@ -160,11 +162,10 @@
                         <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300">Tên Môn Học (Thư mục chứa):</label>
                         <input type="text" id="manual-category" placeholder="VD: Tiếng Anh TS10..." class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none">
                     </div>
-                    <div>
+                    <div class="col-span-2">
                         <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300">Thời gian làm bài (Phút):</label>
                         <input type="number" id="manual-time" placeholder="VD: 45" class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none">
                     </div>
-                    <!-- CÔNG TẮC ĐỀ KIỂM TRA (MANUAL) -->
                     <div class="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg mt-8">
                         <input type="checkbox" id="manual-test-only" class="w-5 h-5 cursor-pointer accent-red-600">
                         <label for="manual-test-only" class="font-bold text-red-700 dark:text-red-400 cursor-pointer text-sm">Bật Chế độ Kiểm tra (Khóa Luyện tập)</label>
@@ -181,7 +182,6 @@
                 </div>
             </div>
 
-            <!-- BẢNG ĐIỆN TỬ THEO DÕI TIẾN ĐỘ HỌC SINH -->
             <div id="panel-stats" class="hidden w-full mx-auto">
                 <div class="mb-4 flex justify-between items-center">
                     <p class="text-sm text-gray-500 dark:text-gray-400">Danh sách kết quả làm bài của học sinh được lưu trữ theo thời gian thực</p>
@@ -200,20 +200,17 @@
                             </tr>
                         </thead>
                         <tbody id="stats-table-body" class="divide-y dark:divide-gray-700">
-                            <!-- Dữ liệu nạp từ Firebase -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- MÀN HÌNH CHỜ THI -->
         <div id="welcome-screen" class="hidden px-8 py-16 text-center">
             <button id="btn-back-to-subject" class="absolute top-8 left-8 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors"><i class="fas fa-arrow-left mr-2"></i> Quay lại</button>
             <h2 id="selected-quiz-title" class="font-academic text-3xl text-blue-900 dark:text-white font-semibold mb-8">Tên đề thi</h2>
             <div class="max-w-md mx-auto">
                 <input type="text" id="student-name" placeholder="Nhập họ và tên của bạn..." class="w-full px-5 py-4 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl mb-6 text-lg focus:outline-none focus:border-blue-900 transition-all font-medium">
-                <!-- GÁN ID welcome-action-buttons VÀO GRID -->
                 <div id="welcome-action-buttons" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button id="btn-practice" class="flex items-center justify-center gap-2 px-6 py-4 bg-white dark:bg-gray-700 text-blue-900 dark:text-white border-2 border-blue-900 rounded-xl font-semibold hover:bg-gray-100 transition-all"><i class="fas fa-dumbbell"></i> Luyện tập</button>
                     <button id="btn-mock" class="flex items-center justify-center gap-2 px-6 py-4 bg-blue-900 text-white border-2 border-blue-900 rounded-xl font-semibold shadow-lg hover:bg-blue-800 transition-all"><i class="fas fa-graduation-cap"></i> Thi thử thật</button>
@@ -221,7 +218,6 @@
             </div>
         </div>
 
-        <!-- TRƯỜNG THI -->
         <div id="quiz-screen" class="hidden flex h-full min-h-[85vh]">
             <div class="flex-grow flex flex-col border-r border-gray-200 dark:border-gray-700 w-3/4">
                 <div class="bg-white dark:bg-gray-800 px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-700">
@@ -300,7 +296,6 @@
             </div>
         </div>
 
-        <!-- BẢNG VÀNG KẾT QUẢ -->
         <div id="result-screen" class="hidden px-8 py-12 text-center dark:bg-gray-800">
             <div class="w-24 h-24 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center text-green-600 dark:text-green-400 text-5xl mx-auto mb-6"><i class="fas fa-trophy"></i></div>
             <h2 class="font-academic text-4xl text-gray-900 dark:text-white font-bold mb-2">Hoàn Thành Bài Thi!</h2>
