@@ -380,6 +380,61 @@ function startQuiz(practice) {
     
     studentName = nameInput;
     isPracticeMode = practice; isReviewMode = false; tabSwitchCount = 0;
+
+    // --- BẮT ĐẦU: THUẬT TOÁN ĐẢO ĐỀ THÔNG MINH ---
+    // 1. Tạo bản sao để không làm hỏng dữ liệu gốc nếu học sinh thoát ra vào lại
+    activeQuiz = JSON.parse(JSON.stringify(activeQuiz));
+
+    // 2. Phân tách câu hỏi thành các khối (Bảo vệ mạch văn của bài Reading)
+    let groupedQuestions = [];
+    let currentPassage = null;
+    let currentGroup = [];
+
+    activeQuiz.questions.forEach(q => {
+        if (q.passage !== currentPassage) {
+            if (currentGroup.length > 0) groupedQuestions.push(currentGroup);
+            currentGroup = [q];
+            currentPassage = q.passage;
+        } else {
+            currentGroup.push(q);
+        }
+    });
+    if (currentGroup.length > 0) groupedQuestions.push(currentGroup);
+
+    // 3. Đảo ngẫu nhiên vị trí các khối câu hỏi
+    for (let i = groupedQuestions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [groupedQuestions[i], groupedQuestions[j]] = [groupedQuestions[j], groupedQuestions[i]];
+    }
+
+    // 4. Trộn ngẫu nhiên câu hỏi lẻ & Trộn đáp án A, B, C, D
+    groupedQuestions.forEach(group => {
+        // Chỉ đảo vị trí câu hỏi nếu đó là nhóm câu lẻ (Không có bài đọc)
+        if (!group[0].passage || group[0].passage.trim() === "") {
+            for (let i = group.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [group[i], group[j]] = [group[j], group[i]];
+            }
+        }
+
+        // Đảo 4 đáp án của TẤT CẢ các câu trong nhóm và cập nhật chỉ mục (index) đáp án đúng
+        group.forEach(q => {
+            let opts = q.options.map((text, idx) => ({ text: text, isCorrect: idx === q.correctAnswer }));
+            
+            for (let i = opts.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [opts[i], opts[j]] = [opts[j], opts[i]];
+            }
+            
+            q.options = opts.map(o => o.text);
+            q.correctAnswer = opts.findIndex(o => o.isCorrect);
+        });
+    });
+
+    // 5. Ráp lại thành đề thi hoàn chỉnh
+    activeQuiz.questions = groupedQuestions.flat();
+    // --- KẾT THÚC THUẬT TOÁN ĐẢO ĐỀ ---
+
     userAnswers = new Array(activeQuiz.questions.length).fill(null);
     flaggedQuestions = new Array(activeQuiz.questions.length).fill(false);
     timeLeft = activeQuiz.timeLimit;
@@ -707,7 +762,7 @@ function handleDocxImport(event) {
     reader.onload = function(e) {
         mammoth.extractRawText({arrayBuffer: e.target.result}).then(function(result) {
             const text = result.value;
-            // Nâng cấp 1: Chấp nhận cả dấu chấm và dấu hai chấm ở chữ "Câu"
+            // Tách các khối câu hỏi và bài đọc
             const regex = /(?=\[Bài đọc\]|\[Hết bài đọc\]|Câu \d+[:.])/i;
             const blocks = text.split(regex).filter(q => q.trim().length > 0);
             
@@ -716,39 +771,52 @@ function handleDocxImport(event) {
             
             blocks.forEach(block => {
                 let trimmed = block.trim();
+                
                 if (trimmed.match(/^\[Bài đọc\]/i)) {
                     currentPassage = trimmed.replace(/^\[Bài đọc\]/i, '').trim();
                 } else if (trimmed.match(/^\[Hết bài đọc\]/i)) {
                     currentPassage = "";
                 } else if (trimmed.match(/^Câu \d+[:.]/i)) {
                     
-                    // Nâng cấp 2: Tách đáp án kể cả khi có dấu sao ở trước
-                    const parts = trimmed.split(/(?=[*]?[A-D]\.)/i);
+                    // Lấy riêng phần nội dung câu hỏi (nằm trước chữ A.)
+                    let contentPart = trimmed.split(/(?=(?:\s|^)\*?A\.)/i)[0];
+                    let content = contentPart.replace(/^Câu \d+[:.]/i, '').trim();
                     
-                    if(parts.length >= 5) {
-                        let content = parts[0].replace(/^Câu \d+[:.]/i, '').trim();
-                        let options = [];
-                        let correctIndex = 0; // Mặc định là A nếu quên đánh dấu sao
+                    let options = [];
+                    let correctIndex = 0; 
+                    let labels = ['A', 'B', 'C', 'D'];
+                    let isValid = true;
 
-                        // Vòng lặp quét 4 đáp án
-                        for(let i = 1; i <= 4; i++) {
-                            let optText = parts[i].trim();
-                            
-                            // Kiểm tra nếu có dấu sao thì lưu lại làm đáp án đúng
-                            if(optText.startsWith('*')) {
-                                correctIndex = i - 1;
-                                optText = optText.substring(1); // Cắt bỏ dấu sao đi
+                    // Thuật toán "Neo Tọa Độ" chính xác đáp án A, B, C, D
+                    for(let i = 0; i < 4; i++) {
+                        let currentLabel = labels[i];
+                        let nextLabel = i < 3 ? labels[i+1] : null;
+                        
+                        // Khóa chặt khoảng không gian giữa 2 đáp án (VD: từ B. đến C.)
+                        let regexStr = nextLabel 
+                            ? `(?:^|\\s)\\*?${currentLabel}\\.(.*?)(?=(?:\\s|^)\\*?${nextLabel}\\.|$)` 
+                            : `(?:^|\\s)\\*?${currentLabel}\\.(.*?)$`;
+                        
+                        let match = trimmed.match(new RegExp(regexStr, 'is'));
+                        
+                        if(match) {
+                            // Phát hiện dấu sao * để đánh dấu đáp án đúng
+                            let starCheck = trimmed.match(new RegExp(`(?:^|\\s)(\\*?)${currentLabel}\\.`, 'i'));
+                            if(starCheck && starCheck[1] === '*') {
+                                correctIndex = i;
                             }
                             
-                            // Cắt bỏ luôn ký tự A., B., C., D. ở đầu đáp án
-                            optText = optText.replace(/^[A-D]\./i, '').trim();
-                            
+                            let optText = match[1].trim();
                             // Dọn dẹp chữ "Đáp án" nếu bị dính ở câu D
-                            if(i === 4) optText = optText.split(/Đáp án/i)[0].trim();
+                            if(i === 3) optText = optText.split(/Đáp án/i)[0].trim();
                             
                             options.push(optText);
+                        } else {
+                            isValid = false; // Báo lỗi nếu thiếu bất kỳ đáp án nào trong A, B, C, D
                         }
+                    }
 
+                    if(isValid) {
                         parsedQuestions.push({
                             content: content,
                             options: options,
@@ -781,7 +849,7 @@ function handleDocxImport(event) {
                 });
                 
             } else {
-                statusDiv.innerText = "Lỗi cấu trúc tệp Word: Hãy đảm bảo có đầy đủ 'Câu 1:' (hoặc 'Câu 1.'), 'A.', 'B.', 'C.', 'D.'";
+                statusDiv.innerText = "Lỗi cấu trúc Word: Hệ thống không thể neo được các đáp án A., B., C., D.";
                 statusDiv.className = "mt-4 text-center font-bold text-red-600";
             }
         }).catch(err => {
