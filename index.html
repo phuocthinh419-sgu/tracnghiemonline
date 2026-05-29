@@ -23,7 +23,7 @@
         <i class="fas fa-moon text-xl" id="theme-icon"></i>
     </button>
 
-    <div id="app" class="w-full max-w-[98vw] 2xl:max-w-[1600px] min-h-[90vh] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-colors duration-300">
+    <div id="app" class="w-full max-w-[98vw] 2xl:max-w-[1600px] min-h-[90vh] bg-white dark:bg-gray-880 rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-colors duration-300">
         
         <div id="auth-screen" class="hidden p-8 max-w-md mx-auto py-16 text-center">
             <div class="mb-6 flex justify-center">
@@ -73,7 +73,7 @@
             </div>
 
             <button id="btn-show-admin" class="hidden absolute top-8 right-8 flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg font-bold hover:bg-blue-200 transition-colors shadow-sm">
-                <i class="fas fa-plus-circle"></i> Soạn Đề Mới
+                <i class="fas fa-plus-circle"></i> Khu Vực Quản Trị
             </button>
 
             <div class="text-center mb-10 mt-6">
@@ -117,12 +117,13 @@
             <button onclick="switchScreen('home')" class="mb-4 text-gray-500 hover:text-blue-900 dark:hover:text-white"><i class="fas fa-arrow-left"></i> Về Trang chủ</button>
             <div class="flex justify-between items-center mb-6 border-b dark:border-gray-700 pb-4">
                 <div class="flex items-center gap-3">
-                    <i class="fas fa-file-import text-blue-600 text-2xl"></i>
-                    <h2 class="font-academic text-2xl text-blue-900 dark:text-blue-400 font-bold">Xưởng Tạo Đề Thi</h2>
+                    <i class="fas fa-sliders-h text-blue-600 text-2xl"></i>
+                    <h2 class="font-academic text-2xl text-blue-900 dark:text-blue-400 font-bold">Bảng Điều Khiển Giáo Viên</h2>
                 </div>
                 <div class="flex gap-2">
                     <button id="tab-docx" onclick="switchAdminTab('docx')" class="px-4 py-2 font-bold rounded-lg bg-blue-100 text-blue-700">Tạo từ DOCX</button>
                     <button id="tab-manual" onclick="switchAdminTab('manual')" class="px-4 py-2 font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">Soạn Thủ Công</button>
+                    <button id="tab-stats" onclick="switchAdminTab('stats')" class="px-4 py-2 font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-chart-line mr-1"></i>Thống Kê Điểm Số</button>
                 </div>
             </div>
 
@@ -163,6 +164,29 @@
                     <button onclick="saveManualQuiz()" class="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 shadow-lg transition-all">
                         <i class="fas fa-save mr-2"></i>Lưu Bộ Đề
                     </button>
+                </div>
+            </div>
+
+            <div id="panel-stats" class="hidden w-full mx-auto">
+                <div class="mb-4 flex justify-between items-center">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Danh sách kết quả làm bài của học sinh được lưu trữ theo thời gian thực</p>
+                    <button onclick="fetchResultsFromFirebase()" class="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-xs font-bold rounded-lg hover:bg-gray-200"><i class="fas fa-sync-alt mr-1"></i>Làm mới bảng</button>
+                </div>
+                <div class="overflow-x-auto border dark:border-gray-700 rounded-xl shadow-sm bg-white dark:bg-gray-800">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 font-bold text-sm border-b dark:border-gray-600">
+                                <th class="p-3">Học Sinh</th>
+                                <th class="p-3">Đề Thi / Môn Học</th>
+                                <th class="p-3">Số Câu Đúng</th>
+                                <th class="p-3">Tỷ Lệ Đạt</th>
+                                <th class="p-3">Thời Gian Làm Bài</th>
+                                <th class="p-3">Ngày Nộp Bài</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stats-table-body" class="divide-y dark:divide-gray-700">
+                            </tbody>
+                    </table>
                 </div>
             </div>
         </div>
