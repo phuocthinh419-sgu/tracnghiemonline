@@ -23,9 +23,8 @@
         <i class="fas fa-moon text-xl" id="theme-icon"></i>
     </button>
 
-    <div id="app" class="w-full max-w-5xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-colors duration-300">
+    <div id="app" class="w-full max-w-[98vw] 2xl:max-w-[1600px] min-h-[90vh] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-colors duration-300">
         
-        <!-- MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ -->
         <div id="auth-screen" class="hidden p-8 max-w-md mx-auto py-16 text-center">
             <div class="mb-6 flex justify-center">
                 <div class="w-16 h-16 bg-blue-50 dark:bg-gray-700 rounded-full flex items-center justify-center text-blue-900 dark:text-blue-400 text-3xl">
@@ -56,7 +55,6 @@
             </div>
         </div>
 
-        <!-- TRANG CHỦ (DANH SÁCH MÔN HỌC) -->
         <div id="home-screen" class="hidden p-8 relative">
             <div class="flex justify-between items-center mb-6">
                 <button id="btn-logout" class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-lg font-bold hover:bg-gray-200 transition-colors shadow-sm">
@@ -83,10 +81,9 @@
                 <p class="text-gray-500 dark:text-gray-400">Vui lòng lựa chọn môn học hoặc kho lưu trữ đề để bắt đầu</p>
             </div>
             
-            <div id="quiz-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            <div id="quiz-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
         </div>
 
-        <!-- MÀN HÌNH CHI TIẾT MÔN HỌC (Folder chương/đề lẻ + Trộn đề Mock Test) -->
         <div id="subject-detail-screen" class="hidden p-8 relative h-[85vh] overflow-y-auto custom-scrollbar">
             <button id="btn-back-to-home" class="mb-4 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors"><i class="fas fa-arrow-left mr-2"></i>Quay lại danh sách môn</button>
             
@@ -95,7 +92,6 @@
                 <p class="text-gray-500 dark:text-gray-400 text-sm">Lựa chọn học theo từng chương hoặc thi thử trộn câu hỏi tổng hợp</p>
             </div>
 
-            <!-- Panel tính năng Trộn đề tổng hợp (Mock Test) -->
             <div class="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-slate-700 rounded-2xl border border-blue-100 dark:border-gray-600 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center text-xl shadow-md"><i class="fas fa-shuffle"></i></div>
@@ -114,11 +110,10 @@
             </div>
 
             <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-4 text-lg"><i class="fas fa-list-ul mr-2"></i>Danh sách đề lẻ / Chương học ôn tập:</h3>
-            <div id="chapter-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            <div id="chapter-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
         </div>
 
-        <!-- KHU VỰC TẠO ĐỀ (Giáo viên) -->
-        <div id="admin-zone" class="hidden p-8 dark:text-white h-[80vh] overflow-y-auto custom-scrollbar">
+        <div id="admin-zone" class="hidden p-8 dark:text-white h-[85vh] overflow-y-auto custom-scrollbar">
             <button onclick="switchScreen('home')" class="mb-4 text-gray-500 hover:text-blue-900 dark:hover:text-white"><i class="fas fa-arrow-left"></i> Về Trang chủ</button>
             <div class="flex justify-between items-center mb-6 border-b dark:border-gray-700 pb-4">
                 <div class="flex items-center gap-3">
@@ -172,7 +167,6 @@
             </div>
         </div>
 
-        <!-- MÀN HÌNH CHỜ THI -->
         <div id="welcome-screen" class="hidden px-8 py-16 text-center">
             <button id="btn-back-to-subject" class="absolute top-8 left-8 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors"><i class="fas fa-arrow-left mr-2"></i> Quay lại</button>
             <h2 id="selected-quiz-title" class="font-academic text-3xl text-blue-900 dark:text-white font-semibold mb-8">Tên đề thi</h2>
@@ -185,8 +179,7 @@
             </div>
         </div>
 
-        <!-- TRƯỜNG THI -->
-        <div id="quiz-screen" class="hidden flex h-full min-h-[600px]">
+        <div id="quiz-screen" class="hidden flex h-full min-h-[85vh]">
             <div class="flex-grow flex flex-col border-r border-gray-200 dark:border-gray-700 w-3/4">
                 <div class="bg-white dark:bg-gray-800 px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-700">
                     <div class="flex justify-between items-start mb-4">
@@ -207,7 +200,7 @@
                     <div id="energy-bar-container" class="energy-track"><div id="energy-fill" class="energy-fill bg-safe" style="width: 100%;"><i id="energy-icon" class="fas fa-pen-nib icon-runner"></i></div></div>
                 </div>
 
-                <div class="p-8 flex-grow bg-gray-50/50 dark:bg-gray-900/50 relative overflow-y-auto">
+                <div class="p-8 flex-grow bg-gray-50/50 dark:bg-gray-900/50 relative">
                     <div class="flex justify-between items-center mb-6">
                         <span id="question-counter" class="inline-flex items-center justify-center px-4 py-1.5 bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100 rounded-full text-sm font-bold tracking-wide">Câu hỏi 0 / 0</span>
                         <div class="flex gap-2">
@@ -216,16 +209,13 @@
                         </div>
                     </div>
                     
-                    <!-- Vùng hiển thị câu hỏi (Split-screen nếu có bài đọc) -->
                     <div class="flex flex-col md:flex-row gap-8 items-start w-full">
-                        <!-- Khối Đoạn văn Reading (Mặc định ẩn) -->
-                        <div id="passage-container" class="hidden w-full md:w-1/2 bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm max-h-[55vh] overflow-y-auto custom-scrollbar">
+                        <div id="passage-container" class="hidden w-full md:w-1/2 bg-white dark:bg-gray-800 p-8 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm max-h-[75vh] overflow-y-auto custom-scrollbar">
                             <h4 class="font-bold text-blue-800 dark:text-blue-400 mb-4 flex items-center gap-2 border-b dark:border-gray-700 pb-3"><i class="fas fa-book-reader"></i> Nội dung bài đọc</h4>
-                            <div id="passage-text" class="text-gray-700 dark:text-gray-200 font-academic leading-relaxed whitespace-pre-wrap text-[1.05rem]"></div>
+                            <div id="passage-text" class="text-gray-700 dark:text-gray-200 font-academic leading-relaxed whitespace-pre-wrap text-[1.1rem]"></div>
                         </div>
 
-                        <!-- Khối Câu hỏi & Đáp án -->
-                        <div id="question-wrapper" class="w-full">
+                        <div id="question-wrapper" class="w-full max-h-[75vh] overflow-y-auto custom-scrollbar pr-2 pb-6">
                             <h3 id="question-content" class="font-academic text-2xl text-gray-900 dark:text-white leading-relaxed mb-6"></h3>
                             <div id="options-container" class="grid grid-cols-1 gap-4"></div>
                             
@@ -267,7 +257,6 @@
             </div>
         </div>
 
-        <!-- BẢNG VÀNG KẾT QUẢ -->
         <div id="result-screen" class="hidden px-8 py-12 text-center dark:bg-gray-800">
             <div class="w-24 h-24 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center text-green-600 dark:text-green-400 text-5xl mx-auto mb-6"><i class="fas fa-trophy"></i></div>
             <h2 class="font-academic text-4xl text-gray-900 dark:text-white font-bold mb-2">Hoàn Thành Bài Thi!</h2>
