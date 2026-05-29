@@ -24,7 +24,7 @@ let userAnswers = [], flaggedQuestions = [];
 let currentRole = 'student';
 let currentFilter = 'all'; 
 let isLoginMode = true; 
-let currentSelectedCategory = ""; // Tên môn học hiện tại đang xem chi tiết
+let currentSelectedCategory = ""; 
 
 const screens = {
     auth: document.getElementById('auth-screen'),
@@ -48,7 +48,6 @@ document.addEventListener("DOMContentLoaded", () => {
             setRole('student');
             fetchQuizzesFromFirebase(); 
 
-            // Giải quyết Race Condition cho link chia sẻ (?quiz=ID)
             const urlParams = new URLSearchParams(window.location.search);
             const quizIdParam = urlParams.get('quiz');
             if (quizIdParam) {
@@ -232,7 +231,6 @@ function renderHomeQuizList() {
         return;
     }
 
-    // Trích xuất danh sách các Môn Học (Category) duy nhất
     const categories = [...new Set(quizDatabase.map(q => q.category))];
     
     categories.forEach(category => {
@@ -315,7 +313,6 @@ function generateSubjectMockTest() {
     const countSelect = parseInt(document.getElementById('mock-question-count').value);
     const quizzesInFolder = quizDatabase.filter(q => q.category === currentSelectedCategory);
     
-    // Thu thập tất cả câu hỏi từ các chương
     let poolQuestions = [];
     quizzesInFolder.forEach(quiz => {
         if(quiz.questions && Array.isArray(quiz.questions)) {
@@ -327,7 +324,6 @@ function generateSubjectMockTest() {
         return alert("Môn học này hiện chưa có câu hỏi nào để tiến hành trộn đề!");
     }
 
-    // Thuật toán xáo trộn Fisher-Yates xáo trộn mảng câu hỏi khổng lồ
     let currentIndex = poolQuestions.length, randomIndex;
     while (currentIndex != 0) {
         randomIndex = Math.floor(Math.random() * currentIndex);
@@ -335,7 +331,6 @@ function generateSubjectMockTest() {
         [poolQuestions[currentIndex], poolQuestions[randomIndex]] = [poolQuestions[randomIndex], poolQuestions[currentIndex]];
     }
 
-    // Cắt lấy số lượng câu hỏi chỉ định
     const finalCount = Math.min(countSelect, poolQuestions.length);
     const slicedQuestions = poolQuestions.slice(0, finalCount);
 
@@ -343,12 +338,11 @@ function generateSubjectMockTest() {
         alert(`Kho dữ liệu môn này chỉ có tổng cộng ${poolQuestions.length} câu hỏi, hệ thống sẽ lấy tối đa hiện có.`);
     }
 
-    // Khởi tạo một đề thi giả lập trực tiếp trên RAM, không lưu đè lên Cloud
     activeQuiz = {
         id: "MOCK-GENERATED-" + Date.now(),
         title: `Đề Tổng Hợp Ngẫu Nhiên Môn ${currentSelectedCategory}`,
         category: currentSelectedCategory,
-        timeLimit: finalCount * 60, // Phân phối mặc định 1 phút mỗi câu
+        timeLimit: finalCount * 60, 
         questions: slicedQuestions
     };
 
@@ -356,7 +350,7 @@ function generateSubjectMockTest() {
     switchScreen('welcome');
 }
 
-// --- 8. LOGIC TRƯỜNG THI & BỘ LỌC ĐỀ BÀI ---
+// --- 8. LOGIC TRƯỜNG THI & GIAO DIỆN CHIA ĐÔI READING ---
 function startQuiz(practice) {
     const nameInput = document.getElementById('student-name').value.trim();
     if (!nameInput) return alert("Vui lòng nhập họ và tên của bạn trước khi bắt đầu làm bài!");
@@ -446,6 +440,21 @@ function loadQuestion(index) {
     document.getElementById('question-counter').innerText = `Câu hỏi ${index + 1} / ${activeQuiz.questions.length}`;
     document.getElementById('question-content').innerHTML = q.content;
     
+    // Giao diện tự động thích ứng với dạng bài Reading
+    const passageContainer = document.getElementById('passage-container');
+    const questionWrapper = document.getElementById('question-wrapper');
+    const passageText = document.getElementById('passage-text');
+
+    if (q.passage && q.passage.trim() !== "") {
+        passageContainer.classList.remove('hidden');
+        questionWrapper.classList.replace('w-full', 'md:w-1/2');
+        passageText.innerText = q.passage.trim();
+    } else {
+        passageContainer.classList.add('hidden');
+        questionWrapper.classList.replace('md:w-1/2', 'w-full');
+        passageText.innerText = "";
+    }
+
     const btnFlag = document.getElementById('btn-flag');
     if (flaggedQuestions[index]) {
         btnFlag.className = 'flex items-center gap-2 px-4 py-2 bg-yellow-400 text-yellow-900 rounded-lg font-bold transition-colors border border-yellow-500';
@@ -573,7 +582,7 @@ function reviewQuiz() {
     loadQuestion(0);
 }
 
-// --- 9. LOGIC SOẠN ĐỀ (ADMIN ZONE) ---
+// --- 9. LOGIC SOẠN ĐỀ (ADMIN ZONE TÍCH HỢP ĐỌC HIỂU) ---
 function switchAdminTab(tabName) {
     const btnDocx = document.getElementById('tab-docx');
     const btnManual = document.getElementById('tab-manual');
@@ -607,18 +616,36 @@ function handleDocxImport(event) {
     reader.onload = function(e) {
         mammoth.extractRawText({arrayBuffer: e.target.result}).then(function(result) {
             const text = result.value;
-            const questionsRaw = text.split(/Câu \d+:/).filter(q => q.trim().length > 0);
-            let parsedQuestions = [];
+            // Tách dữ liệu linh hoạt bằng cả ký hiệu Bài đọc hoặc Câu
+            const regex = /(?=\[Bài đọc\]|\[Hết bài đọc\]|Câu \d+:)/i;
+            const blocks = text.split(regex).filter(q => q.trim().length > 0);
             
-            questionsRaw.forEach(qText => {
-                const parts = qText.split(/[A-D]\./);
-                if(parts.length >= 5) {
-                    parsedQuestions.push({
-                        content: parts[0].trim(),
-                        options: [parts[1].trim(), parts[2].trim(), parts[3].trim(), parts[4].split("Đáp án")[0].trim()],
-                        correctAnswer: 0, 
-                        explanation: "Tạo tự động từ tệp DOCX Word."
-                    });
+            let parsedQuestions = [];
+            let currentPassage = "";
+            
+            blocks.forEach(block => {
+                let trimmed = block.trim();
+                
+                // Nhận diện cấu trúc đoạn văn Reading
+                if (trimmed.match(/^\[Bài đọc\]/i)) {
+                    currentPassage = trimmed.replace(/^\[Bài đọc\]/i, '').trim();
+                } 
+                // Kích hoạt việc ngắt đoạn văn
+                else if (trimmed.match(/^\[Hết bài đọc\]/i)) {
+                    currentPassage = "";
+                } 
+                // Nhận diện câu hỏi
+                else if (trimmed.match(/^Câu \d+:/i)) {
+                    const parts = trimmed.split(/[A-D]\./);
+                    if(parts.length >= 5) {
+                        parsedQuestions.push({
+                            content: parts[0].trim(),
+                            options: [parts[1].trim(), parts[2].trim(), parts[3].trim(), parts[4].split("Đáp án")[0].trim()],
+                            correctAnswer: 0, 
+                            explanation: "Tạo tự động từ tệp DOCX Word.",
+                            passage: currentPassage 
+                        });
+                    }
                 }
             });
 
@@ -641,7 +668,7 @@ function handleDocxImport(event) {
                 });
                 
             } else {
-                statusDiv.innerText = "Lỗi cấu trúc tệp Word: Hệ thống không tìm thấy định dạng chuẩn 'Câu 1:', 'A.', 'B.', 'C.', 'D.'";
+                statusDiv.innerText = "Lỗi cấu trúc tệp Word: Hãy đảm bảo có đầy đủ 'Câu 1:', 'A.', 'B.', 'C.', 'D.'";
                 statusDiv.className = "mt-4 text-center font-bold text-red-600";
             }
         }).catch(err => {
@@ -658,13 +685,21 @@ function addManualQuestionForm() {
     qDiv.innerHTML = `
         <button onclick="this.parentElement.remove()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"><i class="fas fa-times text-xl"></i></button>
         <h4 class="font-bold mb-4 dark:text-white text-blue-600">Nội dung câu hỏi nhập liệu</h4>
+        
+        <div class="mb-4">
+            <label class="text-sm font-bold text-gray-500 dark:text-gray-400">Đoạn văn dùng chung (Bỏ trống nếu không phải bài Đọc hiểu):</label>
+            <textarea placeholder="Nhập nội dung đoạn văn (Reading) tại đây..." class="q-passage w-full p-3 mt-1 border rounded outline-none focus:border-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600" rows="3"></textarea>
+        </div>
+
         <textarea placeholder="Nhập nội dung câu hỏi chính tại đây..." class="q-content w-full p-3 mb-4 border rounded outline-none focus:border-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600" rows="2"></textarea>
+        
         <div class="grid grid-cols-2 gap-3 mb-4">
             <input type="text" placeholder="Lựa chọn A" class="q-opt-0 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none">
             <input type="text" placeholder="Lựa chọn B" class="q-opt-1 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none">
             <input type="text" placeholder="Lựa chọn C" class="q-opt-2 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none">
             <input type="text" placeholder="Lựa chọn D" class="q-opt-3 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none">
         </div>
+        
         <div class="flex gap-4 items-center">
             <label class="font-bold dark:text-gray-300">Xác định đáp án chính xác:</label>
             <select class="q-correct p-2 border rounded outline-none dark:bg-gray-800 dark:text-white dark:border-gray-600">
@@ -693,6 +728,7 @@ function saveManualQuiz() {
     let isValid = true;
 
     qBlocks.forEach(block => {
+        const passage = block.querySelector('.q-passage').value.trim();
         const content = block.querySelector('.q-content').value.trim();
         const opts = [
             block.querySelector('.q-opt-0').value.trim(),
@@ -706,6 +742,7 @@ function saveManualQuiz() {
         if (!content || opts.some(o => o === "")) isValid = false;
 
         questions.push({
+            passage: passage,
             content: content,
             options: opts,
             correctAnswer: correct,
