@@ -777,7 +777,8 @@ function handleDocxImport(event) {
                     currentPassage = "";
                 } else if (trimmed.match(/^Câu \d+[:.]/i)) {
                     
-                    let contentPart = trimmed.split(/(?=(?:\s|^)\*?A\.)/i)[0];
+                    // Nâng cấp: Tách nội dung câu hỏi kể cả khi có khoảng trắng thừa hoặc dấu ngoặc
+                    let contentPart = trimmed.split(/(?=(?:\s|^)\*?\s*A\s*[.)])/i)[0];
                     let content = contentPart.replace(/^Câu \d+[:.]/i, '').trim();
                     
                     let options = [];
@@ -789,15 +790,16 @@ function handleDocxImport(event) {
                         let currentLabel = labels[i];
                         let nextLabel = i < 3 ? labels[i+1] : null;
                         
-                        // ĐIỂM CHỐT HẠ: Dùng [\s\S]*? để đọc xuyên thấu mọi dấu ngắt dòng Enter
+                        // Nâng cấp: Cho phép khoảng trắng giữa dấu * và đáp án (VD: * B. hoặc *C) và hỗ trợ cả dấu )
                         let regexStr = nextLabel 
-                            ? `(?:^|\\s)\\*?${currentLabel}\\.([\\s\\S]*?)(?=(?:\\s|^)\\*?${nextLabel}\\.|$)` 
-                            : `(?:^|\\s)\\*?${currentLabel}\\.([\\s\\S]*?)$`;
+                            ? `(?:^|\\s)\\*?\\s*${currentLabel}\\s*[.)]([\\s\\S]*?)(?=(?:\\s|^)\\*?\\s*${nextLabel}\\s*[.)]|$)` 
+                            : `(?:^|\\s)\\*?\\s*${currentLabel}\\s*[.)]([\\s\\S]*?)$`;
                         
                         let match = trimmed.match(new RegExp(regexStr, 'i')); 
                         
                         if(match) {
-                            let starCheck = trimmed.match(new RegExp(`(?:^|\\s)(\\*?)${currentLabel}\\.`, 'i'));
+                            // Nhận diện đáp án đúng kể cả khi có khoảng trắng
+                            let starCheck = trimmed.match(new RegExp(`(?:^|\\s)(\\*?)\\s*${currentLabel}\\s*[.)]`, 'i'));
                             if(starCheck && starCheck[1] === '*') {
                                 correctIndex = i;
                             }
@@ -844,7 +846,7 @@ function handleDocxImport(event) {
                 });
                 
             } else {
-                statusDiv.innerText = "Lỗi cấu trúc Word: Hệ thống không thể neo được các đáp án A., B., C., D.";
+                statusDiv.innerText = "Lỗi cấu trúc Word: Hệ thống không thể neo được các đáp án A., B., C., D. (Hãy tắt tự động đánh dấu đầu dòng - Auto Numbering trong Word).";
                 statusDiv.className = "mt-4 text-center font-bold text-red-600";
             }
         }).catch(err => {
