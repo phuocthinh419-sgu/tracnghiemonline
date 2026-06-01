@@ -928,7 +928,7 @@ function handleDocxImport(event) {
     reader.onload = function(e) {
         mammoth.extractRawText({arrayBuffer: e.target.result}).then(function(result) {
             let text = result.value;
-            // 1. Phép thuật thanh tẩy: Xóa sạch mọi ký tự tàng hình gây lỗi
+            // Phép thuật thanh tẩy 1: Xóa sạch mọi ký tự khoảng trắng tàng hình gây lỗi
             text = text.replace(/[\u00A0\u200B-\u200D\uFEFF]/g, ' ');
 
             const regex = /(?=\[Bài đọc\]|\[Hết bài đọc\]|Câu \d+[:.])/i;
@@ -947,20 +947,20 @@ function handleDocxImport(event) {
                     currentPassage = "";
                 } else if (trimmed.match(/^Câu \d+[:.]/i)) {
                     
-                    // 2. Ép buộc các đáp án A, B, C, D phải rớt xuống đầu dòng mới để dễ bắt
-                    trimmed = trimmed.replace(/(^|\s)(\*?\s*[A-D]\s*[.)])/ig, '\n$2');
+                    // Phép thuật thanh tẩy 2: Ép tách các đáp án bị dính liền vào từ trước đó (VD: (WORK)A. hoặc mak...*B.)
+                    // Hỗ trợ thả ga các dấu phân cách: A. A) A: A- A,
+                    trimmed = trimmed.replace(/(^|[^a-zA-Z0-9_])([*#]*\s*[A-D]\s*[.)\-:,])/ig, '$1\n$2');
 
                     let lines = trimmed.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
                     let content = "";
                     let options = ["", "", "", ""];
                     let correctIndex = 0;
-                    let currentOpt = -1; // -1: Đang nạp câu hỏi chính, 0: A, 1: B, 2: C, 3: D
+                    let currentOpt = -1; 
                     let foundLabels = new Set();
 
-                    // 3. Tiến hành cày nát từng dòng một
                     lines.forEach(line => {
-                        // Nhận diện nếu dòng này bắt đầu bằng đáp án A., B., C., D. (có hoặc không có dấu sao)
-                        let matchOpt = line.match(/^(\*?)\s*([A-D])\s*[.)](.*)/i);
+                        // Quét đáp án siêu rộng lượng: Cho phép nhiều dấu sao, khoảng trắng, các loại dấu chấm/ngoặc
+                        let matchOpt = line.match(/^([*#\s]*)([A-D])\s*[.)\-:,](.*)/i);
                         
                         if (matchOpt) {
                             let star = matchOpt[1];
@@ -968,12 +968,13 @@ function handleDocxImport(event) {
                             let textOpt = matchOpt[3].trim();
                             let idx = label.charCodeAt(0) - 65; 
 
+                            // Ghi đè đáp án (Nếu trong câu hỏi lỡ có chữ trùng khớp dạng A. thì sẽ bị đáp án thật ở cuối ghi đè lên, chống lỗi false positive)
                             currentOpt = idx;
                             foundLabels.add(label);
-                            if (star === '*') correctIndex = idx;
+                            if (star.includes('*') || star.includes('#')) correctIndex = idx;
                             options[idx] = textOpt;
                         } else {
-                            // Dòng này là văn bản nối tiếp của dòng bên trên
+                            // Nếu không phải A, B, C, D thì nó là văn bản nối tiếp của dòng trên
                             if (currentOpt === -1) {
                                 content += (content ? "\n" : "") + line;
                             } else {
@@ -982,24 +983,25 @@ function handleDocxImport(event) {
                         }
                     });
 
-                    // Cắt bỏ chữ "Câu X:" ở đầu câu hỏi
+                    // Dọn dẹp rác ở đầu và cuối
                     content = content.replace(/^Câu \d+[:.]/i, '').trim();
-                    // Lọc bỏ chữ "Đáp án" nếu bị dính vào cuối câu D
                     if(options[3].toLowerCase().includes("đáp án")) {
                         options[3] = options[3].split(/đáp án/i)[0].trim();
                     }
 
-                    // Chốt hạ: Chỉ lưu khi gom đủ cả 4 mảnh A, B, C, D
+                    // Chốt hạ: Chỉ kết nạp khi đã gom đủ cả 4 mảnh A, B, C, D
                     if (foundLabels.has('A') && foundLabels.has('B') && foundLabels.has('C') && foundLabels.has('D')) {
                         parsedQuestions.push({
                             content: content,
                             options: options,
                             correctAnswer: correctIndex, 
-                            explanation: "Tạo tự động từ tệp DOCX Word.",
+                            explanation: "Tạo tự động từ tệp DOCX.",
                             passage: currentPassage 
                         });
                     } else {
-                        errorLog += `\n- Lỗi ở: ${content.substring(0, 30)}...`;
+                        // Báo lỗi chi tiết đang thiếu chữ cái nào
+                        let missing = ['A','B','C','D'].filter(l => !foundLabels.has(l)).join(', ');
+                        errorLog += `\n- Lỗi ở: "${content.substring(0, 30)}..." (Thiếu đáp án: ${missing})`;
                     }
                 }
             });
@@ -1032,13 +1034,13 @@ function handleDocxImport(event) {
                 
             } else if (parsedQuestions.length > 0 && errorLog !== "") {
                 if(statusDiv) {
-                    statusDiv.innerText = `Nạp được ${parsedQuestions.length} câu, nhưng từ chối một số câu do thiếu đáp án: ${errorLog}`;
-                    statusDiv.className = "mt-4 text-center font-bold text-amber-600";
+                    statusDiv.innerText = `Nạp được ${parsedQuestions.length} câu, nhưng từ chối một số câu: ${errorLog}`;
+                    statusDiv.className = "mt-4 text-left text-sm font-bold text-amber-600 whitespace-pre-wrap";
                 }
             } else {
                 if(statusDiv) {
-                    statusDiv.innerText = `Nạp thất bại: ${errorLog}`;
-                    statusDiv.className = "mt-4 text-center font-bold text-red-600";
+                    statusDiv.innerText = `Nạp thất bại toàn tập: ${errorLog}`;
+                    statusDiv.className = "mt-4 text-left text-sm font-bold text-red-600 whitespace-pre-wrap";
                 }
             }
         }).catch(err => {
