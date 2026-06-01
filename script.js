@@ -212,15 +212,21 @@ function toggleDarkMode() {
 }
 
 function switchScreen(screenName) {
-    Object.values(screens).forEach(screen => screen.classList.add('hidden'));
+    // 1. Phong ấn toàn bộ các màn hình và dọn dẹp class hiển thị
+    Object.values(screens).forEach(screen => {
+        screen.classList.add('hidden');
+        screen.classList.remove('flex'); 
+    });
     
-    // Giao diện trắc nghiệm chia cột cần class flex
+    // 2. Mở khóa tàng hình cho màn hình được gọi
+    screens[screenName].classList.remove('hidden');
+    
+    // 3. Phục hồi cấu trúc chia cột riêng cho Trường Thi
     if (screenName === 'quiz') {
         screens[screenName].classList.add('flex');
-    } else {
-        screens[screenName].classList.remove('hidden');
     }
 
+    // 4. Thực thi các luồng khí theo từng khu vực
     if(screenName === 'home') renderHomeQuizList();
     if(screenName === 'subjectDetail') renderSubjectDetailView(currentSelectedCategory);
     if(screenName === 'admin') {
