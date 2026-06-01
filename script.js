@@ -24,6 +24,7 @@ let currentRole = 'student';
 let currentFilter = 'all'; 
 let isLoginMode = true; 
 let currentSelectedCategory = ""; 
+let currentStudentTab = "browse"; // Tab mặc định của Học sinh: browse (Kho môn) hoặc history (Đề đã làm)
 
 const screens = {
     auth: document.getElementById('auth-screen'),
@@ -61,7 +62,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-// NÂNG CẤP BẢO MẬT: Chỉ tải đề thi do chính tài khoản hiện tại tạo ra
 function fetchQuizzesFromFirebase() {
     if (!auth.currentUser) return;
 
@@ -191,6 +191,7 @@ function setRole(role) {
     const btnStudent = document.getElementById('role-student');
     const btnTeacher = document.getElementById('role-teacher');
     const btnAdmin = document.getElementById('btn-show-admin');
+    const studentTabs = document.getElementById('student-tabs');
 
     btnStudent.className = 'flex-1 md:flex-none px-4 sm:px-8 py-2.5 rounded-lg font-bold transition-all text-gray-500 hover:text-gray-700 dark:text-gray-400';
     btnTeacher.className = 'flex-1 md:flex-none px-4 sm:px-8 py-2.5 rounded-lg font-bold transition-all text-gray-500 hover:text-gray-700 dark:text-gray-400';
@@ -198,12 +199,33 @@ function setRole(role) {
     if (role === 'student') {
         btnStudent.classList.add('bg-white', 'shadow-md', 'text-blue-900', 'dark:bg-gray-800', 'dark:text-white');
         btnAdmin.classList.add('hidden');
+        if (studentTabs) studentTabs.classList.replace('hidden', 'flex');
+        switchStudentTab('browse'); // Mặc định về Kho môn học
     } else {
         btnTeacher.classList.add('bg-white', 'shadow-md', 'text-blue-900', 'dark:bg-gray-800', 'dark:text-white');
         btnAdmin.classList.remove('hidden');
+        if (studentTabs) studentTabs.classList.replace('flex', 'hidden');
     }
     if (!screens.home.classList.contains('hidden')) renderHomeQuizList(); 
     if (!screens.subjectDetail.classList.contains('hidden')) renderSubjectDetailView(currentSelectedCategory);
+}
+
+// Chức năng chuyển đổi Tab phụ của Học sinh
+function switchStudentTab(tabName) {
+    currentStudentTab = tabName;
+    const btnBrowse = document.getElementById('btn-tab-browse');
+    const btnHistory = document.getElementById('btn-tab-history');
+    
+    if (!btnBrowse || !btnHistory) return;
+    
+    if (tabName === 'browse') {
+        btnBrowse.className = 'px-4 py-2 font-bold rounded-lg bg-blue-900 text-white text-xs sm:text-sm shadow-md';
+        btnHistory.className = 'px-4 py-2 font-bold rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 text-xs sm:text-sm';
+    } else {
+        btnHistory.className = 'px-4 py-2 font-bold rounded-lg bg-blue-900 text-white text-xs sm:text-sm shadow-md';
+        btnBrowse.className = 'px-4 py-2 font-bold rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 text-xs sm:text-sm';
+    }
+    renderHomeQuizList();
 }
 
 function toggleDarkMode() {
@@ -211,22 +233,18 @@ function toggleDarkMode() {
     document.getElementById('theme-icon').className = document.documentElement.classList.contains('dark') ? 'fas fa-sun text-lg sm:text-xl' : 'fas fa-moon text-lg sm:text-xl';
 }
 
+// SỬA LỖI MÀN HÌNH TRẮNG BÓC: Điều hướng mượt mà, xả sạch phép ẩn
 function switchScreen(screenName) {
-    // 1. Phong ấn toàn bộ các màn hình và dọn dẹp class hiển thị
     Object.values(screens).forEach(screen => {
         screen.classList.add('hidden');
         screen.classList.remove('flex'); 
     });
     
-    // 2. Mở khóa tàng hình cho màn hình được gọi
     screens[screenName].classList.remove('hidden');
-    
-    // 3. Phục hồi cấu trúc chia cột riêng cho Trường Thi
     if (screenName === 'quiz') {
         screens[screenName].classList.add('flex');
     }
 
-    // 4. Thực thi các luồng khí theo từng khu vực
     if(screenName === 'home') renderHomeQuizList();
     if(screenName === 'subjectDetail') renderSubjectDetailView(currentSelectedCategory);
     if(screenName === 'admin') {
@@ -237,40 +255,123 @@ function switchScreen(screenName) {
     }
 }
 
-// --- 5. RENDER DANH SÁCH MÔN HỌC (TRANG CHỦ) ---
+// --- 5. RENDER DANH SÁCH TRANG CHỦ (TÍCH HỢP KHO ĐỀ ĐÃ LÀM) ---
 function renderHomeQuizList() {
     const container = document.getElementById('quiz-list-container');
     container.innerHTML = '';
     
-    if (quizDatabase.length === 0) {
-        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Chưa có dữ liệu nào trên hệ thống đám mây. Vui lòng chuyển vai trò Giáo viên để tạo.</p>';
-        return;
-    }
+    // Trường hợp 1: Chế độ Xem của Giáo viên hoặc Học sinh duyệt môn
+    if (currentRole === 'teacher' || currentStudentTab === 'browse') {
+        if (quizDatabase.length === 0) {
+            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Chưa có dữ liệu môn học nào do bạn quản lý.</p>';
+            return;
+        }
 
-    const categories = [...new Set(quizDatabase.map(q => q.category))];
-    
-    categories.forEach(category => {
-        const totalQuizzes = quizDatabase.filter(q => q.category === category).length;
-        const card = document.createElement('div');
-        card.className = 'p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-xl transition-all cursor-pointer flex items-center justify-between group';
-        card.innerHTML = `
-            <div class="flex items-center gap-4">
-                <div class="w-14 h-14 bg-blue-50 dark:bg-gray-800 text-blue-900 dark:text-blue-400 rounded-xl flex items-center justify-center text-2xl group-hover:bg-blue-900 group-hover:text-white transition-colors">
-                    <i class="fas fa-folder"></i>
+        const categories = [...new Set(quizDatabase.map(q => q.category))];
+        categories.forEach(category => {
+            const totalQuizzes = quizDatabase.filter(q => q.category === category).length;
+            const card = document.createElement('div');
+            card.className = 'p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-xl transition-all cursor-pointer flex items-center justify-between group';
+            card.innerHTML = `
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 bg-blue-50 dark:bg-gray-800 text-blue-900 dark:text-blue-400 rounded-xl flex items-center justify-center text-2xl group-hover:bg-blue-900 group-hover:text-white transition-colors">
+                        <i class="fas fa-folder"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors">${category}</h3>
+                        <p class="text-sm text-gray-400 mt-1">Gồm có ${totalQuizzes} bộ đề / chương lẻ</p>
+                    </div>
                 </div>
-                <div>
-                    <h3 class="text-xl font-bold text-gray-800 dark:text-white group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors">${category}</h3>
-                    <p class="text-sm text-gray-400 mt-1">Gồm có ${totalQuizzes} bộ dữ liệu/chương lẻ</p>
-                </div>
-            </div>
-            <div class="text-gray-300 group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors"><i class="fas fa-chevron-right text-xl"></i></div>
-        `;
-        card.onclick = () => {
-            currentSelectedCategory = category;
-            switchScreen('subjectDetail');
-        };
-        container.appendChild(card);
-    });
+                <div class="text-gray-300 group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors"><i class="fas fa-chevron-right text-xl"></i></div>
+            `;
+            card.onclick = () => {
+                currentSelectedCategory = category;
+                switchScreen('subjectDetail');
+            };
+            container.appendChild(card);
+        });
+    } 
+    // Trường hợp 2: Học sinh xem danh sách "Đề Đã Làm" (Lịch sử cá nhân)
+    else if (currentRole === 'student' && currentStudentTab === 'history') {
+        if (!auth.currentUser) return;
+        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-4">Đang kết nối đám mây tải tệp đề đã làm...</p>';
+        
+        db.collection("results").where("uid", "==", auth.currentUser.uid).get().then((snapshot) => {
+            container.innerHTML = '';
+            if (snapshot.empty) {
+                container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Kho thư viện trống rỗng. Bệ hạ chưa thực hiện bài thi nào.</p>';
+                return;
+            }
+            
+            let listHistory = [];
+            snapshot.forEach(doc => {
+                listHistory.push({ id: doc.id, data: doc.data() });
+            });
+            
+            // Sắp xếp bài làm mới nhất lên đầu
+            listHistory.sort((a, b) => {
+                let sA = a.data.timestamp ? a.data.timestamp.seconds : 0;
+                let sB = b.data.timestamp ? b.data.timestamp.seconds : 0;
+                return sB - sA;
+            });
+
+            listHistory.forEach(item => {
+                const res = item.data;
+                const docId = item.id;
+                const formatStr = res.timestamp ? new Date(res.timestamp.seconds * 1000).toLocaleString('vi-VN') : "Vừa xong";
+                
+                const card = document.createElement('div');
+                card.className = 'p-5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm flex flex-col justify-between gap-4 relative group';
+                
+                // Đề Mock tạo ngẫu nhiên không có tệp gốc cố định để làm lại
+                let isMock = res.quizId.startsWith("MOCK-GENERATED-");
+                let actionBtnHTML = isMock ? '' : `<button onclick="redoQuizFromHistory('${res.quizId}')" class="px-3 py-1.5 bg-blue-900 text-white text-xs font-bold rounded-lg hover:bg-blue-800 transition-colors"><i class="fas fa-redo mr-1"></i>Làm lại đề</button>`;
+
+                card.innerHTML = `
+                    <button onclick="deleteHistoryEntry('${docId}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 bg-gray-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors" title="Xóa khỏi danh sách đề đã làm của tôi"><i class="fas fa-times"></i></button>
+                    <div>
+                        <span class="text-[0.7rem] px-2 py-0.5 bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 rounded-full font-bold border dark:border-purple-800">${res.category}</span>
+                        <h3 class="text-base font-bold text-gray-800 dark:text-white mt-2 pr-6 line-clamp-2">${res.quizTitle}</h3>
+                        <p class="text-[0.7rem] text-gray-400 mt-1"><i class="far fa-clock"></i> Nộp bài: ${formatStr}</p>
+                        
+                        <div class="grid grid-cols-2 gap-2 mt-3 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl text-xs">
+                            <div><span class="text-gray-400">Đúng:</span> <strong class="text-blue-600 font-mono">${res.score}</strong></div>
+                            <div><span class="text-gray-400">Tỷ lệ:</span> <strong class="${res.percentage >= 50 ? 'text-green-600' : 'text-red-500'}">${res.percentage}%</strong></div>
+                            <div class="col-span-2"><span class="text-gray-400">Thời gian làm:</span> <strong class="text-gray-700 dark:text-gray-300 font-mono">${res.timeUsed}</strong></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-end border-t dark:border-gray-600 pt-2 mt-auto">
+                        ${actionBtnHTML}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }).catch(err => {
+            console.error(err);
+            container.innerHTML = '<p class="col-span-full text-center text-red-500 py-4">Lỗi kết nối tệp điểm đám mây.</p>';
+        });
+    }
+}
+
+// Xử lý nạp đề và làm lại từ kho lịch sử
+function redoQuizFromHistory(quizId) {
+    db.collection("quizzes").doc(quizId).get().then((doc) => {
+        if (doc.exists) {
+            activeQuiz = doc.data();
+            prepareWelcomeScreen();
+        } else {
+            alert("Đề thi gốc này đã bị Giáo viên xóa hoặc gỡ bỏ khỏi hệ thống dữ liệu!");
+        }
+    }).catch(err => alert("Lỗi tải luồng đề: " + err.message));
+}
+
+// XÓA ĐỘC LẬP BÊN HỌC SINH: Chỉ xóa bản ghi kết quả của học sinh hiện tại, đề gốc giữ nguyên
+function deleteHistoryEntry(docId) {
+    if (confirm("Xác nhận xóa lượt thi này khỏi kho 'Đề đã làm' của bệ hạ? (Hành động này hoàn toàn không ảnh hưởng đến ngân hàng đề gốc và bảng thống kê của Giáo viên).")) {
+        db.collection("results").doc(docId).delete().then(() => {
+            renderHomeQuizList();
+        }).catch(err => alert("Lỗi hạ lệnh xóa: " + err.message));
+    }
 }
 
 // --- 6. RENDER CHI TIẾT MÔN HỌC ---
@@ -313,81 +414,7 @@ function renderSubjectDetailView(category) {
     });
 }
 
-function selectQuiz(quizId) {
-    activeQuiz = quizDatabase.find(q => q.id === quizId);
-    if (!activeQuiz) return alert("Đề thi này không tồn tại!");
-    prepareWelcomeScreen();
-}
-
-function deleteQuiz(quizId) {
-    if (confirm("Xác nhận xóa vĩnh viễn đề thi này khỏi hệ thống cơ sở dữ liệu?")) {
-        db.collection("quizzes").doc(quizId).delete().then(() => {
-            renderSubjectDetailView(currentSelectedCategory);
-        }).catch(err => alert("Lỗi khi xóa dữ liệu: " + err));
-    }
-}
-
-// --- 7. THUẬT TOÁN SHUFFLE TRỘN ĐỀ TỔNG HỢP (MOCK TEST) ---
-function generateSubjectMockTest() {
-    const countSelect = parseInt(document.getElementById('mock-question-count').value);
-    const quizzesInFolder = quizDatabase.filter(q => q.category === currentSelectedCategory);
-    
-    let poolQuestions = [];
-    quizzesInFolder.forEach(quiz => {
-        if(quiz.questions && Array.isArray(quiz.questions)) {
-            poolQuestions = poolQuestions.concat(quiz.questions);
-        }
-    });
-
-    if (poolQuestions.length === 0) {
-        return alert("Môn học này hiện chưa có câu hỏi nào để tiến hành trộn đề!");
-    }
-
-    let currentIndex = poolQuestions.length, randomIndex;
-    while (currentIndex != 0) {
-        randomIndex = Math.floor(Math.random() * currentIndex);
-        currentIndex--;
-        [poolQuestions[currentIndex], poolQuestions[randomIndex]] = [poolQuestions[randomIndex], poolQuestions[currentIndex]];
-    }
-
-    const finalCount = Math.min(countSelect, poolQuestions.length);
-    const slicedQuestions = poolQuestions.slice(0, finalCount);
-
-    if(finalCount < countSelect) {
-        alert(`Kho dữ liệu môn này chỉ có tổng cộng ${poolQuestions.length} câu hỏi, hệ thống sẽ lấy tối đa hiện có.`);
-    }
-
-    activeQuiz = {
-        id: "MOCK-GENERATED-" + Date.now(),
-        title: `Đề Tổng Hợp Ngẫu Nhiên Môn ${currentSelectedCategory}`,
-        category: currentSelectedCategory,
-        timeLimit: finalCount * 60, 
-        questions: slicedQuestions,
-        isTestOnly: false,
-        authorId: auth.currentUser ? auth.currentUser.uid : "GUEST"
-    };
-
-    prepareWelcomeScreen();
-}
-
-function prepareWelcomeScreen() {
-    document.getElementById('selected-quiz-title').innerText = activeQuiz.title;
-    
-    const btnPractice = document.getElementById('btn-practice');
-    const gridContainer = document.getElementById('welcome-action-buttons');
-    
-    if (activeQuiz.isTestOnly) {
-        btnPractice.classList.add('hidden');
-        gridContainer.classList.replace('sm:grid-cols-2', 'sm:grid-cols-1');
-    } else {
-        btnPractice.classList.remove('hidden');
-        gridContainer.classList.replace('sm:grid-cols-1', 'sm:grid-cols-2');
-    }
-
-    switchScreen('welcome');
-}
-
-// --- 8. LOGIC TRƯỜNG THI & TỰ ĐỘNG GHI ĐIỂM ĐÁM MÂY ---
+// --- CÁC HÀM TIẾP THEO (startQuiz, loadQuestion, v.v...) GIỮ NGUYÊN VẸN 100% NHƯ PHIÊN BẢN TRƯỚC ---
 function startQuiz(practice) {
     const nameInput = document.getElementById('student-name').value.trim();
     if (!nameInput) return alert("Vui lòng nhập họ và tên của bạn trước khi bắt đầu làm bài!");
@@ -637,7 +664,6 @@ function handleVisibilityChange() {
     }
 }
 
-// NÂNG CẤP BẢO MẬT: Ghi nhận điểm số về đúng Giáo viên tạo đề (TeacherId)
 function submitQuiz(force) {
     if (force || confirm("Bạn có chắc chắn muốn nộp bài làm hiện tại không?")) {
         clearInterval(timerInterval);
@@ -688,7 +714,6 @@ function reviewQuiz() {
     loadQuestion(0);
 }
 
-// --- 9. LOGIC BẢNG ĐIỀU KHIỂN & ĐỌC ĐIỂM (ADMIN ZONE) ---
 function switchAdminTab(tabName) {
     const btnDocx = document.getElementById('tab-docx');
     const btnManual = document.getElementById('tab-manual');
@@ -717,7 +742,6 @@ function switchAdminTab(tabName) {
     }
 }
 
-// NÂNG CẤP BẢO MẬT: Giáo viên chỉ xem được điểm của đề thi do chính mình tạo ra
 function fetchResultsFromFirebase() {
     const tableBody = document.getElementById('stats-table-body');
     tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Hệ thống đang đồng bộ dữ liệu điểm số từ đám mây...</td></tr>';
@@ -734,7 +758,6 @@ function fetchResultsFromFirebase() {
         let results = [];
         snapshot.forEach(doc => results.push(doc.data()));
         
-        // Sắp xếp bài nộp mới nhất lên đầu 
         results.sort((a, b) => {
             let timeA = a.timestamp ? a.timestamp.seconds : 0;
             let timeB = b.timestamp ? b.timestamp.seconds : 0;
@@ -765,7 +788,6 @@ function fetchResultsFromFirebase() {
     });
 }
 
-// NÂNG CẤP BẢO MẬT: Gắn căn cước (authorId) khi nạp file Word
 function handleDocxImport(event) {
     const file = event.target.files[0];
     const categoryInput = document.getElementById('docx-category').value.trim() || 'Chưa phân loại';
@@ -816,7 +838,7 @@ function handleDocxImport(event) {
                         let next = i < 3 ? labels[i+1] : null;
                         
                         let optRegexStr = next 
-                            ? `(?:^|\\s)(\\*?)\\s*${curr}\\s*[.)]([\\s\\S]*?)(?=(?:\\s|^)\\*?\\s*${next}\\s*[.)]|$)` 
+                            ? `(?:^|\\s)(\\*?)\\s*${curr}\\s*[.)]([\\s\\S]*?)(?=(?:\\s|^)\\u002A?\\s*${next}\\s*[.)]|$)` 
                             : `(?:^|\\s)(\\*?)\\s*${curr}\\s*[.)]([\\s\\S]*?)$`;
                         
                         let match = trimmed.match(new RegExp(optRegexStr, 'i')); 
@@ -880,7 +902,6 @@ function handleDocxImport(event) {
     reader.readAsArrayBuffer(file);
 }
 
-// NÂNG CẤP BẢO MẬT: Gắn căn cước (authorId) khi tạo đề thủ công
 function addManualQuestionForm() {
     const container = document.getElementById('manual-questions-container');
     const qDiv = document.createElement('div');
