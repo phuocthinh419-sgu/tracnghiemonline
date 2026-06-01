@@ -920,7 +920,7 @@ function handleDocxImport(event) {
     const statusDiv = document.getElementById('import-status');
     if(statusDiv) {
         statusDiv.classList.remove('hidden');
-        statusDiv.innerText = "Đang rà quét tệp Word bằng thuật toán tối thượng...";
+        statusDiv.innerText = "Đang rà quét tệp Word bằng Thuật toán Bủa lưới...";
         statusDiv.className = "mt-4 text-center font-bold text-amber-600";
     }
 
@@ -928,9 +928,10 @@ function handleDocxImport(event) {
     reader.onload = function(e) {
         mammoth.extractRawText({arrayBuffer: e.target.result}).then(function(result) {
             let text = result.value;
-            // Phép thuật thanh tẩy 1: Xóa sạch mọi ký tự khoảng trắng tàng hình gây lỗi
+            // Xóa mọi ký tự trắng ẩn quấy rối
             text = text.replace(/[\u00A0\u200B-\u200D\uFEFF]/g, ' ');
 
+            // Tách từng khối câu hỏi
             const regex = /(?=\[Bài đọc\]|\[Hết bài đọc\]|Câu \d+[:.])/i;
             const blocks = text.split(regex).filter(q => q.trim().length > 0);
             
@@ -947,61 +948,42 @@ function handleDocxImport(event) {
                     currentPassage = "";
                 } else if (trimmed.match(/^Câu \d+[:.]/i)) {
                     
-                    // Phép thuật thanh tẩy 2: Ép tách các đáp án bị dính liền vào từ trước đó (VD: (WORK)A. hoặc mak...*B.)
-                    // Hỗ trợ thả ga các dấu phân cách: A. A) A: A- A,
-                    trimmed = trimmed.replace(/(^|[^a-zA-Z0-9_])([*#]*\s*[A-D]\s*[.)\-:,])/ig, '$1\n$2');
+                    // SIÊU THUẬT TOÁN: Bủa lưới tóm gọn A, B, C, D bất chấp dính chữ hay mất dòng
+                    let parseRegex = /([\s\S]*?)([*#]*)\s*A\s*[.)\-:,/]([\s\S]*?)([*#]*)\s*B\s*[.)\-:,/]([\s\S]*?)([*#]*)\s*C\s*[.)\-:,/]([\s\S]*?)([*#]*)\s*D\s*[.)\-:,/]([\s\S]*)/i;
+                    let match = trimmed.match(parseRegex);
 
-                    let lines = trimmed.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-                    let content = "";
-                    let options = ["", "", "", ""];
-                    let correctIndex = 0;
-                    let currentOpt = -1; 
-                    let foundLabels = new Set();
-
-                    lines.forEach(line => {
-                        // Quét đáp án siêu rộng lượng: Cho phép nhiều dấu sao, khoảng trắng, các loại dấu chấm/ngoặc
-                        let matchOpt = line.match(/^([*#\s]*)([A-D])\s*[.)\-:,](.*)/i);
+                    if (match) {
+                        let content = match[1].trim();
+                        let optA = match[3].trim();
+                        let optB = match[5].trim();
+                        let optC = match[7].trim();
+                        let optD = match[9].trim();
                         
-                        if (matchOpt) {
-                            let star = matchOpt[1];
-                            let label = matchOpt[2].toUpperCase();
-                            let textOpt = matchOpt[3].trim();
-                            let idx = label.charCodeAt(0) - 65; 
-
-                            // Ghi đè đáp án (Nếu trong câu hỏi lỡ có chữ trùng khớp dạng A. thì sẽ bị đáp án thật ở cuối ghi đè lên, chống lỗi false positive)
-                            currentOpt = idx;
-                            foundLabels.add(label);
-                            if (star.includes('*') || star.includes('#')) correctIndex = idx;
-                            options[idx] = textOpt;
-                        } else {
-                            // Nếu không phải A, B, C, D thì nó là văn bản nối tiếp của dòng trên
-                            if (currentOpt === -1) {
-                                content += (content ? "\n" : "") + line;
-                            } else {
-                                options[currentOpt] += " " + line;
-                            }
+                        let correctIndex = 0; // Mặc định là A nếu quên đánh dấu sao
+                        if (match[2].includes('*') || match[2].includes('#')) correctIndex = 0;
+                        if (match[4].includes('*') || match[4].includes('#')) correctIndex = 1;
+                        if (match[6].includes('*') || match[6].includes('#')) correctIndex = 2;
+                        if (match[8].includes('*') || match[8].includes('#')) correctIndex = 3;
+                        
+                        // Dọn dẹp chữ "Câu X:" ở đầu câu hỏi
+                        content = content.replace(/^Câu \d+[:.]/i, '').trim();
+                        
+                        // Dọn dẹp chữ "Đáp án" nếu bị dính vào cuối câu D
+                        if(optD.toLowerCase().includes("đáp án")) {
+                            optD = optD.split(/đáp án/i)[0].trim();
                         }
-                    });
 
-                    // Dọn dẹp rác ở đầu và cuối
-                    content = content.replace(/^Câu \d+[:.]/i, '').trim();
-                    if(options[3].toLowerCase().includes("đáp án")) {
-                        options[3] = options[3].split(/đáp án/i)[0].trim();
-                    }
-
-                    // Chốt hạ: Chỉ kết nạp khi đã gom đủ cả 4 mảnh A, B, C, D
-                    if (foundLabels.has('A') && foundLabels.has('B') && foundLabels.has('C') && foundLabels.has('D')) {
                         parsedQuestions.push({
                             content: content,
-                            options: options,
+                            options: [optA, optB, optC, optD],
                             correctAnswer: correctIndex, 
-                            explanation: "Tạo tự động từ tệp DOCX.",
+                            explanation: "Tạo tự động từ tệp DOCX Word.",
                             passage: currentPassage 
                         });
                     } else {
-                        // Báo lỗi chi tiết đang thiếu chữ cái nào
-                        let missing = ['A','B','C','D'].filter(l => !foundLabels.has(l)).join(', ');
-                        errorLog += `\n- Lỗi ở: "${content.substring(0, 30)}..." (Thiếu đáp án: ${missing})`;
+                        // Trích xuất 30 ký tự đầu tiên để bệ hạ dễ nhận biết câu nào bị lỗi
+                        let c = trimmed.substring(0, 30).replace(/\n/g, ' ') + "...";
+                        errorLog += `\n- Lỗi ở: "${c}" (Cấu trúc A,B,C,D bị dính chữ quá nặng hoặc thiếu đáp án)`;
                     }
                 }
             });
