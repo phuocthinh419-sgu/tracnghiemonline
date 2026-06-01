@@ -76,16 +76,21 @@
                 <i class="fas fa-plus-circle"></i> <span class="hidden sm:inline">Khu Vực Quản Trị</span><span class="sm:hidden">Quản trị</span>
             </button>
 
-            <div class="text-center mb-8 sm:mb-10 mt-10 sm:mt-6">
+            <div class="text-center mb-6 mt-10 sm:mt-6">
                 <h1 class="font-academic text-3xl sm:text-4xl text-blue-900 dark:text-white font-bold mb-3">Hệ Thống Luyện Thi Trực Tuyến</h1>
                 <p class="text-gray-500 dark:text-gray-400 text-sm sm:text-base">Vui lòng lựa chọn môn học hoặc kho lưu trữ đề để bắt đầu</p>
+            </div>
+            
+            <div id="student-tabs" class="hidden justify-center gap-2 mb-8">
+                <button id="btn-tab-browse" onclick="switchStudentTab('browse')" class="px-4 py-2 font-bold rounded-lg bg-blue-900 text-white text-xs sm:text-sm shadow-md">Kho Môn Học</button>
+                <button id="btn-tab-history" onclick="switchStudentTab('history')" class="px-4 py-2 font-bold rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 text-xs sm:text-sm"><i class="fas fa-history mr-1"></i>Đề Đã Làm</button>
             </div>
             
             <div id="quiz-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6"></div>
         </div>
 
         <div id="subject-detail-screen" class="hidden p-4 sm:p-8 relative h-[95vh] sm:h-[85vh] overflow-y-auto custom-scrollbar">
-            <button id="btn-back-to-home" class="mb-4 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors text-sm sm:text-base"><i class="fas fa-arrow-left mr-2"></i>Quay lại <span class="hidden sm:inline">danh sách môn</span></button>
+            <button id="btn-back-to-home" class="mb-4 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors text-sm sm:text-base"><i class="fas fa-arrow-left mr-2"></i>Quay lại</button>
             
             <div class="mb-6 sm:mb-8">
                 <h2 id="subject-detail-title" class="font-academic text-2xl sm:text-3xl text-blue-900 dark:text-white font-bold mb-2">Tên Môn Học</h2>
@@ -208,21 +213,19 @@
         </div>
 
         <div id="welcome-screen" class="hidden p-6 sm:p-8 py-12 sm:py-16 text-center">
-            <button id="btn-back-to-subject" class="absolute top-4 left-4 sm:top-8 sm:left-8 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors text-sm sm:text-base"><i class="fas fa-arrow-left mr-1 sm:mr-2"></i> <span class="hidden sm:inline">Quay lại</span></button>
+            <button id="btn-back-to-subject" class="absolute top-4 left-4 sm:top-8 sm:left-8 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors text-sm sm:text-base"><i class="fas fa-arrow-left mr-1 sm:mr-2"></i></button>
             <h2 id="selected-quiz-title" class="font-academic text-2xl sm:text-3xl text-blue-900 dark:text-white font-semibold mb-6 sm:mb-8 mt-6 sm:mt-0">Tên đề thi</h2>
             <div class="max-w-md mx-auto">
                 <input type="text" id="student-name" placeholder="Nhập họ và tên của bạn..." class="w-full px-4 py-3 sm:px-5 sm:py-4 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl mb-4 sm:mb-6 text-base sm:text-lg focus:outline-none focus:border-blue-900 transition-all font-medium">
                 <div id="welcome-action-buttons" class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <button id="btn-practice" class="flex items-center justify-center gap-2 px-4 py-3 sm:px-6 sm:py-4 bg-white dark:bg-gray-700 text-blue-900 dark:text-white border-2 border-blue-900 rounded-xl font-semibold hover:bg-gray-100 transition-all"><i class="fas fa-dumbbell"></i> Luyện tập</button>
-                    <button id="btn-mock" class="flex items-center justify-center gap-2 px-4 py-3 sm:px-6 sm:py-4 bg-blue-900 text-white border-2 border-blue-900 rounded-xl font-semibold shadow-lg hover:bg-blue-800 transition-all"><i class="fas fa-graduation-cap"></i> Thi thử thật</button>
+                    <button id="btn-mock" class="flex items-center justify-center gap-2 px-4 py-3 sm:px-6 sm:py-4 bg-blue-900 text-white border-2 border-blue-900 rounded-xl font-semibold shadow-lg hover:bg-blue-800 transition-all"><i class="fas fa-graduation-cap"></i> Thi thử </button>
                 </div>
             </div>
         </div>
 
         <div id="quiz-screen" class="hidden flex-col lg:flex-row h-full min-h-[95vh] sm:min-h-[85vh]">
-            
             <div class="flex-grow flex flex-col border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-gray-700 w-full lg:w-3/4 order-1">
-                
                 <div class="bg-white dark:bg-gray-800 px-4 sm:px-8 pt-4 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-gray-700">
                     <div class="flex flex-row justify-between items-start mb-4 gap-2">
                         <div class="flex items-start gap-2 sm:gap-4">
@@ -235,7 +238,6 @@
                             </div>
                         </div>
                         <div class="text-right shrink-0">
-                            <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm uppercase font-semibold hidden sm:block">Thời gian</span>
                             <div id="time-text" class="font-mono font-bold text-2xl sm:text-3xl text-blue-900 dark:text-white tabular-nums">00:00</div>
                         </div>
                     </div>
@@ -246,7 +248,7 @@
                     <div class="flex flex-wrap justify-between items-center mb-4 sm:mb-6 gap-3">
                         <span id="question-counter" class="inline-flex items-center justify-center px-3 py-1 sm:px-4 sm:py-1.5 bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100 rounded-full text-xs sm:text-sm font-bold tracking-wide">Câu 0 / 0</span>
                         <div class="flex gap-2 w-full sm:w-auto">
-                            <button id="btn-flag" class="flex-1 sm:flex-none justify-center flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-400 rounded-lg font-bold hover:bg-yellow-200 transition-colors border border-yellow-300 dark:border-yellow-700 text-xs sm:text-sm"><i class="fas fa-flag"></i> <span class="hidden sm:inline">Đánh dấu</span> Phân vân</button>
+                            <button id="btn-flag" class="flex-1 sm:flex-none justify-center flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-400 rounded-lg font-bold hover:bg-yellow-200 transition-colors border border-yellow-300 dark:border-yellow-700 text-xs sm:text-sm"><i class="fas fa-flag"></i> Phân vân</button>
                             <button id="btn-hint" class="hidden flex-1 sm:flex-none justify-center text-amber-500 hover:text-amber-600 font-bold items-center gap-1 sm:gap-2 transition-colors bg-amber-50 dark:bg-gray-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border border-amber-200 dark:border-gray-600 text-xs sm:text-sm"><i class="fas fa-lightbulb"></i> Gợi ý</button>
                         </div>
                     </div>
@@ -286,7 +288,7 @@
                     <button onclick="setFilter('all', this)" class="filter-btn ring-2 ring-blue-500 ring-offset-1 py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white transition-all text-center">Tất cả</button>
                     <button onclick="setFilter('pending', this)" class="filter-btn py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg bg-gray-50 text-gray-500 border border-gray-200 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 transition-all text-center">Chưa làm</button>
                     <button onclick="setFilter('done', this)" class="filter-btn py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-all text-center">Đã làm</button>
-                    <button onclick="setFilter('flagged', this)" class="filter-btn py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg bg-yellow-50 text-yellow-600 border border-yellow-200 hover:bg-yellow-100 transition-all text-center"><span class="hidden lg:inline">Phân vân</span><span class="lg:hidden">Đánh dấu</span></button>
+                    <button onclick="setFilter('flagged', this)" class="filter-btn py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg bg-yellow-50 text-yellow-600 border border-yellow-200 hover:bg-yellow-100 transition-all text-center">Đánh dấu</button>
                 </div>
 
                 <div id="filter-tabs-review" class="hidden grid-cols-3 gap-1.5 sm:gap-2 mb-3 sm:mb-4 text-[0.65rem] sm:text-xs font-semibold">
@@ -305,7 +307,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-lg mx-auto mb-8 sm:mb-10 mt-4 sm:mt-6">
                 <div class="p-4 sm:p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl border border-blue-100 flex sm:flex-col justify-between items-center sm:block"><p class="text-gray-500 text-sm font-semibold sm:mb-1">Điểm số</p><p id="result-score" class="text-2xl sm:text-3xl font-bold text-blue-900 dark:text-white">0/0</p></div>
                 <div class="p-4 sm:p-6 bg-amber-50 dark:bg-gray-700 rounded-2xl border border-amber-100 flex sm:flex-col justify-between items-center sm:block"><p class="text-gray-500 text-sm font-semibold sm:mb-1">Chính xác</p><p id="result-percent" class="text-2xl sm:text-3xl font-bold text-amber-600">0%</p></div>
-                <div class="p-4 sm:p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl border border-purple-100 flex sm:flex-col justify-between items-center sm:block"><p class="text-gray-500 text-sm font-semibold sm:mb-1">Thời gian</p><p id="result-time" class="text-2xl sm:text-3xl font-bold text-purple-700">00:00</p></div>
+                <div class="p-4 sm:p-6 bg-purple-50 dark:bg-purple-700 rounded-2xl border border-purple-100 flex sm:flex-col justify-between items-center sm:block"><p class="text-gray-500 text-sm font-semibold sm:mb-1">Thời gian</p><p id="result-time" class="text-2xl sm:text-3xl font-bold text-purple-700">00:00</p></div>
             </div>
             <div class="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
                 <button id="btn-review" class="w-full sm:w-auto px-6 sm:px-8 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 text-sm sm:text-base"><i class="fas fa-search mr-2"></i> Xem & Lọc Câu Đúng/Sai</button>
