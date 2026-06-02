@@ -1150,7 +1150,7 @@ function saveManualQuiz() {
     }).catch(err => alert("Lỗi lưu trữ: " + err.message));
 }
 
-// --- 10. HỆ THỐNG HIGHLIGHT 7 SẮC CẦU VỒNG ---
+// --- 10. HỆ THỐNG HIGHLIGHT 7 SẮC CẦU VỒNG (PHIÊN BẢN CHỐNG LỖI) ---
 let currentSelectionRange = null;
 
 function setupHighlighting() {
@@ -1160,23 +1160,19 @@ function setupHighlighting() {
 
         const selection = window.getSelection();
         
-        // Nếu bệ hạ bôi đen một chữ và không click vào chính bảng màu
         if (selection.toString().trim().length > 0 && !palette.contains(e.target)) {
-            
-            // Chỉ kích hoạt chức năng này bên trong Trường thi (đoạn văn, câu hỏi)
             if (e.target.closest('#passage-text') || e.target.closest('#question-content')) {
                 const range = selection.getRangeAt(0);
                 const rect = range.getBoundingClientRect();
                 currentSelectionRange = range.cloneRange();
 
-                // Căn chỉnh để bảng màu lơ lửng ngay trên dòng chữ
                 palette.style.top = `${rect.top + window.scrollY - 55}px`;
                 let leftPos = rect.left + window.scrollX + (rect.width / 2) - (palette.offsetWidth / 2);
                 palette.style.left = `${Math.max(10, leftPos)}px`; 
                 palette.classList.remove('hidden');
             }
         } else if (!palette.contains(e.target)) {
-            palette.classList.add('hidden'); // Giấu đi khi click ra ngoài
+            palette.classList.add('hidden');
         }
     });
 }
@@ -1184,28 +1180,43 @@ function setupHighlighting() {
 window.applyHighlight = function(colorHex) {
     if (!currentSelectionRange) return;
     
-    const span = document.createElement('span');
-    span.style.backgroundColor = colorHex;
+    // 1. Dựng lại vùng đã bôi đen để hệ thống nhận diện
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(currentSelectionRange);
     
-    if (colorHex !== 'transparent') {
-        span.style.color = '#000'; // Ép chữ màu đen cho dễ đọc trên nền sáng
-        span.style.borderRadius = '4px';
-        span.style.padding = '0px 2px';
-        span.style.fontWeight = '600';
+    const passageEl = document.getElementById('passage-text');
+    const questionEl = document.getElementById('question-content');
+    
+    // 2. Tạm thời mở khóa chỉnh sửa văn bản để dùng phép thuật đè màu
+    if(passageEl) passageEl.contentEditable = "true";
+    if(questionEl) questionEl.contentEditable = "true";
+    
+    // 3. Xử lý màu (Tự động gỡ màu cũ, thay màu mới mà không bị chồng lớp)
+    if (colorHex === 'transparent') {
+        // Tẩy màu bằng cách áp dụng màu nền trong suốt
+        document.execCommand('backColor', false, 'rgba(0,0,0,0)');
+        document.execCommand('hiliteColor', false, 'rgba(0,0,0,0)');
     } else {
-        span.style.color = 'inherit';
-    }
-
-    try {
-        currentSelectionRange.surroundContents(span);
-    } catch (e) {
-        // Xử lý chống vỡ giao diện nếu bôi đen chéo qua các thẻ HTML khác nhau
-        const extract = currentSelectionRange.extractContents();
-        span.appendChild(extract);
-        currentSelectionRange.insertNode(span);
+        document.execCommand('backColor', false, colorHex);
+        document.execCommand('hiliteColor', false, colorHex);
     }
     
-    window.getSelection().removeAllRanges();
+    // 4. Khóa lại văn bản ngay lập tức
+    if(passageEl) passageEl.contentEditable = "false";
+    if(questionEl) questionEl.contentEditable = "false";
+    
+    // 5. QUAN TRỌNG NHẤT: Lưu đoạn HTML đã có màu vào lại kho dữ liệu 
+    // để khi bấm chọn đáp án hay nút Phân vân, màu không bao giờ bị mất!
+    if (passageEl && activeQuiz.questions[currentQuestionIndex].passage) {
+        activeQuiz.questions[currentQuestionIndex].passage = passageEl.innerHTML;
+    }
+    if (questionEl) {
+        activeQuiz.questions[currentQuestionIndex].content = questionEl.innerHTML;
+    }
+    
+    // Dọn dẹp con trỏ chuột và giấu bảng màu đi
+    selection.removeAllRanges();
     const palette = document.getElementById('highlight-palette');
     if (palette) palette.classList.add('hidden');
 }
