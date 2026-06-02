@@ -775,12 +775,23 @@ function handleVisibilityChange() {
 }
 
 function submitQuiz(force) {
-    if (force || confirm("Nộp bài làm hiện tại?")) {
+   // --- NÂNG CẤP: CHỐNG NỘP BÀI ẨU (TỐI THIỂU 50% THỜI GIAN) ---
+    const timeUsed = activeQuiz.timeLimit - (timeLeft > 0 ? timeLeft : 0);
+    const minimumTime = Math.floor(activeQuiz.timeLimit / 2);
+
+    if (!force && timeUsed < minimumTime) {
+        alert("Cảnh báo từ hệ thống: Yêu cầu nộp bài bị từ chối. Thời gian làm bài chưa trôi quá 50%");
+        return; 
+    }
+    // --- KẾT THÚC NÂNG CẤP ---
+
+    if (force || confirm("Bạn có chắc chắn muốn nộp bài làm hiện tại không?")) {
         clearInterval(timerInterval);
         let correctCount = userAnswers.filter((ans, i) => ans === activeQuiz.questions[i].correctAnswer).length;
         
-        const timeUsed = activeQuiz.timeLimit - (timeLeft > 0 ? timeLeft : 0);
-        const timeUsedStr = `${Math.floor(timeUsed / 60).toString().padStart(2, '0')}:${(timeUsed % 60).toString().padStart(2, '0')}`;
+        // Thời gian nộp tính toán lại lần cuối cho chắc chắn
+        const finalTimeUsed = activeQuiz.timeLimit - (timeLeft > 0 ? timeLeft : 0);
+        const timeUsedStr = `${Math.floor(finalTimeUsed / 60).toString().padStart(2, '0')}:${(finalTimeUsed % 60).toString().padStart(2, '0')}`;
         const percent = Math.round((correctCount / activeQuiz.questions.length) * 100);
 
         switchScreen('result');
@@ -913,7 +924,7 @@ function handleDocxImport(event) {
     
     const timeEl = document.getElementById('docx-time');
     const timeInput = timeEl ? timeEl.value : "";
-    const finalTimeLimit = (timeInput && !isNaN(timeInput) && timeInput > 0) ? parseInt(timeInput) * 60 : 1800;
+    const finalTimeLimit = (timeInput && !isNaN(timeInput) && timeInput > 0) ? parseInt(timeInput) * 60 : 900;
     
     if (!file) return;
     
