@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     setupEventListeners(); 
-    
+    setupHighlighting(); // Kích hoạt thuật toán cầu vồng
     auth.onAuthStateChanged((user) => {
         if (user) {
             if (user.displayName) {
@@ -1148,4 +1148,64 @@ function saveManualQuiz() {
         window.history.pushState({}, '', window.location.pathname);
         switchScreen('home'); 
     }).catch(err => alert("Lỗi lưu trữ: " + err.message));
+}
+
+// --- 10. HỆ THỐNG HIGHLIGHT 7 SẮC CẦU VỒNG ---
+let currentSelectionRange = null;
+
+function setupHighlighting() {
+    document.addEventListener('mouseup', (e) => {
+        const palette = document.getElementById('highlight-palette');
+        if (!palette) return;
+
+        const selection = window.getSelection();
+        
+        // Nếu bệ hạ bôi đen một chữ và không click vào chính bảng màu
+        if (selection.toString().trim().length > 0 && !palette.contains(e.target)) {
+            
+            // Chỉ kích hoạt chức năng này bên trong Trường thi (đoạn văn, câu hỏi)
+            if (e.target.closest('#passage-text') || e.target.closest('#question-content')) {
+                const range = selection.getRangeAt(0);
+                const rect = range.getBoundingClientRect();
+                currentSelectionRange = range.cloneRange();
+
+                // Căn chỉnh để bảng màu lơ lửng ngay trên dòng chữ
+                palette.style.top = `${rect.top + window.scrollY - 55}px`;
+                let leftPos = rect.left + window.scrollX + (rect.width / 2) - (palette.offsetWidth / 2);
+                palette.style.left = `${Math.max(10, leftPos)}px`; 
+                palette.classList.remove('hidden');
+            }
+        } else if (!palette.contains(e.target)) {
+            palette.classList.add('hidden'); // Giấu đi khi click ra ngoài
+        }
+    });
+}
+
+window.applyHighlight = function(colorHex) {
+    if (!currentSelectionRange) return;
+    
+    const span = document.createElement('span');
+    span.style.backgroundColor = colorHex;
+    
+    if (colorHex !== 'transparent') {
+        span.style.color = '#000'; // Ép chữ màu đen cho dễ đọc trên nền sáng
+        span.style.borderRadius = '4px';
+        span.style.padding = '0px 2px';
+        span.style.fontWeight = '600';
+    } else {
+        span.style.color = 'inherit';
+    }
+
+    try {
+        currentSelectionRange.surroundContents(span);
+    } catch (e) {
+        // Xử lý chống vỡ giao diện nếu bôi đen chéo qua các thẻ HTML khác nhau
+        const extract = currentSelectionRange.extractContents();
+        span.appendChild(extract);
+        currentSelectionRange.insertNode(span);
+    }
+    
+    window.getSelection().removeAllRanges();
+    const palette = document.getElementById('highlight-palette');
+    if (palette) palette.classList.add('hidden');
 }
