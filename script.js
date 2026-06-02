@@ -340,6 +340,9 @@ function renderHomeQuizList() {
                 
                 let isMock = res.quizId.startsWith("MOCK-GENERATED-");
                 let actionBtnHTML = isMock ? '' : `<button onclick="redoQuizFromHistory('${res.quizId}')" class="px-3 py-1.5 bg-blue-900 text-white text-xs font-bold rounded-lg hover:bg-blue-800 transition-colors"><i class="fas fa-redo mr-1"></i>Làm lại</button>`;
+                
+                // NÂNG CẤP: Thêm nút Xem lại bài cũ
+                let reviewBtnHTML = `<button onclick="reviewPastQuiz('${res.quizId}', '${item.id}')" class="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors mr-2"><i class="fas fa-eye mr-1"></i>Xem bài</button>`;
 
                 card.innerHTML = `
                     <button onclick="deleteHistoryEntry('${item.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 bg-gray-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors" title="Xóa lịch sử này"><i class="fas fa-times"></i></button>
@@ -355,6 +358,7 @@ function renderHomeQuizList() {
                         </div>
                     </div>
                     <div class="flex justify-end border-t dark:border-gray-600 pt-2 mt-auto">
+                        ${reviewBtnHTML}
                         ${actionBtnHTML}
                     </div>
                 `;
@@ -366,15 +370,49 @@ function renderHomeQuizList() {
     }
 }
 
-function redoQuizFromHistory(quizId) {
-    db.collection("quizzes").doc(quizId).get().then((doc) => {
-        if (doc.exists) {
-            activeQuiz = doc.data();
-            prepareWelcomeScreen();
-        } else {
-            alert("Đề thi gốc này đã bị gỡ bỏ khỏi hệ thống dữ liệu!");
+// NÂNG CẤP: Hàm triệu hồi bài làm cũ từ đám mây
+function reviewPastQuiz(quizId, resultDocId) {
+    // Bước 1: Lấy lại bộ đề gốc từ kho Giáo viên
+    db.collection("quizzes").doc(quizId).get().then((quizDoc) => {
+        if (!quizDoc.exists) {
+            return alert("Đề thi gốc này đã bị Giáo viên xóa hoặc gỡ bỏ, hệ thống không có dữ liệu câu hỏi để đối chiếu!");
         }
-    }).catch(err => alert("Lỗi tải đề: " + err.message));
+        activeQuiz = quizDoc.data();
+        
+        // Bước 2: Lấy lại đáp án học sinh đã tick từ kho Lịch sử
+        db.collection("results").doc(resultDocId).get().then((resDoc) => {
+            if (resDoc.exists) {
+                const pastData = resDoc.data();
+                // Nếu là bài cũ hồi xưa chưa có mảng userAnswers, tạo mảng rỗng để không bị sập web
+                userAnswers = pastData.userAnswers || new Array(activeQuiz.questions.length).fill(null);
+                flaggedQuestions = new Array(activeQuiz.questions.length).fill(false);
+                
+                isReviewMode = true;
+                isPracticeMode = false;
+                
+                // Mở trường thi
+                const dName = document.getElementById('display-student-name');
+                if(dName) dName.innerText = pastData.studentName + " (Chế độ xem lại)";
+                const qTitle = document.getElementById('quiz-header-title');
+                if(qTitle) qTitle.innerText = activeQuiz.title;
+                
+                switchScreen('quiz');
+                const eb = document.getElementById('energy-bar-container');
+                if(eb) eb.classList.add('hidden');
+                const bs = document.getElementById('btn-submit');
+                if(bs) bs.classList.add('hidden');
+                
+                currentFilter = 'all';
+                const fp = document.getElementById('filter-tabs-practice');
+                if(fp) fp.classList.replace('grid', 'hidden');
+                const fr = document.getElementById('filter-tabs-review');
+                if(fr) fr.classList.replace('hidden', 'grid');
+                resetFilterButtons(fr);
+
+                loadQuestion(0);
+            }
+        });
+    }).catch(err => alert("Lỗi tải tệp: " + err.message));
 }
 
 function deleteHistoryEntry(docId) {
@@ -813,6 +851,7 @@ function submitQuiz(force) {
             percentage: percent,
             timeUsed: timeUsedStr,
             teacherId: activeQuiz.authorId || null, 
+            userAnswers: userAnswers, // NÂNG CẤP: Lưu lại toàn bộ lịch sử lựa chọn của học sinh
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
 
