@@ -660,6 +660,7 @@ function toggleFlag() {
     if (currentFilter === 'flagged') renderNavigator(); 
 }
 
+// --- HÀM RENDER TRƯỜNG THI (TÍCH HỢP GIẢI THÍCH TRỰC TIẾP) ---
 function loadQuestion(index) {
     if(index < 0 || index >= activeQuiz.questions.length) return;
     currentQuestionIndex = index;
@@ -699,17 +700,64 @@ function loadQuestion(index) {
     if(optionsContainer) {
         optionsContainer.innerHTML = ''; 
         const labels = ['A', 'B', 'C', 'D'];
+        const isAnswerRevealed = isReviewMode || (isPracticeMode && userAnswers[index] !== null);
+
         q.options.forEach((optText, optIndex) => {
             const btn = document.createElement('button');
-            btn.className = 'option-btn text-left p-3 sm:p-4 rounded-xl flex items-center gap-3 sm:gap-4 border-2 border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-600 transition-all';
-            btn.innerHTML = `<span class="option-label w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-gray-100 font-bold text-gray-500 shrink-0 text-sm sm:text-base">${labels[optIndex]}</span><span class="text-base sm:text-lg font-academic dark:text-gray-200">${optText}</span>`;
             
-            if (userAnswers[index] === optIndex) {
-                btn.classList.add('ring-4', 'ring-blue-100', 'border-blue-600', 'bg-blue-50', 'dark:bg-blue-900');
-                btn.querySelector('.option-label').classList.replace('bg-gray-100', 'bg-blue-600');
-                btn.querySelector('.option-label').classList.replace('text-gray-500', 'text-white');
+            let optExpText = (q.optionExplanations && q.optionExplanations[optIndex]) ? q.optionExplanations[optIndex] : "";
+            let expBlock = '';
+            
+            let labelBg = 'bg-gray-100';
+            let labelText = 'text-gray-500';
+            let btnBorder = 'border-gray-200 dark:border-gray-600';
+            let btnBg = 'bg-white dark:bg-gray-800';
+
+            if (isAnswerRevealed) {
+                btn.style.pointerEvents = 'none';
+                if (optIndex === q.correctAnswer) {
+                    btnBorder = 'border-green-500';
+                    btnBg = 'bg-green-50 dark:bg-green-900/20';
+                    labelBg = 'bg-green-500';
+                    labelText = 'text-white';
+                    if (optExpText) {
+                        expBlock = `<div class="mt-3 pl-11 sm:pl-14 text-sm text-green-700 dark:text-green-400 text-left">
+                            <div class="font-bold mb-1"><i class="fas fa-check mr-1"></i> Câu trả lời chính xác</div>
+                            <div class="font-academic leading-relaxed opacity-90">${optExpText}</div>
+                        </div>`;
+                    }
+                } else if (optIndex === userAnswers[index]) {
+                    btnBorder = 'border-red-500';
+                    btnBg = 'bg-red-50 dark:bg-red-900/20';
+                    labelBg = 'bg-red-500';
+                    labelText = 'text-white';
+                    if (optExpText) {
+                        expBlock = `<div class="mt-3 pl-11 sm:pl-14 text-sm text-red-700 dark:text-red-400 text-left">
+                            <div class="font-bold mb-1"><i class="fas fa-times mr-1"></i> Chưa đúng lắm!</div>
+                            <div class="font-academic leading-relaxed opacity-90">${optExpText}</div>
+                        </div>`;
+                    }
+                }
+            } else {
+                if (userAnswers[index] === optIndex) {
+                    btnBorder = 'border-blue-600';
+                    btnBg = 'bg-blue-50 dark:bg-blue-900/30';
+                    btn.classList.add('ring-4', 'ring-blue-100');
+                    labelBg = 'bg-blue-600';
+                    labelText = 'text-white';
+                }
+                btn.onclick = () => { userAnswers[currentQuestionIndex] = optIndex; loadQuestion(currentQuestionIndex); };
             }
-            btn.onclick = () => { userAnswers[currentQuestionIndex] = optIndex; loadQuestion(currentQuestionIndex); };
+
+            btn.className = `option-btn text-left p-3 sm:p-4 rounded-xl flex flex-col border-2 transition-all w-full ${btnBorder} ${btnBg} ${isAnswerRevealed ? 'cursor-default' : 'cursor-pointer hover:border-blue-400 dark:hover:border-blue-500'}`;
+
+            btn.innerHTML = `
+                <div class="flex items-center gap-3 sm:gap-4 w-full">
+                    <span class="option-label w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${labelBg} font-bold ${labelText} shrink-0 text-sm sm:text-base transition-colors shadow-sm">${labels[optIndex]}</span>
+                    <span class="text-base sm:text-lg font-academic dark:text-gray-200">${optText}</span>
+                </div>
+                ${expBlock}
+            `;
             optionsContainer.appendChild(btn);
         });
     }
@@ -729,24 +777,14 @@ function loadQuestion(index) {
     const bSub = document.getElementById('btn-submit');
     if(bSub) bSub.classList.toggle('hidden', index !== activeQuiz.questions.length - 1 || isReviewMode);
 
+    // Xử lý khung giải thích cũ (Chỉ hiện nếu nhập bằng tay và không có giải thích ngắn gọn)
     const explanationBox = document.getElementById('explanation-box');
-    if (explanationBox && optionsContainer) {
-        if (isReviewMode || (isPracticeMode && userAnswers[index] !== null)) {
-            const siblings = optionsContainer.children;
-            if(siblings[q.correctAnswer]) {
-                siblings[q.correctAnswer].classList.replace('border-gray-200', 'border-green-500');
-                siblings[q.correctAnswer].classList.add('bg-green-50', 'dark:bg-green-900/30');
-            }
-            if (userAnswers[index] !== null && userAnswers[index] !== q.correctAnswer && siblings[userAnswers[index]]) {
-                siblings[userAnswers[index]].classList.replace('border-blue-600', 'border-red-500');
-                siblings[userAnswers[index]].classList.add('bg-red-50', 'dark:bg-red-900/30');
-            }
-            for (let el of siblings) el.style.pointerEvents = 'none';
-            
-            const eText = document.getElementById('explanation-text');
-            if(eText) eText.innerText = q.explanation || "Chưa có giải thích.";
+    const isAnswerRevealed = isReviewMode || (isPracticeMode && userAnswers[index] !== null);
+    if (explanationBox) {
+        const eText = document.getElementById('explanation-text');
+        if (isAnswerRevealed && q.explanation && q.explanation !== "Tạo tự động từ dữ liệu văn bản." && q.explanation !== "Chưa có giải thích.") {
+            if(eText) eText.innerText = q.explanation;
             explanationBox.classList.remove('hidden');
-            if(hintBtn) hintBtn.classList.add('hidden');
         } else {
             explanationBox.classList.add('hidden');
         }
@@ -932,6 +970,7 @@ function fetchResultsFromFirebase() {
 // --- THUẬT TOÁN NHẬP VĂN BẢN TRỰC TIẾP (SMART PASTE) ---
 let currentSmartQuestions = [];
 
+// --- THUẬT TOÁN NHẬP VĂN BẢN TRỰC TIẾP (SMART PASTE) NÂNG CẤP ---
 function processSmartText() {
     let text = document.getElementById('smart-input-area').value;
     text = text.replace(/[\u00A0\u200B-\u200D\uFEFF]/g, ' ');
@@ -957,10 +996,8 @@ function processSmartText() {
 
             if (match) {
                 let content = match[1].replace(/^Câu \d+[:.]/i, '').trim();
-                let optA = match[3].trim();
-                let optB = match[5].trim();
-                let optC = match[7].trim();
-                let optD = match[9].trim();
+                let optA = match[3].trim(); let optB = match[5].trim();
+                let optC = match[7].trim(); let optD = match[9].trim();
                 
                 let correctIndex = 0; 
                 if (match[2].includes('*') || match[2].includes('#')) correctIndex = 0;
@@ -968,13 +1005,18 @@ function processSmartText() {
                 if (match[6].includes('*') || match[6].includes('#')) correctIndex = 2;
                 if (match[8].includes('*') || match[8].includes('#')) correctIndex = 3;
                 
-                if(optD.toLowerCase().includes("đáp án")) {
-                    optD = optD.split(/đáp án/i)[0].trim();
-                }
+                if(optD.toLowerCase().includes("đáp án")) optD = optD.split(/đáp án/i)[0].trim();
+
+                // Tách riêng Đáp án và Giải thích bằng dấu ::
+                let splitA = optA.split('::'); optA = splitA[0].trim(); let expA = splitA[1] ? splitA[1].trim() : "";
+                let splitB = optB.split('::'); optB = splitB[0].trim(); let expB = splitB[1] ? splitB[1].trim() : "";
+                let splitC = optC.split('::'); optC = splitC[0].trim(); let expC = splitC[1] ? splitC[1].trim() : "";
+                let splitD = optD.split('::'); optD = splitD[0].trim(); let expD = splitD[1] ? splitD[1].trim() : "";
 
                 currentSmartQuestions.push({
                     content: content,
                     options: [optA, optB, optC, optD],
+                    optionExplanations: [expA, expB, expC, expD], // Nạp giải thích cho từng câu
                     correctAnswer: correctIndex, 
                     explanation: "Tạo tự động từ dữ liệu văn bản.",
                     passage: currentPassage 
@@ -984,10 +1026,14 @@ function processSmartText() {
                 previewHTML += `
                     <div class="p-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm">
                         <p class="font-bold text-sm text-gray-800 dark:text-white mb-2">Câu ${currentSmartQuestions.length}: ${content}</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                        <div class="grid grid-cols-1 gap-1">
                             ${[optA, optB, optC, optD].map((opt, i) => `
-                                <div class="text-xs p-1.5 rounded ${i === correctIndex ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 font-bold border border-green-200' : 'text-gray-600 dark:text-gray-300'}">
-                                    ${labels[i]}. ${opt}
+                                <div class="text-xs p-1.5 rounded flex items-start gap-1 ${i === correctIndex ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 font-bold border border-green-200' : 'text-gray-600 dark:text-gray-300'}">
+                                    <span class="font-bold w-4">${labels[i]}.</span> 
+                                    <div class="flex flex-col">
+                                        <span>${opt}</span>
+                                        ${[expA, expB, expC, expD][i] ? `<span class="text-[0.65rem] italic mt-0.5 text-gray-500 dark:text-gray-400">Giải thích: ${[expA, expB, expC, expD][i]}</span>` : ''}
+                                    </div>
                                 </div>
                             `).join('')}
                         </div>
@@ -996,7 +1042,7 @@ function processSmartText() {
                 let c = trimmed.substring(0, 40).replace(/\n/g, ' ') + "...";
                 previewHTML += `
                     <div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg text-red-600 dark:text-red-400 text-xs font-bold">
-                        <i class="fas fa-exclamation-triangle mr-1"></i> Lỗi nhận diện: Cấu trúc A, B, C, D không hợp lệ tại đoạn: "${c}"
+                        <i class="fas fa-exclamation-triangle mr-1"></i> Lỗi nhận diện: Cấu trúc không hợp lệ tại đoạn: "${c}"
                     </div>`;
             }
         }
@@ -1004,14 +1050,10 @@ function processSmartText() {
 
     const sqc = document.getElementById('smart-question-count');
     if (sqc) sqc.innerText = `Đã nhận diện: ${currentSmartQuestions.length} câu`;
-    
     const spb = document.getElementById('smart-preview-box');
     if (spb) {
-        if (previewHTML === "") {
-            spb.innerHTML = `<p class="text-sm text-gray-400 text-center mt-10 italic">Chưa phát hiện câu hỏi nào đúng định dạng.</p>`;
-        } else {
-            spb.innerHTML = previewHTML;
-        }
+        if (previewHTML === "") spb.innerHTML = `<p class="text-sm text-gray-400 text-center mt-10 italic">Chưa phát hiện câu hỏi nào đúng định dạng.</p>`;
+        else spb.innerHTML = previewHTML;
     }
 }
 
