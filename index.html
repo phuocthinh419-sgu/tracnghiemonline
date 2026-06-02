@@ -309,11 +309,24 @@
                 <div class="p-4 sm:p-6 bg-amber-50 dark:bg-gray-700 rounded-2xl border border-amber-100 flex sm:flex-col justify-between items-center sm:block"><p class="text-gray-500 text-sm font-semibold sm:mb-1">Chính xác</p><p id="result-percent" class="text-2xl sm:text-3xl font-bold text-amber-600">0%</p></div>
                 <div class="p-4 sm:p-6 bg-purple-50 dark:bg-purple-700 rounded-2xl border border-purple-100 flex sm:flex-col justify-between items-center sm:block"><p class="text-gray-500 text-sm font-semibold sm:mb-1">Thời gian</p><p id="result-time" class="text-2xl sm:text-3xl font-bold text-purple-700">00:00</p></div>
             </div>
-            <div class="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+           <div class="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
                 <button id="btn-review" class="w-full sm:w-auto px-6 sm:px-8 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 text-sm sm:text-base"><i class="fas fa-search mr-2"></i> Xem & Lọc Câu Đúng/Sai</button>
                 <button id="btn-home" class="w-full sm:w-auto px-6 sm:px-8 py-3 bg-white text-gray-700 border-2 border-gray-200 rounded-xl font-bold hover:bg-gray-50 text-sm sm:text-base">Về Trang Chủ</button>
             </div>
         </div>
+
+        <div id="highlight-palette" class="hidden absolute z-[100] bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-600 rounded-xl p-2 flex items-center gap-2 transition-opacity">
+            <button class="w-7 h-7 rounded-full bg-red-400 hover:scale-125 transition-transform shadow-sm border-2 border-transparent hover:border-white" onclick="applyHighlight('#f87171')"></button>
+            <button class="w-7 h-7 rounded-full bg-orange-400 hover:scale-125 transition-transform shadow-sm border-2 border-transparent hover:border-white" onclick="applyHighlight('#fb923c')"></button>
+            <button class="w-7 h-7 rounded-full bg-yellow-400 hover:scale-125 transition-transform shadow-sm border-2 border-transparent hover:border-white" onclick="applyHighlight('#facc15')"></button>
+            <button class="w-7 h-7 rounded-full bg-green-400 hover:scale-125 transition-transform shadow-sm border-2 border-transparent hover:border-white" onclick="applyHighlight('#4ade80')"></button>
+            <button class="w-7 h-7 rounded-full bg-blue-400 hover:scale-125 transition-transform shadow-sm border-2 border-transparent hover:border-white" onclick="applyHighlight('#60a5fa')"></button>
+            <button class="w-7 h-7 rounded-full bg-indigo-400 hover:scale-125 transition-transform shadow-sm border-2 border-transparent hover:border-white" onclick="applyHighlight('#818cf8')"></button>
+            <button class="w-7 h-7 rounded-full bg-purple-400 hover:scale-125 transition-transform shadow-sm border-2 border-transparent hover:border-white" onclick="applyHighlight('#c084fc')"></button>
+            <div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+            <button class="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-500 hover:scale-110 shadow-sm transition-all" onclick="applyHighlight('transparent')" title="Tẩy xóa Highlight"><i class="fas fa-eraser text-gray-600 dark:text-gray-300 text-sm"></i></button>
+        </div>
+
     </div>
     <script src="script.js"></script>
 </body>
