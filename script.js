@@ -335,6 +335,7 @@ function renderHomeQuizList() {
                 card.className = 'p-5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm flex flex-col justify-between gap-4 relative group';
                 
                 let isMock = res.quizId.startsWith("MOCK-GENERATED-");
+                // Thêm hàm redoQuizFromHistory vào nút Làm lại
                 let actionBtnHTML = isMock ? '' : `<button onclick="redoQuizFromHistory('${res.quizId}')" class="px-3 py-1.5 bg-blue-900 text-white text-xs font-bold rounded-lg hover:bg-blue-800 transition-colors"><i class="fas fa-redo mr-1"></i>Làm lại</button>`;
                 let reviewBtnHTML = `<button onclick="reviewPastQuiz('${res.quizId}', '${item.id}')" class="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors mr-2"><i class="fas fa-eye mr-1"></i>Xem bài</button>`;
 
@@ -364,6 +365,18 @@ function renderHomeQuizList() {
     }
 }
 
+// BỔ SUNG: Hàm xử lý nút "Làm lại" bị thiếu
+function redoQuizFromHistory(quizId) {
+    db.collection("quizzes").doc(quizId).get().then((doc) => {
+        if (doc.exists) {
+            activeQuiz = doc.data();
+            prepareWelcomeScreen();
+        } else {
+            alert("Đề thi này đã bị Giáo viên xóa hoặc không còn tồn tại trên hệ thống!");
+        }
+    }).catch(err => alert("Lỗi khi tải đề thi: " + err.message));
+}
+
 function reviewPastQuiz(quizId, resultDocId) {
     db.collection("quizzes").doc(quizId).get().then((quizDoc) => {
         if (!quizDoc.exists) {
@@ -374,6 +387,12 @@ function reviewPastQuiz(quizId, resultDocId) {
         db.collection("results").doc(resultDocId).get().then((resDoc) => {
             if (resDoc.exists) {
                 const pastData = resDoc.data();
+                
+                // NÂNG CẤP TỐI THƯỢNG: Trả lại đúng thứ tự câu hỏi và đáp án mà học sinh đã thấy lúc làm bài
+                if (pastData.quizQuestionsSnapshot) {
+                    activeQuiz.questions = pastData.quizQuestionsSnapshot;
+                }
+
                 userAnswers = pastData.userAnswers || new Array(activeQuiz.questions.length).fill(null);
                 flaggedQuestions = new Array(activeQuiz.questions.length).fill(false);
                 
@@ -777,7 +796,6 @@ function loadQuestion(index) {
     const bSub = document.getElementById('btn-submit');
     if(bSub) bSub.classList.toggle('hidden', index !== activeQuiz.questions.length - 1 || isReviewMode);
 
-    // Xử lý khung giải thích cũ (Chỉ hiện nếu nhập bằng tay và không có giải thích ngắn gọn)
     const explanationBox = document.getElementById('explanation-box');
     const isAnswerRevealed = isReviewMode || (isPracticeMode && userAnswers[index] !== null);
     if (explanationBox) {
@@ -874,6 +892,7 @@ function submitQuiz(force) {
             timeUsed: timeUsedStr,
             teacherId: activeQuiz.authorId || null, 
             userAnswers: userAnswers,
+            quizQuestionsSnapshot: activeQuiz.questions, // NÂNG CẤP: Chụp ảnh bộ đề hiện tại
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -970,7 +989,6 @@ function fetchResultsFromFirebase() {
 // --- THUẬT TOÁN NHẬP VĂN BẢN TRỰC TIẾP (SMART PASTE) ---
 let currentSmartQuestions = [];
 
-// --- THUẬT TOÁN NHẬP VĂN BẢN TRỰC TIẾP (SMART PASTE) NÂNG CẤP ---
 function processSmartText() {
     let text = document.getElementById('smart-input-area').value;
     text = text.replace(/[\u00A0\u200B-\u200D\uFEFF]/g, ' ');
