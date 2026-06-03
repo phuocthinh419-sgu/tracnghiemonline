@@ -991,7 +991,7 @@ function processSmartText() {
             currentPassage = "";
         } else if (trimmed.match(/^Câu \d+[:.]/i)) {
             
-            let parseRegex = /([\s\S]*?)(?:^|\s+)([*#]*)A\s*[.)\-:,/]([\s\S]*?)(?:^|\s+)([*#]*)B\s*[.)\-:,/]([\s\S]*?)(?:^|\s+)([*#]*)C\s*[.)\-:,/]([\s\S]*?)(?:^|\s+)([*#]*)D\s*[.)\-:,/]([\s\S]*)/i;[*#]*)\s*C\s*[.)\-:,/]([\s\S]*?)([*#]*)\s*D\s*[.)\-:,/]([\s\S]*)/i;
+            let parseRegex = /([\s\S]*?)(?:^|\s+)([*#]*)A\s*[.)\-:,/]([\s\S]*?)(?:^|\s+)([*#]*)B\s*[.)\-:,/]([\s\S]*?)(?:^|\s+)([*#]*)C\s*[.)\-:,/]([\s\S]*?)(?:^|\s+)([*#]*)D\s*[.)\-:,/]([\s\S]*)/i;
             let match = trimmed.match(parseRegex);
 
             if (match) {
