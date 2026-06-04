@@ -569,6 +569,7 @@ function startQuiz(practice) {
     });
     if (currentGroup.length > 0) groupedQuestions.push(currentGroup);
 
+    // Trộn thứ tự các câu hỏi
     for (let i = groupedQuestions.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [groupedQuestions[i], groupedQuestions[j]] = [groupedQuestions[j], groupedQuestions[i]];
@@ -583,15 +584,23 @@ function startQuiz(practice) {
         }
 
         group.forEach(q => {
-            let opts = q.options.map((text, idx) => ({ text: text, isCorrect: idx === q.correctAnswer }));
+            // NÂNG CẤP: Trói chặt Nội dung, Cờ đúng sai và Giải thích thành 1 cục trước khi xào bài
+            let opts = q.options.map((text, idx) => ({ 
+                text: text, 
+                isCorrect: idx === q.correctAnswer,
+                explanation: (q.optionExplanations && q.optionExplanations[idx]) ? q.optionExplanations[idx] : ""
+            }));
             
+            // Bắt đầu đảo lộn (xào bài)
             for (let i = opts.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [opts[i], opts[j]] = [opts[j], opts[i]];
             }
             
+            // Tách ra trả lại vị trí cũ sau khi xào
             q.options = opts.map(o => o.text);
             q.correctAnswer = opts.findIndex(o => o.isCorrect);
+            q.optionExplanations = opts.map(o => o.explanation);
         });
     });
 
