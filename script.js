@@ -15,7 +15,6 @@ const auth = firebase.auth();
 // =========================================================================
 // [VIP] NGỌC TỶ TRUYỀN QUỐC (MASTER ADMIN)
 // =========================================================================
-// Bệ hạ hãy dán UID tài khoản của mình vào đây (Bấm F12 -> Console -> Gõ: auth.currentUser.uid)
 const MASTER_ADMIN_UID = "bYMI3W1wh9Rzhc5AFXpIpYnWuJ13";
 
 function checkIsMasterAdmin() {
@@ -67,17 +66,15 @@ document.addEventListener("DOMContentLoaded", () => {
             setRole('student');
             fetchQuizzesFromFirebase(); 
 
-            // [VIP] NẠP ẤN TÍN TÀI KHOẢN (PLAN) TỪ FIREBASE VÀ BẮT BUỘC LƯU EMAIL
+            // [VIP] NẠP ẤN TÍN TÀI KHOẢN TỪ FIREBASE
             db.collection("users").doc(user.uid).get().then(doc => {
                 if(doc.exists) {
                     currentPlan = doc.data().plan || 'basic';
                     mockGeneratedThisMonth = doc.data().mockGeneratedThisMonth || 0;
                     lastMockMonth = doc.data().lastMockMonth || null;
                     
-                    // Cập nhật lại Email đề phòng sĩ tử đổi Email
                     db.collection("users").doc(user.uid).update({ email: user.email.toLowerCase() });
                     
-                    // Reset bộ đếm nếu đã qua tháng mới
                     let currentMonth = new Date().getMonth();
                     if(lastMockMonth !== currentMonth) {
                         mockGeneratedThisMonth = 0;
@@ -85,20 +82,17 @@ document.addEventListener("DOMContentLoaded", () => {
                         db.collection("users").doc(user.uid).update({mockGeneratedThisMonth: 0, lastMockMonth: currentMonth});
                     }
                     
-                    // ---> [VIP] ĐÚC BADGE KHI SĨ TỬ CŨ ĐĂNG NHẬP <---
                     if (typeof updatePlanBadge === 'function') updatePlanBadge();
 
                 } else {
-                    // Dân thường mới đăng ký sẽ nhận gói Basic mặc định và được lưu Email
                     db.collection("users").doc(user.uid).set({
-                        email: user.email.toLowerCase(), // Lưu Email để Bệ hạ tìm kiếm
+                        email: user.email.toLowerCase(),
                         plan: 'basic',
                         mockGeneratedThisMonth: 0,
                         lastMockMonth: new Date().getMonth()
                     });
                     currentPlan = 'basic';
                     
-                    // ---> [VIP] ĐÚC BADGE KHI SĨ TỬ MỚI TẠO TÀI KHOẢN <---
                     if (typeof updatePlanBadge === 'function') updatePlanBadge();
                 }
             });
@@ -119,7 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // --- [VIP] TRẬN PHÁP KIỂM TRA QUYỀN LỢI ĐĂNG KÝ ---
 function checkFeatureAccess(feature, silent = false) {
-    if (checkIsMasterAdmin()) return true; // Bệ hạ dùng full toàn bộ chức năng, không giới hạn
+    if (checkIsMasterAdmin()) return true; 
 
     const plans = {
         'basic': ['highlight', 'fullscreen'],
@@ -140,7 +134,6 @@ function checkFeatureAccess(feature, silent = false) {
     return true;
 }
 
-// Lưu Tiến Độ Học Tập (Local Storage)
 function saveProgressLocally() {
     if(!checkFeatureAccess('autosave', true)) return;
     if(!activeQuiz) return;
@@ -200,8 +193,8 @@ function setupEventListeners() {
     addEvt('btn-exit-quiz', 'click', () => {
         if (confirm("Thoát? Tiến trình làm bài sẽ được tự động lưu (Nếu là hội viên).")) {
             clearInterval(timerInterval); 
-            exitFullscreen(); // Thoát chế độ khóa màn hình
-            saveProgressLocally(); // Lưu trước khi thoát
+            exitFullscreen(); 
+            saveProgressLocally(); 
             switchScreen('subjectDetail');
         }
     });
@@ -270,7 +263,6 @@ function setRole(role) {
         switchStudentTab('browse'); 
     } else {
         if(btnTeacher) btnTeacher.classList.add('bg-white', 'shadow-md', 'text-blue-900', 'dark:bg-gray-800', 'dark:text-white');
-        // Cho phép TẤT CẢ mọi người thấy nút Quản Trị để tự soạn đề
         if(btnAdmin) btnAdmin.classList.remove('hidden');
         if (studentTabs) studentTabs.classList.replace('flex', 'hidden');
     }
@@ -314,15 +306,15 @@ function switchScreen(screenName) {
         const mc = document.getElementById('manual-questions-container'); if(mc) mc.innerHTML = '';
         const mt = document.getElementById('manual-test-only'); if(mt) mt.checked = false;
         
-        // [VIP] CHỈ ĐÚNG BỆ HẠ (MASTER ADMIN) MỚI ĐƯỢC THẤY NÚT DUYỆT VIP
+        // [VIP] CHỈ ĐÚNG BỆ HẠ MỚI ĐƯỢC THẤY NÚT DUYỆT VIP
         const tabUsers = document.getElementById('tab-users');
         if (tabUsers) {
             if (typeof checkIsMasterAdmin === 'function' && checkIsMasterAdmin()) {
                 tabUsers.classList.remove('hidden');
-                tabUsers.classList.add('flex-1', 'md:flex-none'); // Hiện nút
+                tabUsers.classList.add('flex-1', 'md:flex-none');
             } else {
                 tabUsers.classList.add('hidden');
-                tabUsers.classList.remove('flex-1', 'md:flex-none'); // Tàng hình với kẻ khác
+                tabUsers.classList.remove('flex-1', 'md:flex-none');
             }
         }
     }
@@ -390,7 +382,7 @@ function renderHomeQuizList() {
                 let actionBtnHTML = isMock ? '' : `<button onclick="redoQuizFromHistory('${res.quizId}')" class="px-3 py-1.5 bg-blue-900 text-white text-xs font-bold rounded-lg hover:bg-blue-800 transition-colors"><i class="fas fa-redo mr-1"></i>Làm lại</button>`;
                 let reviewBtnHTML = `<button onclick="reviewPastQuiz('${res.quizId}', '${item.id}')" class="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors mr-2"><i class="fas fa-eye mr-1"></i>Xem bài</button>`;
                 
-                // [VIP] NÚT VÁ LỖ HỔNG DÀNH CHO GÓI PRO & ULTRA
+                // [VIP] NÚT VÁ LỖ HỔNG
                 let errorBtnHTML = `<button onclick="generateErrorCorrection('${item.id}')" class="px-3 py-1.5 bg-orange-500 text-white text-xs font-bold rounded-lg hover:bg-orange-600 transition-colors mr-2"><i class="fas fa-tools mr-1"></i>Vá lỗi sai</button>`;
 
                 card.innerHTML = `
@@ -425,7 +417,7 @@ function redoQuizFromHistory(quizId) {
     }).catch(err => alert("Lỗi khi tải đề thi: " + err.message));
 }
 
-// [VIP] HÀM TẠO ĐỀ TỪ CÂU LÀM SAI (GÓI PRO & ULTRA)
+// [VIP] HÀM TẠO ĐỀ TỪ CÂU LÀM SAI
 window.generateErrorCorrection = function(resultDocId) {
     if(!checkFeatureAccess('error_correction')) return; 
     
@@ -809,9 +801,6 @@ function loadQuestion(index) {
                 optExpText = ""; 
             }
 
-            let expBlock = ''; let labelBg = 'bg-gray-100'; let labelText = 'text-gray-500';
-            let btnBorder = 'border-gray-200 dark:border-gray-600'; let btnBg = 'bg-white dark:bg-gray-800';
-            // ... (Phần bên dưới giữ nguyên không đổi)
             let expBlock = ''; let labelBg = 'bg-gray-100'; let labelText = 'text-gray-500';
             let btnBorder = 'border-gray-200 dark:border-gray-600'; let btnBg = 'bg-white dark:bg-gray-800';
 
@@ -1335,4 +1324,3 @@ function updatePlanBadge() {
     if (homeBadge) homeBadge.innerHTML = badgeHTML;
     if (quizBadge) quizBadge.innerHTML = badgeHTML;
 }
-
