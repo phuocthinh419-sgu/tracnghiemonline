@@ -16,7 +16,7 @@ const auth = firebase.auth();
 // [VIP] NGỌC TỶ TRUYỀN QUỐC (MASTER ADMIN)
 // =========================================================================
 // Bệ hạ hãy dán UID tài khoản của mình vào đây (Bấm F12 -> Console -> Gõ: auth.currentUser.uid)
-const MASTER_ADMIN_UID = "DÁN_UID_CỦA_BỆ_HẠ_VÀO_ĐÂY";
+const MASTER_ADMIN_UID = "bYMI3W1wh9Rzhc5AFXpIpYnWuJ13";
 
 function checkIsMasterAdmin() {
     return auth.currentUser && auth.currentUser.uid === MASTER_ADMIN_UID;
