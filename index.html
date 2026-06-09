@@ -15,6 +15,80 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+
+    <style>
+        :root {
+            --primary: #1e3a8a; /* blue-900 */
+            --secondary: #D4AF37;
+            --secondary-light: #facc15; 
+            --dark: #1f2937; 
+            --white: #ffffff;
+            --success: #22c55e;
+        }
+
+        .pricing-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; padding: 2rem 0;
+        }
+        .pricing-card {
+            background: var(--white); padding: 2.5rem 1.5rem; border-radius: 20px; text-align: center;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid #eee; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .dark .pricing-card { background: #1f2937; border-color: #374151; }
+        .pricing-card:hover { transform: translateY(-10px) scale(1.02); }
+        .pricing-card h3 { font-size: 1.6rem; color: var(--primary); margin-bottom: 0.2rem; font-weight: 800; }
+        .dark .pricing-card h3 { color: #60a5fa; }
+        .pricing-card .price-box { margin: 1.5rem 0; }
+        .pricing-card h1 { color: var(--primary); font-size: 2.5rem; font-weight: 800; line-height: 1; }
+        .dark .pricing-card h1 { color: white; }
+        .pricing-card .matcha-tag { font-size: 0.85rem; color: #27ae60; font-weight: 600; margin-top: 5px; display: block; }
+        .pricing-card ul { text-align: left; list-style: none; margin: 1.5rem 0; padding: 0; flex-grow: 1; }
+        .pricing-card ul li { margin-bottom: 10px; font-size: 0.9rem; color: var(--dark); display: flex; align-items: start; gap: 8px; line-height: 1.4; }
+        .dark .pricing-card ul li { color: #d1d5db; }
+        .pricing-card ul li i { font-size: 1rem; margin-top: 2px; }
+        .pricing-card ul li i.fa-check-circle { color: var(--success); }
+        .pricing-card ul li i.fa-times-circle { color: #aaa; opacity: 0.5; }
+
+        /* GÓI PRO VIP */
+        .pricing-card-vip { z-index: 5; box-shadow: 0 20px 50px rgba(212, 175, 55, 0.2); padding: 0; border: none; background: transparent; }
+        .pricing-card-inner {
+            background: var(--white); padding: 2.5rem 1.5rem; border-radius: 20px; border: 3px solid var(--secondary);
+            position: relative; overflow: hidden; height: 100%; display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .dark .pricing-card-inner { background: #1f2937; }
+        .pricing-card-inner::before {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: conic-gradient(transparent, transparent, var(--secondary-light), transparent);
+            animation: rotate-border 4s linear infinite; opacity: 0.3; pointer-events: none;
+        }
+        @keyframes rotate-border { 100% { transform: rotate(1turn); } }
+        .pricing-card-vip:hover { transform: scale(1.05) translateY(-10px); box-shadow: 0 30px 70px rgba(212, 175, 55, 0.4); }
+        .pricing-tag {
+            position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+            background: linear-gradient(45deg, var(--secondary), var(--secondary-light));
+            color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); padding: 6px 20px; border-radius: 30px;
+            font-weight: 800; font-size: 0.8rem; text-transform: uppercase;
+            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3); white-space: nowrap; z-index: 10;
+        }
+
+        /* GÓI ULTRA ROYAL */
+        .pricing-card-royal {
+            background: linear-gradient(135deg, #16222f, #000000); color: white; border: none; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4); overflow: hidden;
+        }
+        .pricing-card-royal:hover { transform: scale(1.05) translateY(-10px); box-shadow: 0 30px 80px rgba(212, 175, 55, 0.2); }
+        .pricing-card-royal h3, .pricing-card-royal h1, .pricing-card-royal .matcha-tag { color: var(--secondary-light); }
+        .pricing-card-royal ul li { color: #eee; }
+        .pricing-card-royal ul li i.fa-check-circle { color: var(--secondary-light); }
+        .pricing-card-royal::after {
+            content: ''; position: absolute; inset: 0;
+            background-image: radial-gradient(circle at 50% 50%, var(--secondary) 1px, transparent 1px), 
+                              radial-gradient(circle at 20% 80%, var(--secondary-light) 2px, transparent 2px), 
+                              radial-gradient(circle at 80% 20%, var(--secondary) 1.5px, transparent 1px);
+            background-size: 80px 80px; animation: golden-rain 8s linear infinite; opacity: 0.25; pointer-events: none;
+        }
+        @keyframes golden-rain { 0% { background-position: 0 0; } 100% { background-position: 40px 160px; } }
+    </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-2 sm:p-4 transition-colors duration-300 dark:bg-gray-900">
 
@@ -31,7 +105,6 @@
                 </div>
             </div>
             <h2 id="auth-title" class="font-academic text-2xl sm:text-3xl text-blue-900 dark:text-white font-bold mb-6">Đăng Nhập Hệ Thống</h2>
-            
             <div class="flex flex-col gap-4 text-left">
                 <div id="div-auth-name" class="hidden">
                     <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Họ và tên:</label>
@@ -46,7 +119,6 @@
                     <input type="password" id="auth-password" placeholder="••••••••" class="w-full p-3 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600 outline-none focus:border-blue-500">
                 </div>
                 <button id="btn-auth-submit" class="w-full py-3 bg-blue-900 text-white rounded-lg font-bold mt-2 hover:bg-blue-800 transition-all shadow-md">Đăng Nhập</button>
-                
                 <p class="text-sm text-gray-500 text-center mt-4">
                     <span id="auth-toggle-msg">Chưa có tài khoản?</span>
                     <button id="btn-auth-toggle" class="text-blue-600 font-bold hover:underline bg-transparent border-none p-0 cursor-pointer">Đăng ký ngay</button>
@@ -68,7 +140,10 @@
                         <i class="fas fa-chalkboard-teacher mr-1 sm:mr-2"></i>Giáo Viên
                     </button>
                 </div>
-                <div class="hidden md:block w-28 h-10"></div>
+                
+                <button onclick="switchScreen('pricing')" class="w-full md:w-auto justify-center flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-yellow-400 to-yellow-600 text-white rounded-lg font-bold hover:from-yellow-500 hover:to-yellow-700 transition-colors shadow-md animate-pulse">
+                    <i class="fas fa-crown"></i> Nâng Cấp VIP
+                </button>
             </div>
 
             <button id="btn-show-admin" class="hidden absolute top-4 right-4 sm:top-8 sm:right-8 flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-blue-100 text-blue-700 rounded-lg font-bold hover:bg-blue-200 transition-colors shadow-sm text-sm sm:text-base">
@@ -88,14 +163,104 @@
             <div id="quiz-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6"></div>
         </div>
 
+        <div id="pricing-screen" class="hidden p-4 sm:p-8 relative h-[95vh] sm:h-[85vh] overflow-y-auto custom-scrollbar">
+            <button onclick="switchScreen('home')" class="mb-4 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors text-sm sm:text-base">
+                <i class="fas fa-arrow-left mr-2"></i>Về Trang Chủ
+            </button>
+
+            <h2 style="text-align: center; margin-bottom: 0.5rem; font-size: 2.5rem; font-weight: 800;" class="text-blue-900 dark:text-white">NÂNG CẤP ĐẶC QUYỀN</h2>
+            <p style="text-align: center; color: #666; margin-bottom: 2rem; font-size: 1.1rem;" class="dark:text-gray-400">Đầu tư thông minh — Bứt phá phổ điểm THPTQG</p>
+            
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <div>
+                        <h3>Basic</h3>
+                        <p style="color: #888; font-size: 0.85rem;">Trải nghiệm nền tảng</p>
+                        <div class="price-box">
+                            <h1 style="color: var(--dark);" class="dark:text-white">0đ</h1>
+                            <span class="matcha-tag"><i class="fas fa-seedling"></i> Miễn phí vĩnh viễn</span>
+                        </div>
+                        <ul>
+                            <li><i class="fas fa-check-circle"></i> Làm đề chương lẻ có sẵn</li>
+                            <li><i class="fas fa-check-circle"></i> Chấm điểm & hiện đúng/sai</li>
+                            <li><i class="fas fa-check-circle"></i> Bút dạ quang Highlight 7 màu</li>
+                            <li><i class="fas fa-check-circle"></i> Thiết quân luật khi Thi thử</li>
+                            <li><i class="fas fa-times-circle"></i> Xem giải thích chi tiết câu hỏi</li>
+                            <li><i class="fas fa-times-circle"></i> Tự động lưu nháp khi làm bài</li>
+                            <li><i class="fas fa-times-circle"></i> Đề thích ứng & Lộ trình riêng</li>
+                        </ul>
+                    </div>
+                    <button class="w-full py-3 mt-4 rounded-xl font-bold bg-transparent border-2 border-gray-300 text-gray-500 cursor-not-allowed">Gói Mặc Định</button>
+                </div>
+                
+                <div class="pricing-card">
+                    <div>
+                        <h3>Plus</h3>
+                        <p style="color: #888; font-size: 0.85rem;">Ôn luyện thông thái</p>
+                        <div class="price-box">
+                            <h1>20.000đ<span style="font-size: 1rem; font-weight: normal; color: #666;">/tháng</span></h1>
+                            <span class="matcha-tag"><i class="fas fa-mug-hot"></i> = 1 ly Matcha Latte (M)</span>
+                        </div>
+                        <ul>
+                            <li><i class="fas fa-check-circle"></i> Quyền lợi của gói Basic</li>
+                            <li><i class="fas fa-check-circle"></i> <strong>Mở khóa Giải thích chi tiết</strong></li>
+                            <li><i class="fas fa-check-circle"></i> <strong>Tự động lưu nháp bài làm</strong></li>
+                            <li><i class="fas fa-check-circle"></i> Dự đoán điểm & Vạch lộ trình</li>
+                            <li><i class="fas fa-check-circle"></i> Đề thích ứng thông minh</li>
+                            <li><i class="fas fa-star" style="color: #e67e22;"></i> <strong>Giới hạn: 3 lượt tạo đề/tháng</strong></li>
+                            <li><i class="fas fa-times-circle"></i> Chuột phải gạch mờ đáp án</li>
+                            <li><i class="fas fa-times-circle"></i> Trận đồ Chữa Lỗi Sai</li>
+                        </ul>
+                    </div>
+                    <button class="w-full py-3 mt-4 rounded-xl font-bold bg-transparent border-2 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors" onclick="openPaymentModal('LINK_QR_PLUS', 'Gói Plus', '20.000đ')">Nâng Cấp Ngay</button>
+                </div>
+                
+                <div class="pricing-card pricing-card-vip">
+                    <div class="pricing-tag"><i class="fas fa-fire"></i> Khuyên Dùng</div>
+                    <div class="pricing-card-inner">
+                        <div>
+                            <h3>Pro</h3>
+                            <p style="color: #888; font-size: 0.85rem;">Chiến thần cày đề</p>
+                            <div class="price-box">
+                                <h1>25.000đ<span style="font-size: 1rem; font-weight: normal; color: #666;">/tháng</span></h1>
+                                <span class="matcha-tag"><i class="fas fa-mug-hot"></i> = 1 ly Matcha Latte (L)</span>
+                            </div>
+                            <ul>
+                                <li><i class="fas fa-check-circle"></i> Quyền lợi của gói Plus</li>
+                                <li><i class="fas fa-check-circle"></i> <strong>Gạch mờ đáp án nhiễu (R-Click)</strong></li>
+                                <li><i class="fas fa-check-circle"></i> <strong>Trận đồ Chữa Lỗi Sai</strong></li>
+                                <li><i class="fas fa-star" style="color: #e67e22;"></i> <strong>Giới hạn: 15 lượt tạo đề/tháng</strong></li>
+                            </ul>
+                        </div>
+                        <button class="w-full py-3 mt-4 rounded-xl font-bold bg-yellow-500 text-blue-900 hover:bg-yellow-400 shadow-lg transition-colors" onclick="openPaymentModal('LINK_QR_PRO', 'Gói Pro', '25.000đ')">BỨT PHÁ NGAY</button>
+                    </div>
+                </div>
+                
+                <div class="pricing-card pricing-card-royal">
+                    <div>
+                        <h3><i class="fas fa-crown"></i> Ultra</h3>
+                        <p style="opacity: 0.8; font-size: 0.85rem;">Bậc thầy tối thượng</p>
+                        <div class="price-box">
+                            <h1>50.000đ<span style="font-size: 1rem; font-weight: normal; opacity: 0.7;">/tháng</span></h1>
+                            <span class="matcha-tag"><i class="fas fa-bolt"></i> = 2 ly Matcha Latte (L)</span>
+                        </div>
+                        <ul style="z-index: 10; position: relative;">
+                            <li><i class="fas fa-check-circle"></i> Sở hữu trọn vẹn mọi đặc quyền</li>
+                            <li><i class="fas fa-infinity" style="color: var(--secondary-light);"></i> <strong>VÔ HẠN lượt tạo đề/tháng</strong></li>
+                            <li><i class="fas fa-crown" style="color: var(--secondary-light);"></i> Không giới hạn tài nguyên học</li>
+                        </ul>
+                    </div>
+                    <button class="w-full py-3 mt-4 rounded-xl font-bold bg-yellow-400 text-black hover:bg-yellow-300 shadow-xl z-10 position-relative transition-colors" onclick="openPaymentModal('LINK_QR_ULTRA', 'Gói Ultra', '50.000đ')">SỞ HỮU TỐI THƯỢNG</button>
+                </div>
+            </div>
+        </div>
+
         <div id="subject-detail-screen" class="hidden p-4 sm:p-8 relative h-[95vh] sm:h-[85vh] overflow-y-auto custom-scrollbar">
             <button id="btn-back-to-home" class="mb-4 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors text-sm sm:text-base"><i class="fas fa-arrow-left mr-2"></i>Quay lại</button>
-            
             <div class="mb-6 sm:mb-8">
                 <h2 id="subject-detail-title" class="font-academic text-2xl sm:text-3xl text-blue-900 dark:text-white font-bold mb-2">Tên Môn Học</h2>
                 <p class="text-gray-500 dark:text-gray-400 text-sm">Lựa chọn học theo từng chương hoặc thi thử trộn câu hỏi tổng hợp</p>
             </div>
-
             <div class="p-5 sm:p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-slate-700 rounded-2xl border border-blue-100 dark:border-gray-600 mb-6 sm:mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 shadow-sm">
                 <div class="flex items-center gap-3 sm:gap-4">
                     <div class="w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center text-lg sm:text-xl shadow-md shrink-0"><i class="fas fa-shuffle"></i></div>
@@ -112,7 +277,6 @@
                     <button id="btn-start-mock-generate" class="w-full sm:w-auto px-6 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 shadow-md transition-all whitespace-nowrap flex items-center justify-center"><i class="fas fa-graduation-cap mr-2"></i>Bắt đầu trộn</button>
                 </div>
             </div>
-
             <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-4 text-base sm:text-lg"><i class="fas fa-list-ul mr-2"></i>Danh sách đề lẻ / Chương học ôn tập:</h3>
             <div id="chapter-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6"></div>
         </div>
@@ -130,112 +294,7 @@
                     <button id="tab-stats" onclick="switchAdminTab('stats')" class="w-full md:w-auto px-3 sm:px-4 py-2 text-sm sm:text-base font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-chart-line mr-1"></i>Thống Kê Điểm</button>
                 </div>
             </div>
-
-            <div id="panel-smart" class="block w-full">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <div>
-                        <label class="block font-bold mb-1 text-gray-700 dark:text-gray-300 text-sm">Tên Đề Thi / Bài Tập:</label>
-                        <input type="text" id="smart-title" placeholder="VD: Kiểm tra 15 phút - Unit 1" class="w-full p-2 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none text-sm font-medium">
-                    </div>
-                    <div>
-                        <label class="block font-bold mb-1 text-gray-700 dark:text-gray-300 text-sm">Thư mục / Môn học:</label>
-                        <input type="text" id="smart-category" placeholder="VD: Tiếng Anh TS10" class="w-full p-2 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none text-sm font-medium">
-                    </div>
-                    <div>
-                        <label class="block font-bold mb-1 text-gray-700 dark:text-gray-300 text-sm">Thời gian làm bài (Phút):</label>
-                        <input type="number" id="smart-time" placeholder="Mặc định: 15" class="w-full p-2 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none text-sm font-medium">
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg mb-5">
-                    <input type="checkbox" id="smart-test-only" class="w-4 h-4 cursor-pointer accent-red-600 shrink-0">
-                    <label for="smart-test-only" class="font-bold text-red-700 dark:text-red-400 cursor-pointer text-sm">Bật chế độ Kiểm tra (Khóa chức năng Luyện tập của học sinh)</label>
-                </div>
-
-                <div class="flex flex-col lg:flex-row gap-4 mb-5">
-                    <div class="w-full lg:w-1/2 flex flex-col">
-                        <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300 text-sm">Khung Nhập Liệu (Dán nội dung vào đây):</label>
-                        <textarea id="smart-input-area" rows="15" oninput="processSmartText()" class="flex-grow w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-gray-200 focus:border-blue-500 outline-none text-sm custom-scrollbar leading-relaxed resize-y" placeholder="Định dạng yêu cầu:
-[Bài đọc]
-(Nội dung bài đọc nếu có)
-[Hết bài đọc]
-
-Câu 1: Nội dung câu hỏi...
-*A. Đáp án đúng :: Giải thích vì sao đúng...
-B. Đáp án sai :: Giải thích vì sao sai...
-C. Đáp án sai
-D. Đáp án sai"></textarea>
-                    </div>
-                    <div class="w-full lg:w-1/2 flex flex-col">
-                        <div class="flex justify-between items-center mb-2">
-                            <label class="block font-bold text-gray-700 dark:text-gray-300 text-sm">Xem Trước & Rà Soát Lỗi:</label>
-                            <span id="smart-question-count" class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-lg shadow-sm">Đã nhận diện: 0 câu</span>
-                        </div>
-                        <div id="smart-preview-box" class="flex-grow w-full max-h-[350px] overflow-y-auto p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-800 custom-scrollbar space-y-3 bg-gray-50/50">
-                            <p class="text-sm text-gray-400 text-center mt-10 italic">Bản xem trước dữ liệu sẽ tự động hiển thị tại đây khi bạn dán văn bản...</p>
-                        </div>
-                    </div>
-                </div>
-
-                <button onclick="saveSmartQuiz()" class="w-full py-3 sm:py-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 shadow-md transition-all text-sm sm:text-base flex items-center justify-center gap-2">
-                    <i class="fas fa-cloud-upload-alt"></i> Lưu Bộ Đề Lên Hệ Thống
-                </button>
-                <div id="smart-status" class="mt-4 text-center font-bold text-sm hidden"></div>
             </div>
-
-            <div id="panel-manual" class="hidden max-w-3xl mx-auto">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                    <div>
-                        <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300 text-sm sm:text-base">Tên Đề Thi / Tên Chương:</label>
-                        <input type="text" id="manual-title" placeholder="VD: Chương 1..." class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none text-sm sm:text-base">
-                    </div>
-                    <div>
-                        <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300 text-sm sm:text-base">Tên Môn Học (Thư mục):</label>
-                        <input type="text" id="manual-category" placeholder="VD: Tiếng Anh TS10..." class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none text-sm sm:text-base">
-                    </div>
-                    <div class="sm:col-span-2">
-                        <label class="block font-bold mb-2 text-gray-700 dark:text-gray-300 text-sm sm:text-base">Thời gian làm bài (Phút):</label>
-                        <input type="number" id="manual-time" placeholder="VD: 45" class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 outline-none text-sm sm:text-base">
-                    </div>
-                    <div class="sm:col-span-2 flex items-start sm:items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg mt-2 sm:mt-4">
-                        <input type="checkbox" id="manual-test-only" class="w-5 h-5 mt-0.5 sm:mt-0 cursor-pointer accent-red-600 shrink-0">
-                        <label for="manual-test-only" class="font-bold text-red-700 dark:text-red-400 cursor-pointer text-sm">Bật Chế độ Kiểm tra (Khóa Luyện tập)</label>
-                    </div>
-                </div>
-                <div id="manual-questions-container" class="flex flex-col gap-4 sm:gap-6 mb-6"></div>
-                <div class="flex flex-col sm:flex-row justify-between items-center border-t dark:border-gray-700 pt-6 gap-4">
-                    <button onclick="addManualQuestionForm()" class="w-full sm:w-auto px-6 py-3 bg-gray-100 dark:bg-gray-700 text-blue-700 dark:text-blue-400 font-bold rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                        <i class="fas fa-plus mr-2"></i>Thêm Câu Hỏi
-                    </button>
-                    <button onclick="saveManualQuiz()" class="w-full sm:w-auto px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 shadow-lg transition-all">
-                        <i class="fas fa-save mr-2"></i>Lưu Bộ Đề
-                    </button>
-                </div>
-            </div>
-
-            <div id="panel-stats" class="hidden w-full mx-auto">
-                <div class="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                    <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Danh sách kết quả làm bài của học sinh được lưu trữ theo thời gian thực</p>
-                    <button onclick="fetchResultsFromFirebase()" class="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-xs sm:text-sm font-bold rounded-lg hover:bg-gray-200 shrink-0"><i class="fas fa-sync-alt mr-1"></i>Làm mới</button>
-                </div>
-                <div class="overflow-x-auto border dark:border-gray-700 rounded-xl shadow-sm bg-white dark:bg-gray-800">
-                    <table class="w-full text-left border-collapse min-w-[600px]">
-                        <thead>
-                            <tr class="bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 font-bold text-xs sm:text-sm border-b dark:border-gray-600">
-                                <th class="p-2 sm:p-3">Học Sinh</th>
-                                <th class="p-2 sm:p-3">Đề Thi / Môn Học</th>
-                                <th class="p-2 sm:p-3">Điểm</th>
-                                <th class="p-2 sm:p-3">Tỷ Lệ</th>
-                                <th class="p-2 sm:p-3">TG Làm</th>
-                                <th class="p-2 sm:p-3">Ngày Nộp</th>
-                            </tr>
-                        </thead>
-                        <tbody id="stats-table-body" class="divide-y dark:divide-gray-700">
-                            </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
 
         <div id="welcome-screen" class="hidden p-6 sm:p-8 py-12 sm:py-16 text-center">
             <button id="btn-back-to-subject" class="absolute top-4 left-4 sm:top-8 sm:left-8 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors text-sm sm:text-base"><i class="fas fa-arrow-left mr-1 sm:mr-2"></i></button>
@@ -250,109 +309,57 @@ D. Đáp án sai"></textarea>
         </div>
 
         <div id="quiz-screen" class="hidden flex-col lg:flex-row h-full min-h-[95vh] sm:min-h-[85vh]">
-            <div class="flex-grow flex flex-col border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-gray-700 w-full lg:w-3/4 order-1">
-                <div class="bg-white dark:bg-gray-800 px-4 sm:px-8 pt-4 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-gray-700">
-                    <div class="flex flex-row justify-between items-start mb-4 gap-2">
-                        <div class="flex items-start gap-2 sm:gap-4">
-                            <button id="btn-exit-quiz" class="mt-1 text-gray-400 hover:text-red-500 transition-colors shrink-0" title="Thoát về Trang Chủ">
-                                <i class="fas fa-arrow-left text-xl sm:text-2xl"></i>
-                            </button>
-                            <div>
-                                <h2 id="quiz-header-title" class="font-academic text-lg sm:text-2xl text-blue-900 dark:text-white font-bold mb-0.5 sm:mb-1 line-clamp-2">Đang tải đề thi...</h2>
-                                <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">Thí sinh: <span id="display-student-name" class="font-semibold text-blue-900 dark:text-blue-400"></span></p>
-                            </div>
-                        </div>
-                        <div class="text-right shrink-0">
-                            <div id="time-text" class="font-mono font-bold text-2xl sm:text-3xl text-blue-900 dark:text-white tabular-nums">00:00</div>
-                        </div>
-                    </div>
-                    <div id="energy-bar-container" class="energy-track mt-2"><div id="energy-fill" class="energy-fill bg-safe" style="width: 100%;"><i id="energy-icon" class="fas fa-pen-nib icon-runner"></i></div></div>
-                </div>
-
-                <div class="p-4 sm:p-8 flex-grow bg-gray-50/50 dark:bg-gray-900/50 relative">
-                    <div class="flex flex-wrap justify-between items-center mb-4 sm:mb-6 gap-3">
-                        <span id="question-counter" class="inline-flex items-center justify-center px-3 py-1 sm:px-4 sm:py-1.5 bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100 rounded-full text-xs sm:text-sm font-bold tracking-wide">Câu 0 / 0</span>
-                        <div class="flex gap-2 w-full sm:w-auto">
-                            <button id="btn-flag" class="flex-1 sm:flex-none justify-center flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-400 rounded-lg font-bold hover:bg-yellow-200 transition-colors border border-yellow-300 dark:border-yellow-700 text-xs sm:text-sm"><i class="fas fa-flag"></i> Phân vân</button>
-                            <button id="btn-hint" class="hidden flex-1 sm:flex-none justify-center text-amber-500 hover:text-amber-600 font-bold items-center gap-1 sm:gap-2 transition-colors bg-amber-50 dark:bg-gray-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border border-amber-200 dark:border-gray-600 text-xs sm:text-sm"><i class="fas fa-lightbulb"></i> Gợi ý</button>
-                        </div>
-                    </div>
-                    
-                    <div class="flex flex-col md:flex-row gap-4 sm:gap-8 items-start w-full">
-                        <div id="passage-container" class="hidden w-full md:w-1/2 bg-white dark:bg-gray-800 p-4 sm:p-8 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm max-h-[35vh] md:max-h-[75vh] overflow-y-auto custom-scrollbar">
-                            <h4 class="font-bold text-blue-800 dark:text-blue-400 mb-2 sm:mb-4 flex items-center gap-2 border-b dark:border-gray-700 pb-2 sm:pb-3 text-sm sm:text-base"><i class="fas fa-book-reader"></i> Nội dung bài đọc</h4>
-                            <div id="passage-text" class="text-gray-700 dark:text-gray-200 font-academic leading-relaxed whitespace-pre-wrap text-[1rem] sm:text-[1.1rem]"></div>
-                        </div>
-
-                        <div id="question-wrapper" class="w-full h-auto md:max-h-[75vh] overflow-y-auto custom-scrollbar sm:pr-2 sm:pb-6">
-                            <h3 id="question-content" class="font-academic text-xl sm:text-2xl text-gray-900 dark:text-white leading-relaxed mb-4 sm:mb-6"></h3>
-                            <div id="options-container" class="grid grid-cols-1 gap-3 sm:gap-4"></div>
-                            
-                            <div id="hint-box" class="hidden mt-4 p-3 sm:p-4 bg-amber-50 dark:bg-gray-800 border border-amber-200 dark:border-gray-600 rounded-xl text-amber-800 dark:text-amber-400 font-medium italic text-sm sm:text-base"></div>
-                            <div id="explanation-box" class="hidden mt-4 sm:mt-6 p-4 sm:p-5 bg-blue-50 dark:bg-gray-700 border border-blue-100 dark:border-gray-600 rounded-xl">
-                                <h4 class="font-bold text-blue-900 dark:text-blue-400 mb-2 flex items-center gap-2 text-sm sm:text-base"><i class="fas fa-info-circle"></i> Giải thích chi tiết:</h4>
-                                <p id="explanation-text" class="text-gray-700 dark:text-gray-200 font-academic leading-relaxed text-sm sm:text-base"></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white dark:bg-gray-800 px-4 sm:px-8 py-4 sm:py-5 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 lg:rounded-bl-2xl">
-                    <div class="flex gap-2 sm:gap-3 justify-between sm:justify-start">
-                        <button id="btn-prev" class="flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-2.5 text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 text-sm sm:text-base"><i class="fas fa-chevron-left mr-1"></i> Câu trước</button>
-                        <button id="btn-next" class="flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-2.5 bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-400 font-semibold hover:bg-blue-100 rounded-lg disabled:opacity-50 text-sm sm:text-base">Câu sau <i class="fas fa-chevron-right ml-1"></i></button>
-                    </div>
-                    <button id="btn-submit" class="w-full sm:w-auto px-6 sm:px-8 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold shadow-md transition-all flex items-center justify-center gap-2 text-sm sm:text-base"><i class="fas fa-check-double"></i> Nộp Bài</button>
-                </div>
             </div>
-
-            <div class="w-full lg:w-1/4 bg-white dark:bg-gray-800 p-4 sm:p-6 sm:rounded-b-2xl lg:rounded-b-none lg:rounded-r-2xl flex flex-col order-2 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.1)] lg:shadow-none z-10">
-                <h3 class="font-bold text-gray-800 dark:text-white mb-3 sm:mb-4 text-center border-b dark:border-gray-700 pb-2 text-sm sm:text-base">Điều Hướng & Bộ Lọc</h3>
-                
-                <div id="filter-tabs-practice" class="grid grid-cols-4 lg:grid-cols-2 gap-1.5 sm:gap-2 mb-3 sm:mb-4 text-[0.65rem] sm:text-xs font-semibold">
-                    <button onclick="setFilter('all', this)" class="filter-btn ring-2 ring-blue-500 ring-offset-1 py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white transition-all text-center">Tất cả</button>
-                    <button onclick="setFilter('pending', this)" class="filter-btn py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg bg-gray-50 text-gray-500 border border-gray-200 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 transition-all text-center">Chưa làm</button>
-                    <button onclick="setFilter('done', this)" class="filter-btn py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-all text-center">Đã làm</button>
-                    <button onclick="setFilter('flagged', this)" class="filter-btn py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg bg-yellow-50 text-yellow-600 border border-yellow-200 hover:bg-yellow-100 transition-all text-center">Đánh dấu</button>
-                </div>
-
-                <div id="filter-tabs-review" class="hidden grid-cols-3 gap-1.5 sm:gap-2 mb-3 sm:mb-4 text-[0.65rem] sm:text-xs font-semibold">
-                    <button onclick="setFilter('all', this)" class="filter-btn ring-2 ring-blue-500 ring-offset-1 py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white transition-all text-center">Tất cả</button>
-                    <button onclick="setFilter('correct', this)" class="filter-btn py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg bg-green-50 text-green-600 border border-green-200 hover:bg-green-100 transition-all text-center">Đúng</button>
-                    <button onclick="setFilter('wrong', this)" class="filter-btn py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-all text-center">Sai</button>
-                </div>
-
-                <div id="navigator-grid" class="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-4 gap-1.5 sm:gap-2 overflow-y-auto pr-1 custom-scrollbar max-h-[25vh] lg:max-h-none"></div>
-            </div>
-        </div>
 
         <div id="result-screen" class="hidden p-4 sm:p-8 py-8 sm:py-12 text-center dark:bg-gray-800">
-            <div class="w-20 h-20 sm:w-24 sm:h-24 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center text-green-600 dark:text-green-400 text-4xl sm:text-5xl mx-auto mb-4 sm:mb-6"><i class="fas fa-trophy"></i></div>
-            <h2 class="font-academic text-3xl sm:text-4xl text-gray-900 dark:text-white font-bold mb-2">Hoàn Thành Bài Thi!</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-lg mx-auto mb-8 sm:mb-10 mt-4 sm:mt-6">
-                <div class="p-4 sm:p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl border border-blue-100 flex sm:flex-col justify-between items-center sm:block"><p class="text-gray-500 text-sm font-semibold sm:mb-1">Điểm số</p><p id="result-score" class="text-2xl sm:text-3xl font-bold text-blue-900 dark:text-white">0/0</p></div>
-                <div class="p-4 sm:p-6 bg-amber-50 dark:bg-gray-700 rounded-2xl border border-amber-100 flex sm:flex-col justify-between items-center sm:block"><p class="text-gray-500 text-sm font-semibold sm:mb-1">Chính xác</p><p id="result-percent" class="text-2xl sm:text-3xl font-bold text-amber-600">0%</p></div>
-                <div class="p-4 sm:p-6 bg-purple-50 dark:bg-purple-700 rounded-2xl border border-purple-100 flex sm:flex-col justify-between items-center sm:block"><p class="text-gray-500 text-sm font-semibold sm:mb-1">Thời gian</p><p id="result-time" class="text-2xl sm:text-3xl font-bold text-purple-700">00:00</p></div>
             </div>
-            <div class="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
-                <button id="btn-review" class="w-full sm:w-auto px-6 sm:px-8 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 text-sm sm:text-base"><i class="fas fa-search mr-2"></i> Xem & Lọc Câu Đúng/Sai</button>
-                <button id="btn-home" class="w-full sm:w-auto px-6 sm:px-8 py-3 bg-white text-gray-700 border-2 border-gray-200 rounded-xl font-bold hover:bg-gray-50 text-sm sm:text-base">Về Trang Chủ</button>
-            </div>
-        </div>
 
         <div id="highlight-palette" class="hidden absolute z-[100] bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-600 rounded-xl p-2 flex items-center gap-2 transition-opacity">
-            <button class="w-7 h-7 rounded-full bg-red-400 hover:scale-125 transition-transform shadow-sm border-2 border-transparent hover:border-white" onclick="applyHighlight('#f87171')"></button>
-            <button class="w-7 h-7 rounded-full bg-orange-400 hover:scale-125 transition-transform shadow-sm border-2 border-transparent hover:border-white" onclick="applyHighlight('#fb923c')"></button>
-            <button class="w-7 h-7 rounded-full bg-yellow-400 hover:scale-125 transition-transform shadow-sm border-2 border-transparent hover:border-white" onclick="applyHighlight('#facc15')"></button>
-            <button class="w-7 h-7 rounded-full bg-green-400 hover:scale-125 transition-transform shadow-sm border-2 border-transparent hover:border-white" onclick="applyHighlight('#4ade80')"></button>
-            <button class="w-7 h-7 rounded-full bg-blue-400 hover:scale-125 transition-transform shadow-sm border-2 border-transparent hover:border-white" onclick="applyHighlight('#60a5fa')"></button>
-            <button class="w-7 h-7 rounded-full bg-indigo-400 hover:scale-125 transition-transform shadow-sm border-2 border-transparent hover:border-white" onclick="applyHighlight('#818cf8')"></button>
-            <button class="w-7 h-7 rounded-full bg-purple-400 hover:scale-125 transition-transform shadow-sm border-2 border-transparent hover:border-white" onclick="applyHighlight('#c084fc')"></button>
-            <div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-            <button class="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-500 hover:scale-110 shadow-sm transition-all" onclick="applyHighlight('transparent')" title="Tẩy xóa Highlight"><i class="fas fa-eraser text-gray-600 dark:text-gray-300 text-sm"></i></button>
-        </div>
-
+            </div>
     </div>
+
+    <div id="payment-modal" class="hidden fixed inset-0 bg-gray-900/80 z-[2000] flex items-center justify-center backdrop-blur-sm transition-opacity">
+        <div class="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl w-[90%] max-w-sm text-center relative shadow-2xl">
+            <i class="fas fa-times absolute top-4 right-4 cursor-pointer text-gray-400 hover:text-red-500 text-xl" onclick="closePaymentModal()"></i>
+            
+            <h2 class="text-2xl font-bold text-blue-900 dark:text-blue-400 mb-1">Nâng cấp <span id="pay-tier-name" class="text-yellow-500">VIP</span></h2>
+            <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">Quét mã QR qua MoMo hoặc Ngân hàng</p>
+            
+            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl mb-4 border border-gray-100 dark:border-gray-600">
+                <img id="payment-qr-img" src="" alt="Mã QR Thanh Toán" class="w-full h-auto mx-auto rounded-lg shadow-sm border border-gray-200 dark:border-gray-600">
+            </div>
+            
+            <div class="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg mb-6 text-sm text-blue-800 dark:text-blue-300 font-medium">
+                Số tiền: <strong id="pay-amount" class="text-lg">0đ</strong>
+            </div>
+
+            <button onclick="confirmPayment()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition-all">
+                Đã Chuyển Khoản Thành Công
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Bệ hạ hãy chép thêm đoạn mã JS nhỏ này vào cuối file script.js 
+        // hoặc để tạm trong thẻ <script> này để điều khiển Modal thanh toán
+        
+        function openPaymentModal(imgSrc, tierName, amount) {
+            document.getElementById('payment-qr-img').src = imgSrc;
+            document.getElementById('pay-tier-name').innerText = tierName;
+            document.getElementById('pay-amount').innerText = amount;
+            document.getElementById('payment-modal').classList.remove('hidden');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('payment-modal').classList.add('hidden');
+        }
+
+        function confirmPayment() {
+            alert('Hệ thống đã ghi nhận yêu cầu nâng cấp! Thầy sẽ kiểm tra tài khoản và kích hoạt VIP cho em trong giây lát nhé!');
+            closePaymentModal();
+        }
+    </script>
+
     <script src="script.js"></script>
 </body>
 </html>
