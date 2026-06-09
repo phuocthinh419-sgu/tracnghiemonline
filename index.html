@@ -292,7 +292,8 @@
                 <div class="flex flex-wrap gap-2 w-full md:w-auto">
                     <button id="tab-smart" onclick="switchAdminTab('smart')" class="flex-1 md:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base font-bold rounded-lg bg-blue-100 text-blue-700">Nhập Văn Bản Nhanh</button>
                     <button id="tab-manual" onclick="switchAdminTab('manual')" class="flex-1 md:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">Nhập Thủ Công</button>
-                    <button id="tab-stats" onclick="switchAdminTab('stats')" class="w-full md:w-auto px-3 sm:px-4 py-2 text-sm sm:text-base font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-chart-line mr-1"></i>Thống Kê Điểm</button>
+                    <button id="tab-stats" onclick="switchAdminTab('stats')" class="flex-1 md:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-chart-line mr-1"></i>Thống Kê Điểm</button>
+                    <button id="tab-users" onclick="switchAdminTab('users')" class="flex-1 md:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-crown mr-1"></i>Duyệt VIP</button>
                 </div>
             </div>
 
@@ -400,6 +401,24 @@ D. Đáp án sai"></textarea>
                     </table>
                 </div>
             </div>
+
+            <div id="panel-users" class="hidden w-full max-w-4xl mx-auto mt-6">
+                <div class="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl border border-blue-100 dark:border-gray-700 shadow-xl">
+                    <h3 class="text-xl font-bold mb-4 text-blue-900 dark:text-blue-400"><i class="fas fa-user-shield mr-2"></i>Ban Sắc Phong Đặc Quyền (Chỉ dành cho Bệ Hạ)</h3>
+                    <div class="flex flex-col sm:flex-row gap-4 mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl items-center">
+                        <input type="email" id="admin-upgrade-email" placeholder="Nhập Email của sĩ tử..." class="w-full sm:flex-grow p-3 border rounded-lg dark:bg-gray-700 dark:text-white outline-none focus:border-blue-500 font-medium text-sm sm:text-base">
+                        <select id="admin-upgrade-plan" class="w-full sm:w-auto p-3 border rounded-lg dark:bg-gray-700 dark:text-white font-bold outline-none focus:border-blue-500 text-sm sm:text-base">
+                            <option value="basic">Gói Basic (Mặc định)</option>
+                            <option value="plus">Gói Plus (20.000đ)</option>
+                            <option value="pro">Gói Pro (25.000đ)</option>
+                            <option value="ultra">Gói Ultra (50.000đ)</option>
+                        </select>
+                        <button onclick="upgradeUserPlanByEmail()" class="w-full sm:w-auto px-6 py-3 bg-blue-900 text-white rounded-lg font-bold hover:bg-blue-800 transition-all shadow-md whitespace-nowrap"><i class="fas fa-check-circle mr-1"></i>Kích Hoạt</button>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 italic">* Sau khi bệ hạ bấm Kích Hoạt, sĩ tử chỉ cần tải lại trang (F5) là đặc quyền sẽ lập tức ứng nghiệm.</p>
+                </div>
+            </div>
+
         </div>
 
         <div id="welcome-screen" class="hidden p-6 sm:p-8 py-12 sm:py-16 text-center">
@@ -522,20 +541,21 @@ D. Đáp án sai"></textarea>
         <div class="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl w-[90%] max-w-sm text-center relative shadow-2xl">
             <i class="fas fa-times absolute top-4 right-4 cursor-pointer text-gray-400 hover:text-red-500 text-xl" onclick="closePaymentModal()"></i>
             
-            <h2 class="text-2xl font-bold text-blue-900 dark:text-blue-400 mb-1">Nâng cấp <span id="pay-tier-name" class="text-yellow-500">VIP</span></h2>
-            <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">Quét mã QR qua MoMo hoặc Ngân hàng</p>
+            <h2 class="text-2xl font-bold text-blue-900 dark:text-blue-400 mb-1 font-academic">Nâng cấp <span id="pay-tier-name" class="text-yellow-500">VIP</span></h2>
+            <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">Vui lòng chuyển khoản đúng số tiền bên dưới</p>
             
             <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl mb-4 border border-gray-100 dark:border-gray-600">
                 <img id="payment-qr-img" src="" alt="Mã QR Thanh Toán" class="w-full h-auto mx-auto rounded-lg shadow-sm border border-gray-200 dark:border-gray-600">
             </div>
             
-            <div class="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg mb-6 text-sm text-blue-800 dark:text-blue-300 font-medium">
+            <div class="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg mb-4 text-sm text-blue-800 dark:text-blue-300 font-medium">
                 Số tiền: <strong id="pay-amount" class="text-lg">0đ</strong>
             </div>
 
-            <button onclick="confirmPayment()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition-all">
-                Đã Chuyển Khoản Thành Công
-            </button>
+            <p class="text-[0.8rem] text-red-600 dark:text-red-400 italic font-bold text-left leading-relaxed">
+                * Nội dung chuyển khoản ghi rõ: <span class="text-blue-600 dark:text-blue-300 underline">[Email tài khoản của bạn]</span> <br>
+                * Đặc quyền sẽ được tự động kích hoạt sau khi Quản trị viên đối soát giao dịch thành công.
+            </p>
         </div>
     </div>
 
@@ -549,11 +569,6 @@ D. Đáp án sai"></textarea>
 
         function closePaymentModal() {
             document.getElementById('payment-modal').classList.add('hidden');
-        }
-
-        function confirmPayment() {
-            alert('Hệ thống đã ghi nhận yêu cầu nâng cấp! Vui lòng chờ quản trị viên kiểm tra và kích hoạt đặc quyền VIP cho tài khoản của bạn.');
-            closePaymentModal();
         }
     </script>
 
