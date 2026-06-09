@@ -132,7 +132,6 @@ function saveProgressLocally() {
     localStorage.setItem('quizProgress_' + activeQuiz.id, JSON.stringify(progress));
 }
 
-// ... (Giữ nguyên các hàm fetchQuizzesFromFirebase, checkUrlForSharedQuiz, copyLink)
 function fetchQuizzesFromFirebase() {
     if (!auth.currentUser) return;
     db.collection("quizzes")
@@ -180,6 +179,7 @@ function setupEventListeners() {
     addEvt('btn-exit-quiz', 'click', () => {
         if (confirm("Thoát? Tiến trình làm bài sẽ được tự động lưu (Nếu là hội viên).")) {
             clearInterval(timerInterval); 
+            exitFullscreen(); // Thoát chế độ khóa màn hình
             saveProgressLocally(); // Lưu trước khi thoát
             switchScreen('subjectDetail');
         }
@@ -200,7 +200,6 @@ function setupEventListeners() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 }
 
-// ... (Giữ nguyên các hàm toggleAuthMode, handleAuthSubmit, setRole, switchStudentTab, toggleDarkMode, switchScreen)
 function toggleAuthMode(loginMode) {
     isLoginMode = loginMode;
     const title = document.getElementById('auth-title'); const btnSubmit = document.getElementById('btn-auth-submit');
@@ -394,7 +393,7 @@ function redoQuizFromHistory(quizId) {
 
 // [VIP] HÀM TẠO ĐỀ TỪ CÂU LÀM SAI (GÓI PRO & ULTRA)
 window.generateErrorCorrection = function(resultDocId) {
-    if(!checkFeatureAccess('error_correction')) return; // Check quyền
+    if(!checkFeatureAccess('error_correction')) return; 
     
     db.collection("results").doc(resultDocId).get().then((resDoc) => {
         if (resDoc.exists) {
@@ -514,12 +513,11 @@ function deleteQuiz(quizId) {
 
 // [VIP] KIỂM SOÁT LƯỢT TẠO ĐỀ THÍCH ỨNG / MOCK TEST
 function generateSubjectMockTest() {
-    // 1. Kiểm tra Lượt tạo đề dựa trên Gói Cước
     let limit = 0;
     if(currentPlan === 'basic') limit = 0;
     else if(currentPlan === 'plus') limit = 3;
     else if(currentPlan === 'pro') limit = 15;
-    else limit = 999999; // Ultra hoặc Teacher không giới hạn
+    else limit = 999999; 
 
     if(currentRole !== 'teacher' && mockGeneratedThisMonth >= limit) {
         alert(`Bạn đã dùng hết ${mockGeneratedThisMonth}/${limit} lượt tạo đề trong tháng này. Vui lòng nâng cấp gói cước cao hơn để tiếp tục cày cuốc!`);
@@ -560,7 +558,6 @@ function generateSubjectMockTest() {
         authorId: auth.currentUser ? auth.currentUser.uid : "GUEST"
     };
 
-    // 2. Trừ lượt tạo đề sau khi thành công
     if (currentRole !== 'teacher') {
         mockGeneratedThisMonth++;
         db.collection("users").doc(auth.currentUser.uid).update({mockGeneratedThisMonth: mockGeneratedThisMonth});
@@ -590,7 +587,6 @@ function startQuiz(practice) {
     studentName = nameInput; isPracticeMode = practice; isReviewMode = false; tabSwitchCount = 0;
     activeQuiz = JSON.parse(JSON.stringify(activeQuiz));
 
-    // [VIP] KIỂM TRA AUTOSAVE TRƯỚC KHI TRỘN BÀI MỚI
     let shouldLoadSaved = false;
     if (checkFeatureAccess('autosave', true)) {
         const savedData = localStorage.getItem('quizProgress_' + activeQuiz.id);
@@ -607,7 +603,6 @@ function startQuiz(practice) {
         }
     }
 
-    // Nếu không load bài cũ, tiến hành trộn đề
     if (!shouldLoadSaved) {
         let groupedQuestions = []; let currentPassage = null; let currentGroup = [];
         activeQuiz.questions.forEach(q => {
@@ -662,15 +657,18 @@ function startQuiz(practice) {
     const qTitle = document.getElementById('quiz-header-title'); if(qTitle) qTitle.innerText = activeQuiz.title;
     const eBar = document.getElementById('energy-bar-container'); if(eBar) eBar.classList.remove('hidden');
 
-    // [VIP] THIẾT QUÂN LUẬT (ÉP FULL-SCREEN KHI THI THỬ)
-    if (!isPracticeMode) {
-        const elem = document.documentElement;
-        if (elem.requestFullscreen) { elem.requestFullscreen().catch(err => console.log("Lỗi bung Full-screen: ", err)); }
-    }
-
     switchScreen('quiz');
     loadQuestion(0);
-    startTimer();
+
+    // [VIP] THIẾT QUÂN LUẬT (ÉP FULL-SCREEN KHI THI THỬ) VÀ CẮT THỜI GIAN KHI LUYỆN TẬP
+    if (!isPracticeMode) {
+        enterFullscreen();
+        startTimer();
+    } else {
+        const timeText = document.getElementById('time-text');
+        if (timeText) timeText.innerText = "Vô hạn";
+        if (eBar) eBar.classList.add('hidden');
+    }
 }
 
 function setFilter(type, btnElement) {
@@ -724,7 +722,7 @@ function toggleFlag() {
     flaggedQuestions[currentQuestionIndex] = !flaggedQuestions[currentQuestionIndex];
     loadQuestion(currentQuestionIndex); 
     if (currentFilter === 'flagged') renderNavigator(); 
-    saveProgressLocally(); // Lưu tự động
+    saveProgressLocally(); 
 }
 
 // --- HÀM RENDER TRƯỜNG THI ---
@@ -800,7 +798,6 @@ function loadQuestion(index) {
                     saveProgressLocally(); 
                 };
 
-                // [VIP] SỰ KIỆN GẠCH MỜ ĐÁP ÁN (CHUỘT PHẢI)
                 btn.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
                     if(!checkFeatureAccess('crossout')) return;
@@ -835,7 +832,6 @@ function loadQuestion(index) {
     const bNext = document.getElementById('btn-next'); if(bNext) bNext.classList.toggle('hidden', index === activeQuiz.questions.length - 1);
     const bSub = document.getElementById('btn-submit'); if(bSub) bSub.classList.toggle('hidden', index !== activeQuiz.questions.length - 1 || isReviewMode);
 
-    // [VIP] KIỂM TRA PHONG ẤN GIẢI THÍCH CHI TIẾT
     const explanationBox = document.getElementById('explanation-box');
     const isAnswerRevealed = isReviewMode || (isPracticeMode && userAnswers[index] !== null);
     if (explanationBox) {
@@ -843,11 +839,9 @@ function loadQuestion(index) {
         if (isAnswerRevealed && q.explanation && q.explanation !== "Tạo tự động từ dữ liệu văn bản." && q.explanation !== "Chưa có giải thích.") {
             
             if(!checkFeatureAccess('explanation', true)) {
-                // Nếu chưa đủ level, hiển thị nút dụ dỗ nạp tiền
                 if(eText) eText.innerHTML = `<span class="text-gray-500 italic"><i class="fas fa-lock"></i> Lời giải thích đã bị khóa trong Gói Basic. <a href="#" onclick="switchScreen('pricing')" class="text-blue-600 font-bold underline">Nâng Cấp Gói Cước</a> để mở khóa.</span>`;
                 explanationBox.classList.remove('hidden');
             } else {
-                // Đủ level -> cho xem bình thường
                 if(eText) eText.innerText = q.explanation;
                 explanationBox.classList.remove('hidden');
             }
@@ -890,7 +884,7 @@ function submitQuiz(force) {
     const timeUsed = activeQuiz.timeLimit - (timeLeft > 0 ? timeLeft : 0);
     const minimumTime = Math.floor(activeQuiz.timeLimit / 2);
 
-    if (!force && timeUsed < minimumTime) {
+    if (!force && timeUsed < minimumTime && !isPracticeMode) {
         alert("Cảnh báo từ hệ thống: Yêu cầu nộp bài bị từ chối. Thời gian làm bài chưa trôi quá 50%");
         return; 
     }
@@ -898,6 +892,9 @@ function submitQuiz(force) {
     if (force || confirm("Bạn có chắc chắn muốn nộp bài làm hiện tại không?")) {
         clearInterval(timerInterval);
         
+        // [VIP] TỰ ĐỘNG THOÁT TOÀN MÀN HÌNH KHI NỘP BÀI
+        exitFullscreen();
+
         // Xóa tiến độ làm bài tạm lưu sau khi nộp
         localStorage.removeItem('quizProgress_' + activeQuiz.id);
 
@@ -909,13 +906,15 @@ function submitQuiz(force) {
         switchScreen('result');
         const sc = document.getElementById('result-score'); if(sc) sc.innerText = `${correctCount}/${activeQuiz.questions.length}`;
         const pc = document.getElementById('result-percent'); if(pc) pc.innerText = `${percent}%`;
-        const tc = document.getElementById('result-time'); if(tc) tc.innerText = timeUsedStr;
+        
+        const tc = document.getElementById('result-time'); 
+        if(tc) tc.innerText = isPracticeMode ? "Không giới hạn" : timeUsedStr;
 
         const scorePayload = {
             quizId: activeQuiz.id, quizTitle: activeQuiz.title, category: activeQuiz.category,
             studentName: studentName, email: auth.currentUser ? auth.currentUser.email : "Ẩn danh",
             uid: auth.currentUser ? auth.currentUser.uid : null,
-            score: `${correctCount}/${activeQuiz.questions.length}`, percentage: percent, timeUsed: timeUsedStr,
+            score: `${correctCount}/${activeQuiz.questions.length}`, percentage: percent, timeUsed: isPracticeMode ? "Luyện tập" : timeUsedStr,
             teacherId: activeQuiz.authorId || null, 
             userAnswers: userAnswers, quizQuestionsSnapshot: activeQuiz.questions,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -1160,4 +1159,71 @@ window.applyHighlight = function(colorHex) {
     if (questionEl) { activeQuiz.questions[currentQuestionIndex].content = questionEl.innerHTML; }
     
     selection.removeAllRanges(); const palette = document.getElementById('highlight-palette'); if (palette) palette.classList.add('hidden');
+}
+
+// =========================================================================
+// [VIP] TRẬN PHÁP THIẾT QUÂN LUẬT: KHÓA TOÀN MÀN HÌNH
+// =========================================================================
+
+function enterFullscreen() {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) { elem.requestFullscreen().catch(err => console.log(err)); }
+    else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); } // Safari
+    else if (elem.msRequestFullscreen) { elem.msRequestFullscreen(); } // IE11
+}
+
+function exitFullscreen() {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+        if (document.exitFullscreen) { document.exitFullscreen(); }
+        else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
+    }
+}
+
+// Lắng nghe sự kiện thoát Full-screen của trình duyệt
+document.addEventListener('fullscreenchange', handleFullscreenChange);
+document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
+function handleFullscreenChange() {
+    // Chỉ kích hoạt khóa nếu ĐANG ở chế độ THI THỬ (không phải luyện tập/xem lại)
+    if (!isPracticeMode && !isReviewMode && screens.quiz && !screens.quiz.classList.contains('hidden')) {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            // Sĩ tử vừa thoát toàn màn hình -> Giáng đòn Phong ấn!
+            showFullscreenLock();
+        }
+    }
+}
+
+function showFullscreenLock() {
+    let lockOverlay = document.getElementById('fullscreen-lock-overlay');
+    
+    // Nếu chưa có màn khóa thì tạo mới
+    if (!lockOverlay) {
+        lockOverlay = document.createElement('div');
+        lockOverlay.id = 'fullscreen-lock-overlay';
+        lockOverlay.className = 'fixed inset-0 bg-gray-900/95 z-[9999] flex flex-col items-center justify-center backdrop-blur-md';
+        lockOverlay.innerHTML = `
+            <i class="fas fa-user-shield text-red-500 text-6xl mb-6 animate-bounce"></i>
+            <h2 class="font-academic text-3xl sm:text-4xl font-bold text-white mb-3 text-center">CẢNH BÁO THIẾT QUÂN LUẬT</h2>
+            <p class="text-gray-300 mb-8 text-center max-w-lg text-sm sm:text-base px-4">
+                Ngươi đã thoát chế độ toàn màn hình trong lúc thi. Để đảm bảo tính minh bạch, bài thi đã bị tạm khóa. Thời gian vẫn đang trôi qua!
+            </p>
+            <button id="btn-return-fullscreen" class="px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg transition-all text-lg flex items-center gap-2">
+                <i class="fas fa-expand"></i> Quay Lại Bài Thi Ngay
+            </button>
+        `;
+        document.body.appendChild(lockOverlay);
+        
+        // Sự kiện khi bấm nút quay lại
+        document.getElementById('btn-return-fullscreen').addEventListener('click', () => {
+            enterFullscreen();
+            // Đợi nửa giây để trình duyệt kịp bung full-screen rồi mới cất màn khóa
+            setTimeout(() => {
+                if (document.fullscreenElement || document.webkitFullscreenElement) {
+                    lockOverlay.classList.add('hidden');
+                }
+            }, 500);
+        });
+    }
+    
+    lockOverlay.classList.remove('hidden');
 }
