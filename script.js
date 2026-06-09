@@ -84,6 +84,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         lastMockMonth = currentMonth;
                         db.collection("users").doc(user.uid).update({mockGeneratedThisMonth: 0, lastMockMonth: currentMonth});
                     }
+                    
+                    // ---> [VIP] ĐÚC BADGE KHI SĨ TỬ CŨ ĐĂNG NHẬP <---
+                    if (typeof updatePlanBadge === 'function') updatePlanBadge();
+
                 } else {
                     // Dân thường mới đăng ký sẽ nhận gói Basic mặc định và được lưu Email
                     db.collection("users").doc(user.uid).set({
@@ -93,6 +97,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         lastMockMonth: new Date().getMonth()
                     });
                     currentPlan = 'basic';
+                    
+                    // ---> [VIP] ĐÚC BADGE KHI SĨ TỬ MỚI TẠO TÀI KHOẢN <---
+                    if (typeof updatePlanBadge === 'function') updatePlanBadge();
                 }
             });
 
@@ -1290,3 +1297,30 @@ function showFullscreenLock() {
     
     lockOverlay.classList.remove('hidden');
 }
+
+// =========================================================================
+// [VIP] HỆ THỐNG ĐÚC BADGE HỘI VIÊN
+// =========================================================================
+function updatePlanBadge() {
+    const homeBadge = document.getElementById('home-plan-badge');
+    const quizBadge = document.getElementById('quiz-plan-badge');
+    let badgeHTML = '';
+    
+    switch(currentPlan) {
+        case 'plus':
+            badgeHTML = `<span class="badge-pill badge-bronze" title="Gói Plus (Đồng)"><i class="fas fa-medal mr-1.5"></i> Plus</span>`;
+            break;
+        case 'pro':
+            badgeHTML = `<span class="badge-pill badge-silver" title="Gói Pro (Bạc)"><i class="fas fa-shield-alt mr-1.5"></i> Pro</span>`;
+            break;
+        case 'ultra':
+            badgeHTML = `<span class="badge-pill badge-gold" title="Gói Ultra (Vàng)"><i class="fas fa-crown mr-1.5"></i> Ultra</span>`;
+            break;
+        default:
+            badgeHTML = `<span class="badge-pill badge-basic" title="Gói Mặc Định"><i class="fas fa-user mr-1.5"></i> Basic</span>`;
+    }
+
+    if (homeBadge) homeBadge.innerHTML = badgeHTML;
+    if (quizBadge) quizBadge.innerHTML = badgeHTML;
+}
+
