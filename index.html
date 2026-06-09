@@ -88,6 +88,47 @@
             background-size: 80px 80px; animation: golden-rain 8s linear infinite; opacity: 0.25; pointer-events: none;
         }
         @keyframes golden-rain { 0% { background-position: 0 0; } 100% { background-position: 40px 160px; } }
+
+        /* ========================================= */
+        /* [VIP] BADGE HỘI VIÊN - VIÊN THUỐC PHÁT SÁNG */
+        /* ========================================= */
+        @keyframes light-sweep {
+            0% { left: -100%; }
+            50%, 100% { left: 200%; }
+        }
+        .badge-pill {
+            position: relative;
+            overflow: hidden;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 14px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            letter-spacing: 0.5px;
+            transition: transform 0.2s;
+        }
+        .badge-pill:hover {
+            transform: scale(1.05);
+        }
+        .badge-pill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0) 100%);
+            transform: skewX(-20deg);
+            animation: light-sweep 3s infinite;
+        }
+        .badge-bronze { background: linear-gradient(135deg, #cd7f32, #8b5a2b); color: white; border: 1px solid #da8a3d; }
+        .badge-silver { background: linear-gradient(135deg, #e5e7eb, #9ca3af); color: #1f2937; border: 1px solid #f3f4f6; }
+        .badge-gold { background: linear-gradient(135deg, #fbbf24, #d97706); color: white; border: 1px solid #fcd34d; text-shadow: 1px 1px 1px rgba(0,0,0,0.2); }
+        .badge-basic { background: #9ca3af; color: white; border: 1px solid #d1d5db; }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-2 sm:p-4 transition-colors duration-300 dark:bg-gray-900">
@@ -128,9 +169,13 @@
 
         <div id="home-screen" class="hidden p-4 sm:p-8 relative">
             <div class="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
-                <button id="btn-logout" class="w-full lg:w-auto justify-center flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-lg font-bold hover:bg-gray-200 transition-colors shadow-sm">
-                    <i class="fas fa-sign-out-alt"></i> Đăng xuất
-                </button>
+                
+                <div class="flex items-center gap-3 w-full lg:w-auto">
+                    <button id="btn-logout" class="w-full lg:w-auto justify-center flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-lg font-bold hover:bg-gray-200 transition-colors shadow-sm">
+                        <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                    </button>
+                    <div id="home-plan-badge" class="shrink-0"></div>
+                </div>
 
                 <div class="bg-gray-100 dark:bg-gray-700 p-1 rounded-xl flex w-full lg:w-auto shadow-inner">
                     <button id="role-student" class="flex-1 lg:flex-none px-4 sm:px-8 py-2.5 rounded-lg font-bold transition-all text-gray-500 hover:text-gray-700 dark:text-gray-400">
@@ -443,7 +488,10 @@ D. Đáp án sai"></textarea>
                             </button>
                             <div>
                                 <h2 id="quiz-header-title" class="font-academic text-lg sm:text-2xl text-blue-900 dark:text-white font-bold mb-0.5 sm:mb-1 line-clamp-2">Đang tải đề thi...</h2>
-                                <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">Thí sinh: <span id="display-student-name" class="font-semibold text-blue-900 dark:text-blue-400"></span></p>
+                                <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm flex items-center gap-2 mt-1">
+                                    Thí sinh: <span id="display-student-name" class="font-semibold text-blue-900 dark:text-blue-400"></span> 
+                                    <span id="quiz-plan-badge"></span>
+                                </p>
                             </div>
                         </div>
                         <div class="text-right shrink-0">
