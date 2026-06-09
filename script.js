@@ -796,10 +796,22 @@ function loadQuestion(index) {
         optionsContainer.innerHTML = ''; 
         const labels = ['A', 'B', 'C', 'D'];
         const isAnswerRevealed = isReviewMode || (isPracticeMode && userAnswers[index] !== null);
+        
+        // [VIP VÁ LỖ HỔNG] Rà soát quyền xem giải thích trước khi vẽ nút
+        const hasExplanationAccess = checkFeatureAccess('explanation', true);
 
         q.options.forEach((optText, optIndex) => {
             const btn = document.createElement('button');
             let optExpText = (q.optionExplanations && q.optionExplanations[optIndex]) ? q.optionExplanations[optIndex] : "";
+            
+            // Nếu là dân thường (không có quyền), lập tức xóa mờ giải thích bên trong nút
+            if (!hasExplanationAccess) {
+                optExpText = ""; 
+            }
+
+            let expBlock = ''; let labelBg = 'bg-gray-100'; let labelText = 'text-gray-500';
+            let btnBorder = 'border-gray-200 dark:border-gray-600'; let btnBg = 'bg-white dark:bg-gray-800';
+            // ... (Phần bên dưới giữ nguyên không đổi)
             let expBlock = ''; let labelBg = 'bg-gray-100'; let labelText = 'text-gray-500';
             let btnBorder = 'border-gray-200 dark:border-gray-600'; let btnBg = 'bg-white dark:bg-gray-800';
 
