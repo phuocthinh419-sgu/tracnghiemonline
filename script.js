@@ -12,6 +12,16 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
+// =========================================================================
+// [VIP] NGỌC TỶ TRUYỀN QUỐC (MASTER ADMIN)
+// =========================================================================
+// Bệ hạ hãy dán UID tài khoản của mình vào đây (Bấm F12 -> Console -> Gõ: auth.currentUser.uid)
+const MASTER_ADMIN_UID = "DÁN_UID_CỦA_BỆ_HẠ_VÀO_ĐÂY";
+
+function checkIsMasterAdmin() {
+    return auth.currentUser && auth.currentUser.uid === MASTER_ADMIN_UID;
+}
+
 // --- 2. BIẾN TOÀN CỤC CỦA HỆ THỐNG ---
 let quizDatabase = []; 
 let activeQuiz = null; 
@@ -42,7 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
         quiz: document.getElementById('quiz-screen'),
         result: document.getElementById('result-screen'),
         admin: document.getElementById('admin-zone'),
-        pricing: document.getElementById('pricing-screen') // Thêm màn hình Bảng giá
+        pricing: document.getElementById('pricing-screen')
     };
 
     setupEventListeners(); 
@@ -57,12 +67,15 @@ document.addEventListener("DOMContentLoaded", () => {
             setRole('student');
             fetchQuizzesFromFirebase(); 
 
-            // [VIP] NẠP ẤN TÍN TÀI KHOẢN (PLAN) TỪ FIREBASE
+            // [VIP] NẠP ẤN TÍN TÀI KHOẢN (PLAN) TỪ FIREBASE VÀ BẮT BUỘC LƯU EMAIL
             db.collection("users").doc(user.uid).get().then(doc => {
                 if(doc.exists) {
                     currentPlan = doc.data().plan || 'basic';
                     mockGeneratedThisMonth = doc.data().mockGeneratedThisMonth || 0;
                     lastMockMonth = doc.data().lastMockMonth || null;
+                    
+                    // Cập nhật lại Email đề phòng sĩ tử đổi Email
+                    db.collection("users").doc(user.uid).update({ email: user.email.toLowerCase() });
                     
                     // Reset bộ đếm nếu đã qua tháng mới
                     let currentMonth = new Date().getMonth();
@@ -72,8 +85,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         db.collection("users").doc(user.uid).update({mockGeneratedThisMonth: 0, lastMockMonth: currentMonth});
                     }
                 } else {
-                    // Dân thường mới đăng ký sẽ nhận gói Basic mặc định
+                    // Dân thường mới đăng ký sẽ nhận gói Basic mặc định và được lưu Email
                     db.collection("users").doc(user.uid).set({
+                        email: user.email.toLowerCase(), // Lưu Email để Bệ hạ tìm kiếm
                         plan: 'basic',
                         mockGeneratedThisMonth: 0,
                         lastMockMonth: new Date().getMonth()
@@ -98,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // --- [VIP] TRẬN PHÁP KIỂM TRA QUYỀN LỢI ĐĂNG KÝ ---
 function checkFeatureAccess(feature, silent = false) {
-    if (currentRole === 'teacher') return true; // Quan tri viên (Giáo viên) xài full tính năng
+    if (checkIsMasterAdmin()) return true; // Bệ hạ dùng full toàn bộ chức năng, không giới hạn
 
     const plans = {
         'basic': ['highlight', 'fullscreen'],
@@ -239,8 +253,8 @@ function setRole(role) {
     const btnStudent = document.getElementById('role-student'); const btnTeacher = document.getElementById('role-teacher');
     const btnAdmin = document.getElementById('btn-show-admin'); const studentTabs = document.getElementById('student-tabs');
 
-    if(btnStudent) btnStudent.className = 'flex-1 md:flex-none px-4 sm:px-8 py-2.5 rounded-lg font-bold transition-all text-gray-500 hover:text-gray-700 dark:text-gray-400';
-    if(btnTeacher) btnTeacher.className = 'flex-1 md:flex-none px-4 sm:px-8 py-2.5 rounded-lg font-bold transition-all text-gray-500 hover:text-gray-700 dark:text-gray-400';
+    if(btnStudent) btnStudent.className = 'flex-1 lg:flex-none px-4 sm:px-8 py-2.5 rounded-lg font-bold transition-all text-gray-500 hover:text-gray-700 dark:text-gray-400';
+    if(btnTeacher) btnTeacher.className = 'flex-1 lg:flex-none px-4 sm:px-8 py-2.5 rounded-lg font-bold transition-all text-gray-500 hover:text-gray-700 dark:text-gray-400';
 
     if (role === 'student') {
         if(btnStudent) btnStudent.classList.add('bg-white', 'shadow-md', 'text-blue-900', 'dark:bg-gray-800', 'dark:text-white');
@@ -249,7 +263,18 @@ function setRole(role) {
         switchStudentTab('browse'); 
     } else {
         if(btnTeacher) btnTeacher.classList.add('bg-white', 'shadow-md', 'text-blue-900', 'dark:bg-gray-800', 'dark:text-white');
-        if(btnAdmin) btnAdmin.classList.remove('hidden');
+        
+        // [VIP] CHỈ HIỆN NÚT QUẢN TRỊ NẾU ĐÚNG LÀ BỆ HẠ
+        if(btnAdmin) {
+            if (checkIsMasterAdmin()) {
+                btnAdmin.classList.remove('hidden');
+            } else {
+                btnAdmin.classList.add('hidden');
+                alert("To gan! Bạn không có quyền truy cập vào Khu Vực Quản Trị của Hệ thống!");
+                setTimeout(() => setRole('student'), 100); // Đuổi về làm học sinh ngay lập tức
+                return;
+            }
+        }
         if (studentTabs) studentTabs.classList.replace('flex', 'hidden');
     }
     if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList(); 
@@ -278,6 +303,12 @@ function toggleDarkMode() {
 }
 
 function switchScreen(screenName) {
+    // [VIP] CẢN BƯỚC KẺ GIAN DÙNG LỆNH JAVASCRIPT ĐỂ XUYÊN THỦNG VÀO ADMIN ZONE
+    if (screenName === 'admin' && !checkIsMasterAdmin()) {
+        alert("Cảnh báo: Bạn không có quyền truy cập Nội Cung!");
+        return;
+    }
+
     Object.values(screens).forEach(screen => {
         if(screen) { screen.classList.add('hidden'); screen.classList.remove('flex'); }
     });
@@ -481,7 +512,7 @@ function renderSubjectDetailView(category) {
             '<span class="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold rounded-full border dark:border-red-800">Đề Kiểm Tra</span>' : 
             '<span class="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold rounded-full border dark:border-gray-500">Đề bài lẻ</span>';
 
-        if (currentRole === 'teacher') {
+        if (checkIsMasterAdmin()) {
             const shareLink = `${window.location.origin}${window.location.pathname}?quiz=${quiz.id}`;
             actionBtnsHTML = `
                 <button onclick="copyLink('${shareLink}')" class="absolute top-4 right-14 text-gray-400 hover:text-blue-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Copy Link"><i class="fas fa-link"></i></button>
@@ -519,7 +550,7 @@ function generateSubjectMockTest() {
     else if(currentPlan === 'pro') limit = 15;
     else limit = 999999; 
 
-    if(currentRole !== 'teacher' && mockGeneratedThisMonth >= limit) {
+    if(!checkIsMasterAdmin() && mockGeneratedThisMonth >= limit) {
         alert(`Bạn đã dùng hết ${mockGeneratedThisMonth}/${limit} lượt tạo đề trong tháng này. Vui lòng nâng cấp gói cước cao hơn để tiếp tục cày cuốc!`);
         switchScreen('pricing');
         return;
@@ -558,7 +589,7 @@ function generateSubjectMockTest() {
         authorId: auth.currentUser ? auth.currentUser.uid : "GUEST"
     };
 
-    if (currentRole !== 'teacher') {
+    if (!checkIsMasterAdmin()) {
         mockGeneratedThisMonth++;
         db.collection("users").doc(auth.currentUser.uid).update({mockGeneratedThisMonth: mockGeneratedThisMonth});
     }
@@ -936,13 +967,23 @@ function reviewQuiz() {
 
 // --- 9. ADMIN ZONE ---
 function switchAdminTab(tab) {
-    const pSmart = document.getElementById('panel-smart'); const pMan = document.getElementById('panel-manual'); const pStat = document.getElementById('panel-stats');
-    if (pSmart) pSmart.style.display = tab === 'smart' ? 'block' : 'none'; if (pMan) pMan.style.display = tab === 'manual' ? 'block' : 'none'; if (pStat) pStat.style.display = tab === 'stats' ? 'block' : 'none';
-    const tSmart = document.getElementById('tab-smart'); const tMan = document.getElementById('tab-manual'); const tStat = document.getElementById('tab-stats');
+    const panels = ['panel-smart', 'panel-manual', 'panel-stats', 'panel-users'];
+    panels.forEach(p => {
+        const el = document.getElementById(p);
+        if(el) el.style.display = p === 'panel-' + tab ? 'block' : 'none';
+    });
+    
+    // Cập nhật màu sắc nút tab
+    const tabs = ['smart', 'manual', 'stats', 'users'];
+    tabs.forEach(t => {
+        const btn = document.getElementById('tab-' + t);
+        if(btn) {
+            btn.className = t === tab ? 
+                "flex-1 md:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base font-bold rounded-lg bg-blue-100 text-blue-700" : 
+                "flex-1 md:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700";
+        }
+    });
 
-    if(tSmart) tSmart.className = tab === 'smart' ? "flex-1 md:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base font-bold rounded-lg bg-blue-100 text-blue-700" : "flex-1 md:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700";
-    if(tMan) tMan.className = tab === 'manual' ? "flex-1 md:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base font-bold rounded-lg bg-blue-100 text-blue-700" : "flex-1 md:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700";
-    if(tStat) tStat.className = tab === 'stats' ? "w-full md:w-auto px-3 sm:px-4 py-2 text-sm sm:text-base font-bold rounded-lg bg-blue-100 text-blue-700" : "w-full md:w-auto px-3 sm:px-4 py-2 text-sm sm:text-base font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700";
     if (tab === 'stats') fetchResultsFromFirebase();
 }
 
@@ -1159,6 +1200,32 @@ window.applyHighlight = function(colorHex) {
     if (questionEl) { activeQuiz.questions[currentQuestionIndex].content = questionEl.innerHTML; }
     
     selection.removeAllRanges(); const palette = document.getElementById('highlight-palette'); if (palette) palette.classList.add('hidden');
+}
+
+// =========================================================================
+// [VIP] HÀM BAN SẮC PHONG (NÂNG CẤP VIP TỪ GIAO DIỆN QUẢN TRỊ)
+// =========================================================================
+window.upgradeUserPlanByEmail = function() {
+    if (!checkIsMasterAdmin()) {
+        alert("To gan! Kẻ mạo danh không có quyền sử dụng Ngọc Tỷ!");
+        return;
+    }
+
+    const email = document.getElementById('admin-upgrade-email').value.trim().toLowerCase();
+    const newPlan = document.getElementById('admin-upgrade-plan').value;
+
+    if (!email) return alert("Bệ hạ chưa nhập Email của sĩ tử!");
+
+    db.collection("users").where("email", "==", email).get().then(snapshot => {
+        if (snapshot.empty) return alert("Bẩm bệ hạ, không tìm thấy sĩ tử nào mang Email này trong hệ thống!");
+        
+        snapshot.forEach(doc => {
+            doc.ref.update({ plan: newPlan }).then(() => {
+                alert(`Thánh chỉ đã ban! Tài khoản ${email} đã được thăng cấp lên Gói ${newPlan.toUpperCase()}.`);
+                document.getElementById('admin-upgrade-email').value = ""; // Xóa trắng ô nhập
+            });
+        });
+    }).catch(err => alert("Có tà khí can nhiễu đường truyền: " + err.message));
 }
 
 // =========================================================================
