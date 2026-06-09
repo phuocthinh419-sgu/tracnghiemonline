@@ -263,18 +263,8 @@ function setRole(role) {
         switchStudentTab('browse'); 
     } else {
         if(btnTeacher) btnTeacher.classList.add('bg-white', 'shadow-md', 'text-blue-900', 'dark:bg-gray-800', 'dark:text-white');
-        
-        // [VIP] CHỈ HIỆN NÚT QUẢN TRỊ NẾU ĐÚNG LÀ BỆ HẠ
-        if(btnAdmin) {
-            if (checkIsMasterAdmin()) {
-                btnAdmin.classList.remove('hidden');
-            } else {
-                btnAdmin.classList.add('hidden');
-                alert("To gan! Bạn không có quyền truy cập vào Khu Vực Quản Trị của Hệ thống!");
-                setTimeout(() => setRole('student'), 100); // Đuổi về làm học sinh ngay lập tức
-                return;
-            }
-        }
+        // Cho phép TẤT CẢ mọi người thấy nút Quản Trị để tự soạn đề
+        if(btnAdmin) btnAdmin.classList.remove('hidden');
         if (studentTabs) studentTabs.classList.replace('flex', 'hidden');
     }
     if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList(); 
@@ -303,12 +293,6 @@ function toggleDarkMode() {
 }
 
 function switchScreen(screenName) {
-    // [VIP] CẢN BƯỚC KẺ GIAN DÙNG LỆNH JAVASCRIPT ĐỂ XUYÊN THỦNG VÀO ADMIN ZONE
-    if (screenName === 'admin' && !checkIsMasterAdmin()) {
-        alert("Cảnh báo: Bạn không có quyền truy cập Nội Cung!");
-        return;
-    }
-
     Object.values(screens).forEach(screen => {
         if(screen) { screen.classList.add('hidden'); screen.classList.remove('flex'); }
     });
@@ -322,6 +306,18 @@ function switchScreen(screenName) {
         switchAdminTab('smart');
         const mc = document.getElementById('manual-questions-container'); if(mc) mc.innerHTML = '';
         const mt = document.getElementById('manual-test-only'); if(mt) mt.checked = false;
+        
+        // [VIP] CHỈ ĐÚNG BỆ HẠ (MASTER ADMIN) MỚI ĐƯỢC THẤY NÚT DUYỆT VIP
+        const tabUsers = document.getElementById('tab-users');
+        if (tabUsers) {
+            if (typeof checkIsMasterAdmin === 'function' && checkIsMasterAdmin()) {
+                tabUsers.classList.remove('hidden');
+                tabUsers.classList.add('flex-1', 'md:flex-none'); // Hiện nút
+            } else {
+                tabUsers.classList.add('hidden');
+                tabUsers.classList.remove('flex-1', 'md:flex-none'); // Tàng hình với kẻ khác
+            }
+        }
     }
 }
 
