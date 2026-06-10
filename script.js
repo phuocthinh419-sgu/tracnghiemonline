@@ -1274,9 +1274,9 @@ function showFullscreenLock() {
         lockOverlay.className = 'fixed inset-0 bg-gray-900/95 z-[9999] flex flex-col items-center justify-center backdrop-blur-md';
         lockOverlay.innerHTML = `
             <i class="fas fa-user-shield text-red-500 text-6xl mb-6 animate-bounce"></i>
-            <h2 class="font-academic text-3xl sm:text-4xl font-bold text-white mb-3 text-center">CẢNH BÁO THIẾT QUÂN LUẬT</h2>
+            <h2 class="font-academic text-3xl sm:text-4xl font-bold text-white mb-3 text-center">CẢNH BÁO</h2>
             <p class="text-gray-300 mb-8 text-center max-w-lg text-sm sm:text-base px-4">
-                Ngươi đã thoát chế độ toàn màn hình trong lúc thi. Để đảm bảo tính minh bạch, bài thi đã bị tạm khóa. Thời gian vẫn đang trôi qua!
+                Bạn đã thoát chế độ toàn màn hình trong lúc thi. Để đảm bảo tính minh bạch, bài thi đã bị tạm khóa. Thời gian vẫn đang trôi qua!
             </p>
             <button id="btn-return-fullscreen" class="px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg transition-all text-lg flex items-center gap-2">
                 <i class="fas fa-expand"></i> Quay Lại Bài Thi Ngay
