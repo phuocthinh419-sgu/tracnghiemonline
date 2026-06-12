@@ -1036,7 +1036,9 @@ function processSmartText() {
         if (trimmed.match(/^\[Bài đọc\]/i)) { currentPassage = trimmed.replace(/^\[Bài đọc\]/i, '').trim(); } 
         else if (trimmed.match(/^\[Hết bài đọc\]/i)) { currentPassage = ""; } 
         else if (trimmed.match(/^Câu \d+[:.]/i)) {
-            let parseRegex = /([\s\S]*?)(?:^|\s+)([*#]*)A\s*[.)\-:,/]([\s\S]*?)(?:^|\s+)([*#]*)B\s*[.)\-:,/]([\s\S]*?)(?:^|\s+)([*#]*)C\s*[.)\-:,/]([\s\S]*?)(?:^|\s+)([*#]*)D\s*[.)\-:,/]([\s\S]*)/i;
+            
+            // [VIP VÁ LỖI]: Đã xóa dấu phẩy (,) khỏi cụm [.)\-:/] để không bị lú với dấu phẩy trong câu hỏi
+            let parseRegex = /([\s\S]*?)(?:^|\s+)([*#]*)[Aa]\s*[.)\-:/]([\s\S]*?)(?:^|\s+)([*#]*)[Bb]\s*[.)\-:/]([\s\S]*?)(?:^|\s+)([*#]*)[Cc]\s*[.)\-:/]([\s\S]*?)(?:^|\s+)([*#]*)[Dd]\s*[.)\-:/]([\s\S]*)/i;
             let match = trimmed.match(parseRegex);
 
             if (match) {
