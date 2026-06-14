@@ -1344,47 +1344,6 @@ window.generateCategoryErrorMock = function() {
     });
 }
 
-// TẠO ĐỀ CÂU SAI TẤT CẢ MÔN (GÓI ULTRA)
-window.generateGlobalErrorMock = function() {
-    if(!checkFeatureAccess('infinite_mock')) return; 
-    showToast("Đang rà soát toàn bộ lịch sử học tập...", false);
-
-    db.collection("results").where("uid", "==", auth.currentUser.uid).get().then(snapshot => {
-        if(snapshot.empty) return showToast("Tàng Kinh Các chưa ghi nhận lịch sử luyện tập nào của sĩ tử!");
-        
-        let uniqueWrong = {};
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if(data.quizQuestionsSnapshot && data.userAnswers) {
-                data.userAnswers.forEach((ans, idx) => {
-                    if (ans === null || ans !== data.quizQuestionsSnapshot[idx].correctAnswer) {
-                        let q = data.quizQuestionsSnapshot[idx];
-                        uniqueWrong[q.content] = q;
-                    }
-                });
-            }
-        });
-
-        let wrongQuestions = Object.values(uniqueWrong);
-        if(wrongQuestions.length === 0) return showToast("Sĩ tử bách chiến bách thắng, không hề có câu sai nào trong lịch sử!", false);
-
-        for (let i = wrongQuestions.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [wrongQuestions[i], wrongQuestions[j]] = [wrongQuestions[j], wrongQuestions[i]];
-        }
-
-        activeQuiz = {
-            id: "MOCK-ULTRA-ERR-" + Date.now(),
-            title: `[Siêu Cấp] Ôn Tập Toàn Diện Mọi Lỗ Hổng`,
-            category: "Tổng Hợp Toàn Thư",
-            timeLimit: Math.min(wrongQuestions.length, 50) * 60, 
-            questions: wrongQuestions.slice(0, 50),
-            isTestOnly: false, authorId: auth.currentUser.uid
-        };
-        prepareWelcomeScreen();
-    });
-}
-
 // VÁ LỖ LỖI CỦA kết quả ĐÃ LÀM (Vá câu sai bài cụ thể)
 window.generateErrorCorrection = function(resultDocId) {
     if(!checkFeatureAccess('error_correction')) return; 
