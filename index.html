@@ -111,19 +111,11 @@
             letter-spacing: 0.5px;
             transition: transform 0.2s;
         }
-        .badge-pill:hover {
-            transform: scale(1.05);
-        }
+        .badge-pill:hover { transform: scale(1.05); }
         .badge-pill::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 50%;
-            height: 100%;
+            content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
             background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0) 100%);
-            transform: skewX(-20deg);
-            animation: light-sweep 3s infinite;
+            transform: skewX(-20deg); animation: light-sweep 3s infinite;
         }
         .badge-bronze { background: linear-gradient(135deg, #cd7f32, #8b5a2b); color: white; border: 1px solid #da8a3d; }
         .badge-silver { background: linear-gradient(135deg, #e5e7eb, #9ca3af); color: #1f2937; border: 1px solid #f3f4f6; }
@@ -132,6 +124,11 @@
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-2 sm:p-4 transition-colors duration-300 dark:bg-gray-900">
+
+    <div id="system-toast" class="fixed top-[-100px] left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-xl shadow-2xl font-bold z-[9999] transition-all duration-300 flex items-center gap-3 opacity-0 pointer-events-none">
+        <i class="fas fa-exclamation-triangle text-xl"></i>
+        <span id="system-toast-msg"></span>
+    </div>
 
     <button id="btn-theme-toggle" class="fixed top-4 right-4 sm:top-6 sm:right-6 p-3 sm:p-4 bg-gray-200 dark:bg-gray-800 rounded-full text-gray-800 dark:text-yellow-400 shadow-xl hover:scale-110 transition-transform z-50">
         <i class="fas fa-moon text-lg sm:text-xl" id="theme-icon"></i>
@@ -201,9 +198,14 @@
                 <p class="text-gray-500 dark:text-gray-400 text-sm sm:text-base">Vui lòng lựa chọn môn học hoặc kho lưu trữ đề để bắt đầu</p>
             </div>
             
-            <div id="student-tabs" class="hidden justify-center gap-2 mb-8">
-                <button id="btn-tab-browse" onclick="switchStudentTab('browse')" class="px-4 py-2 font-bold rounded-lg bg-blue-900 text-white text-xs sm:text-sm shadow-md">Kho Môn Học</button>
-                <button id="btn-tab-history" onclick="switchStudentTab('history')" class="px-4 py-2 font-bold rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 text-xs sm:text-sm"><i class="fas fa-history mr-1"></i>Đề Đã Làm</button>
+            <div id="student-tabs" class="hidden flex-col sm:flex-row justify-center items-center gap-3 mb-8">
+                <div class="flex gap-2">
+                    <button id="btn-tab-browse" onclick="switchStudentTab('browse')" class="px-4 py-2 font-bold rounded-lg bg-blue-900 text-white text-xs sm:text-sm shadow-md">Kho Môn Học</button>
+                    <button id="btn-tab-history" onclick="switchStudentTab('history')" class="px-4 py-2 font-bold rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 text-xs sm:text-sm"><i class="fas fa-history mr-1"></i>Đề Đã Làm</button>
+                </div>
+                <button onclick="generateGlobalErrorMock()" class="px-5 py-2 font-bold rounded-lg bg-gradient-to-r from-yellow-400 to-yellow-600 text-white shadow-lg hover:scale-105 transition-transform flex items-center text-xs sm:text-sm">
+                    <i class="fas fa-infinity mr-2"></i> Ôn Toàn Diện Câu Sai <span class="ml-2 badge-pill badge-gold text-[0.6rem] px-2 py-0.5"><i class="fas fa-crown mr-1"></i> Ultra</span>
+                </button>
             </div>
             
             <div id="quiz-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6"></div>
@@ -315,12 +317,18 @@
                         <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-300">Tự động gộp các chương & chọn ngẫu nhiên</p>
                     </div>
                 </div>
+                
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
                     <select id="mock-question-count" class="w-full sm:w-auto p-3 border rounded-xl outline-none bg-white dark:bg-gray-800 dark:text-white dark:border-gray-500 font-bold text-sm shadow-sm">
                         <option value="40">Số lượng: 40 câu</option>
                         <option value="50" selected>Số lượng: 50 câu</option>
                     </select>
-                    <button id="btn-start-mock-generate" class="w-full sm:w-auto px-6 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 shadow-md transition-all whitespace-nowrap flex items-center justify-center"><i class="fas fa-graduation-cap mr-2"></i>Bắt đầu trộn</button>
+                    <button onclick="generateCategoryErrorMock()" class="w-full sm:w-auto px-4 py-3 bg-gray-100 text-blue-900 dark:bg-gray-600 dark:text-white rounded-xl font-bold border-2 border-gray-300 hover:border-blue-500 shadow-sm transition-all flex items-center justify-center">
+                        <i class="fas fa-tools mr-2"></i>Trộn Câu Sai <span class="ml-2 badge-pill badge-silver text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-shield-alt"></i> Pro</span>
+                    </button>
+                    <button id="btn-start-mock-generate" class="w-full sm:w-auto px-6 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 shadow-md transition-all whitespace-nowrap flex items-center justify-center">
+                        <i class="fas fa-graduation-cap mr-2"></i>Bắt đầu trộn
+                    </button>
                 </div>
             </div>
             <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-4 text-base sm:text-lg"><i class="fas fa-list-ul mr-2"></i>Danh sách đề lẻ / Chương học ôn tập:</h3>
@@ -561,14 +569,22 @@ D. Đáp án sai"></textarea>
         <div id="result-screen" class="hidden p-4 sm:p-8 py-8 sm:py-12 text-center dark:bg-gray-800">
             <div class="w-20 h-20 sm:w-24 sm:h-24 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center text-green-600 dark:text-green-400 text-4xl sm:text-5xl mx-auto mb-4 sm:mb-6"><i class="fas fa-trophy"></i></div>
             <h2 class="font-academic text-3xl sm:text-4xl text-gray-900 dark:text-white font-bold mb-2">Hoàn Thành Bài Thi!</h2>
+            
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-lg mx-auto mb-8 sm:mb-10 mt-4 sm:mt-6">
                 <div class="p-4 sm:p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl border border-blue-100 flex sm:flex-col justify-between items-center sm:block"><p class="text-gray-500 text-sm font-semibold sm:mb-1">Điểm số</p><p id="result-score" class="text-2xl sm:text-3xl font-bold text-blue-900 dark:text-white">0/0</p></div>
                 <div class="p-4 sm:p-6 bg-amber-50 dark:bg-gray-700 rounded-2xl border border-amber-100 flex sm:flex-col justify-between items-center sm:block"><p class="text-gray-500 text-sm font-semibold sm:mb-1">Chính xác</p><p id="result-percent" class="text-2xl sm:text-3xl font-bold text-amber-600">0%</p></div>
                 <div class="p-4 sm:p-6 bg-purple-50 dark:bg-purple-700 rounded-2xl border border-purple-100 flex sm:flex-col justify-between items-center sm:block"><p class="text-gray-500 text-sm font-semibold sm:mb-1">Thời gian</p><p id="result-time" class="text-2xl sm:text-3xl font-bold text-purple-700">00:00</p></div>
             </div>
-            <div class="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
-                <button id="btn-review" class="w-full sm:w-auto px-6 sm:px-8 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 text-sm sm:text-base"><i class="fas fa-search mr-2"></i> Xem & Lọc Câu Đúng/Sai</button>
-                <button id="btn-home" class="w-full sm:w-auto px-6 sm:px-8 py-3 bg-white text-gray-700 border-2 border-gray-200 rounded-xl font-bold hover:bg-gray-50 text-sm sm:text-base">Về Trang Chủ</button>
+
+            <div id="roadmap-container" class="hidden max-w-2xl mx-auto mb-8 p-6 bg-indigo-50 dark:bg-gray-700/50 border border-indigo-100 dark:border-indigo-900 rounded-2xl text-left shadow-inner">
+                <h3 class="text-xl font-bold text-indigo-900 dark:text-indigo-400 mb-4 flex items-center gap-2 border-b border-indigo-200 dark:border-gray-600 pb-3"><i class="fas fa-map-signs"></i> Lộ Trình Bứt Phá (Hệ thống phân tích)</h3>
+                <div id="roadmap-content" class="text-gray-700 dark:text-gray-300 font-medium space-y-4 text-sm sm:text-base leading-relaxed"></div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mt-6">
+                <button id="btn-show-roadmap" class="w-full sm:w-auto px-6 sm:px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md text-sm sm:text-base transition-all"><i class="fas fa-chart-pie mr-2"></i> Lộ Trình & Điểm</button>
+                <button id="btn-review" class="w-full sm:w-auto px-6 sm:px-8 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 shadow-md text-sm sm:text-base transition-all"><i class="fas fa-search mr-2"></i> Câu Đúng/Sai</button>
+                <button id="btn-home" class="w-full sm:w-auto px-6 sm:px-8 py-3 bg-white text-gray-700 border-2 border-gray-200 rounded-xl font-bold hover:bg-gray-50 text-sm sm:text-base transition-all">Về Trang Chủ</button>
             </div>
         </div>
 
@@ -581,6 +597,7 @@ D. Đáp án sai"></textarea>
             <button class="w-7 h-7 rounded-full bg-indigo-400 hover:scale-125 transition-transform shadow-sm border-2 border-transparent hover:border-white" onclick="applyHighlight('#818cf8')"></button>
             <button class="w-7 h-7 rounded-full bg-purple-400 hover:scale-125 transition-transform shadow-sm border-2 border-transparent hover:border-white" onclick="applyHighlight('#c084fc')"></button>
             <div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+            <button class="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-500 hover:scale-110 shadow-sm transition-all" onclick="applyHighlight('underline')" title="Gạch chân văn bản"><i class="fas fa-underline text-gray-700 dark:text-gray-300 text-sm"></i></button>
             <button class="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-500 hover:scale-110 shadow-sm transition-all" onclick="applyHighlight('transparent')" title="Tẩy xóa Highlight"><i class="fas fa-eraser text-gray-600 dark:text-gray-300 text-sm"></i></button>
         </div>
     </div>
