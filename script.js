@@ -1457,10 +1457,10 @@ function generateRoadmap(percent) {
         html += `<p><i class="fas fa-exclamation-circle text-amber-500 text-lg mr-2"></i><strong>Chẩn đoán:</strong> Căn cơ khá vững, nhưng hay sập hầm ở các câu bẫy hoặc từ vựng lạ.</p>
                 <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 1:</strong> Dùng công cụ Highlight 7 màu trong lúc đọc câu hỏi để không bị lừa.</p>
                 <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 2:</strong> Sử dụng <strong>"Trộn Câu Sai (PRO)"</strong> của chương này để rèn luyện trí nhớ.</p>`;
-    } else {
+   } else {
         html += `<p><i class="fas fa-check-circle text-green-500 text-lg mr-2"></i><strong>Chẩn đoán:</strong> Xuất sắc! Sĩ tử đã lĩnh ngộ được tinh hoa của chương này.</p>
-                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 1:</strong> Chuyển sang "Đề Thích Ứng" trộn 50 câu để rèn tốc độ phản xạ.</p>
-                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 2:</strong> Dùng tính năng <strong>"Ôn Toàn Diện (ULTRA)"</strong> ở Trang Chủ để đánh bại mọi lỗ hổng sót lại cuối cùng.</p>`;
+                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 1:</strong> Chuyển sang tính năng <strong>"Thi thử tổng hợp"</strong> để rèn tốc độ phản xạ với kho dữ liệu lớn hơn.</p>
+                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 2:</strong> Tiếp tục duy trì phong độ và chuyển sang chinh phục các môn học khác.</p>`;
     }
     content.innerHTML = html;
 }
