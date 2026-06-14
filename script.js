@@ -297,6 +297,12 @@ function switchScreen(screenName) {
         return;
     }
 
+    // [VIP VÁ LỖI]: Tắt ngay lập tức thông báo Toast khi chuyển màn hình mới
+    const toast = document.getElementById('system-toast');
+    if (toast) {
+        toast.className = 'fixed top-[-100px] left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-xl shadow-2xl font-bold z-[9999] transition-all duration-300 flex items-center gap-3 opacity-0 pointer-events-none';
+    }
+
     Object.values(screens).forEach(screen => {
         if(screen) { screen.classList.add('hidden'); screen.classList.remove('flex'); }
     });
@@ -891,7 +897,6 @@ function submitQuiz(force) {
 
     if (force || confirm("Bạn có chắc chắn muốn nộp bài làm hiện tại không?")) {
         clearInterval(timerInterval);
-        
         exitFullscreen();
         localStorage.removeItem('quizProgress_' + activeQuiz.id);
 
@@ -906,6 +911,7 @@ function submitQuiz(force) {
         const tc = document.getElementById('result-time'); 
         if(tc) tc.innerText = isPracticeMode ? "Không giới hạn" : timeUsedStr;
 
+        // [VIP]: Gọi trận pháp Lộ Trình + Dự đoán điểm lên màn hình kết quả
         generateRoadmap(percent);
 
         const scorePayload = {
@@ -997,7 +1003,6 @@ function processSmartText() {
         if (trimmed.match(/^\[Bài đọc\]/i)) { currentPassage = trimmed.replace(/^\[Bài đọc\]/i, '').trim(); } 
         else if (trimmed.match(/^\[Hết bài đọc\]/i)) { currentPassage = ""; } 
         else if (trimmed.match(/^Câu \d+[:.]/i)) {
-            // Loại bỏ dấu phẩy (,) khỏi regex cắt đáp án
             let parseRegex = /([\s\S]*?)(?:^|\s+)([*#]*)[Aa]\s*[.)\-:/]([\s\S]*?)(?:^|\s+)([*#]*)[Bb]\s*[.)\-:/]([\s\S]*?)(?:^|\s+)([*#]*)[Cc]\s*[.)\-:/]([\s\S]*?)(?:^|\s+)([*#]*)[Dd]\s*[.)\-:/]([\s\S]*)/i;
             let match = trimmed.match(parseRegex);
 
@@ -1047,7 +1052,7 @@ function processSmartText() {
     const sqc = document.getElementById('smart-question-count'); if (sqc) sqc.innerText = `Đã nhận diện: ${currentSmartQuestions.length} câu`;
     const spb = document.getElementById('smart-preview-box');
     if (spb) {
-        if (previewHTML === "") spb.innerHTML = `<p class="text-sm text-gray-400 text-center mt-10 italic">Chưa phát hiện câu hỏi nào đúng định dạng.</p>`;
+        if (previewHTML === "") spb.innerHTML = `<p class="text-sm text-gray-400 text-center mt-10 italic">Chưa phát hiện câu hỏi nào đúng định dạng.</p>';`;
         else spb.innerHTML = previewHTML;
     }
 }
@@ -1269,7 +1274,7 @@ function updatePlanBadge() {
 }
 
 // =========================================================================
-// [VIP] CÁC TÍNH NĂNG MỚI: TOAST, ROADMAP, VÀ ĐỀ THÍCH ỨNG CÂU SAI
+// [VIP] CÁC TÍNH NĂNG ĐƯỢC PHỤC HỒI HOÀN TOÀN: TOAST, ROADMAP, DỰ ĐOÁN ĐIỂM
 // =========================================================================
 
 function showToast(message, isError = true) {
@@ -1281,8 +1286,10 @@ function showToast(message, isError = true) {
     toast.className = `fixed top-6 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl shadow-2xl font-bold z-[9999] transition-all duration-300 flex items-center gap-3 opacity-100 ${isError ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`;
     
     setTimeout(() => {
-        toast.classList.replace('top-6', 'top-[-100px]');
-        toast.classList.replace('opacity-100', 'opacity-0');
+        if(toast.classList.contains('opacity-100')) {
+            toast.classList.replace('top-6', 'top-[-100px]');
+            toast.classList.replace('opacity-100', 'opacity-0');
+        }
     }, 4000);
 }
 
@@ -1371,7 +1378,7 @@ window.generateGlobalErrorMock = function() {
     });
 }
 
-// VÁ LỖI CÂU SAI TRONG 1 BÀI THI CHỈ ĐỊNH 
+// VÁ LỖ LỖI CỦA kết quả ĐÃ LÀM (Vá câu sai bài cụ thể)
 window.generateErrorCorrection = function(resultDocId) {
     if(!checkFeatureAccess('error_correction')) return; 
     showToast("Đang trích xuất câu sai từ bài thi này...", false);
@@ -1379,17 +1386,16 @@ window.generateErrorCorrection = function(resultDocId) {
     db.collection("results").doc(resultDocId).get().then((resDoc) => {
         if (resDoc.exists) {
             const pastData = resDoc.data();
-            if (!pastData.quizQuestionsSnapshot) return showToast("Dữ liệu cũ không hỗ trợ tính năng này do thiếu Snapshot Đề gốc!");
+            if (!pastData.quizQuestionsSnapshot) return showToast("Dữ liệu cũ không hỗ trợ tính năng này!");
             
             let wrongQuestions = [];
             pastData.userAnswers.forEach((ans, idx) => {
-                // Đã vá: Chấp nhận cả những câu chưa làm (null) là câu sai
                 if (ans === null || ans !== pastData.quizQuestionsSnapshot[idx].correctAnswer) {
                     wrongQuestions.push(pastData.quizQuestionsSnapshot[idx]);
                 }
             });
 
-            if (wrongQuestions.length === 0) return showToast("Thật xuất sắc! Bạn không làm sai câu nào trong đề này để phải vá lỗi.", false);
+            if (wrongQuestions.length === 0) return showToast("Bạn không làm sai câu nào trong đề này!", false);
 
             activeQuiz = {
                 id: "ERROR-CORRECTION-" + Date.now(),
@@ -1405,7 +1411,7 @@ window.generateErrorCorrection = function(resultDocId) {
     }).catch(err => showToast("Lỗi khi tải dữ liệu: " + err.message));
 }
 
-// BẢNG LỘ TRÌNH ĐÁNH GIÁ (ROADMAP)
+// BẢNG LỘ TRÌNH ĐÁNH GIÁ (ROADMAP) VÀ DỰ ĐOÁN ĐIỂM SỐ CHÍNH XÁC
 function generateRoadmap(percent) {
     const container = document.getElementById('roadmap-container');
     const content = document.getElementById('roadmap-content');
@@ -1418,18 +1424,34 @@ function generateRoadmap(percent) {
 
     container.classList.remove('hidden');
     let html = "";
+    
+    let predictedScore = (percent / 10).toFixed(1); 
+    let scoreBadgeClass = percent >= 80 ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700' : 
+                          percent >= 50 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700' : 
+                                          'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-300 dark:border-red-700';
+                                          
+    html += `
+        <div class="mb-5 p-4 sm:p-5 ${scoreBadgeClass} border-2 rounded-xl flex items-center justify-between shadow-sm">
+            <div>
+                <p class="text-sm sm:text-base font-bold uppercase tracking-wider mb-1"><i class="fas fa-bullseye mr-1"></i> Dự Đoán Điểm Thi</p>
+                <p class="text-xs sm:text-sm opacity-80 font-medium">Phân tích dựa trên phổ điểm % hiện tại</p>
+            </div>
+            <div class="text-3xl sm:text-4xl font-black font-mono">${predictedScore} <span class="text-base sm:text-lg font-medium opacity-80">/ 10</span></div>
+        </div>
+    `;
+
     if (percent < 50) {
-        html = `<p><i class="fas fa-times-circle text-red-500 text-lg mr-2"></i><strong>Chẩn đoán:</strong> Kiến thức nền tảng của sĩ tử đang thủng lỗ chỗ như tổ ong.</p>
-                <p class="pl-7"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 1:</strong> Quay lại Kho Môn Học, mở xem Giải thích chi tiết các câu sai.</p>
-                <p class="pl-7"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 2:</strong> Dùng nút <strong>"Vá lỗi sai"</strong> ở lịch sử để làm lại chính đề này cho đến khi đạt 100%.</p>`;
+        html += `<p><i class="fas fa-times-circle text-red-500 text-lg mr-2"></i><strong>Chẩn đoán:</strong> Kiến thức nền tảng của sĩ tử đang thủng lỗ chỗ như tổ ong.</p>
+                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 1:</strong> Quay lại Kho Môn Học, mở xem Giải thích chi tiết các câu sai.</p>
+                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 2:</strong> Dùng nút <strong>"Vá lỗi sai"</strong> ở lịch sử để làm lại chính đề này cho đến khi đạt 100%.</p>`;
     } else if (percent < 80) {
-        html = `<p><i class="fas fa-exclamation-circle text-amber-500 text-lg mr-2"></i><strong>Chẩn đoán:</strong> Căn cơ khá vững, nhưng hay sập hầm ở các câu bẫy hoặc từ vựng lạ.</p>
-                <p class="pl-7"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 1:</strong> Dùng công cụ Highlight 7 màu trong lúc đọc câu hỏi để không bị lừa.</p>
-                <p class="pl-7"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 2:</strong> Sử dụng <strong>"Trộn Câu Sai (PRO)"</strong> của chương này để rèn luyện trí nhớ.</p>`;
+        html += `<p><i class="fas fa-exclamation-circle text-amber-500 text-lg mr-2"></i><strong>Chẩn đoán:</strong> Căn cơ khá vững, nhưng hay sập hầm ở các câu bẫy hoặc từ vựng lạ.</p>
+                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 1:</strong> Dùng công cụ Highlight 7 màu trong lúc đọc câu hỏi để không bị lừa.</p>
+                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 2:</strong> Sử dụng <strong>"Trộn Câu Sai (PRO)"</strong> của chương này để rèn luyện trí nhớ.</p>`;
     } else {
-        html = `<p><i class="fas fa-check-circle text-green-500 text-lg mr-2"></i><strong>Chẩn đoán:</strong> Xuất sắc! Sĩ tử đã lĩnh ngộ được tinh hoa của chương này.</p>
-                <p class="pl-7"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 1:</strong> Chuyển sang "Đề Thích Ứng" trộn 50 câu để rèn tốc độ phản xạ.</p>
-                <p class="pl-7"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 2:</strong> Dùng tính năng <strong>"Ôn Toàn Diện (ULTRA)"</strong> ở Trang Chủ để đánh bại mọi lỗ hổng sót lại cuối cùng.</p>`;
+        html += `<p><i class="fas fa-check-circle text-green-500 text-lg mr-2"></i><strong>Chẩn đoán:</strong> Xuất sắc! Sĩ tử đã lĩnh ngộ được tinh hoa của chương này.</p>
+                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 1:</strong> Chuyển sang "Đề Thích Ứng" trộn 50 câu để rèn tốc độ phản xạ.</p>
+                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 2:</strong> Dùng tính năng <strong>"Ôn Toàn Diện (ULTRA)"</strong> ở Trang Chủ để đánh bại mọi lỗ hổng sót lại cuối cùng.</p>`;
     }
     content.innerHTML = html;
 }
