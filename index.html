@@ -198,11 +198,10 @@
                 <p class="text-gray-500 dark:text-gray-400 text-sm sm:text-base">Vui lòng lựa chọn môn học hoặc kho lưu trữ đề để bắt đầu</p>
             </div>
             
-            <div id="student-tabs" class="hidden flex-col sm:flex-row justify-center items-center gap-3 mb-8">
-                <div class="flex gap-2">
-                    <button id="btn-tab-browse" onclick="switchStudentTab('browse')" class="px-4 py-2 font-bold rounded-lg bg-blue-900 text-white text-xs sm:text-sm shadow-md">Kho Môn Học</button>
-                    <button id="btn-tab-history" onclick="switchStudentTab('history')" class="px-4 py-2 font-bold rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 text-xs sm:text-sm"><i class="fas fa-history mr-1"></i>Đề Đã Làm</button>
-                </div>
+            <div id="student-tabs" class="hidden justify-center gap-2 mb-8">
+                <button id="btn-tab-browse" onclick="switchStudentTab('browse')" class="px-4 py-2 font-bold rounded-lg bg-blue-900 text-white text-xs sm:text-sm shadow-md">Kho Môn Học</button>
+                <button id="btn-tab-history" onclick="switchStudentTab('history')" class="px-4 py-2 font-bold rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 text-xs sm:text-sm"><i class="fas fa-history mr-1"></i>Đề Đã Làm</button>
+            </div>
                 <button onclick="generateGlobalErrorMock()" class="px-5 py-2 font-bold rounded-lg bg-gradient-to-r from-yellow-400 to-yellow-600 text-white shadow-lg hover:scale-105 transition-transform flex items-center text-xs sm:text-sm">
                     <i class="fas fa-infinity mr-2"></i> Ôn Toàn Diện Câu Sai <span class="ml-2 badge-pill badge-gold text-[0.6rem] px-2 py-0.5"><i class="fas fa-crown mr-1"></i> Ultra</span>
                 </button>
