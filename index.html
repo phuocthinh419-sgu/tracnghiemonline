@@ -230,7 +230,7 @@
                             <li><i class="fas fa-check-circle"></i> Giao diện thi thử tiêu chuẩn</li>
                             <li><i class="fas fa-times-circle"></i> Xem giải thích chi tiết câu hỏi</li>
                             <li><i class="fas fa-times-circle"></i> Tự động lưu tiến độ bài làm</li>
-                            <li><i class="fas fa-times-circle"></i> Đề thích ứng & Lộ trình riêng</li>
+                            <li><i class="fas fa-times-circle"></i> Phân tích năng lực chuyên sâu</li>
                         </ul>
                     </div>
                     <button class="w-full py-3 mt-4 rounded-xl font-bold bg-transparent border-2 border-gray-300 text-gray-500 cursor-not-allowed">Gói Mặc Định</button>
@@ -252,7 +252,7 @@
                             <li><i class="fas fa-check-circle"></i> Tính năng Đề thích ứng</li>
                             <li><i class="fas fa-star" style="color: #e67e22;"></i> <strong>Giới hạn: 3 lượt tạo đề/tháng</strong></li>
                             <li><i class="fas fa-times-circle"></i> Chuột phải gạch mờ đáp án</li>
-                            <li><i class="fas fa-times-circle"></i> Tạo đề từ danh sách câu sai</li>
+                            <li><i class="fas fa-times-circle"></i> Phân tích năng lực chuyên sâu</li>
                         </ul>
                     </div>
                     <button class="w-full py-3 mt-4 rounded-xl font-bold bg-transparent border-2 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors" onclick="openPaymentModal('qr-plus.webp', 'Gói Plus', '20.000đ')">Nâng Cấp Ngay</button>
@@ -272,6 +272,7 @@
                                 <li><i class="fas fa-check-circle"></i> Toàn bộ quyền lợi gói Plus</li>
                                 <li><i class="fas fa-check-circle"></i> <strong>Gạch mờ đáp án nhiễu (R-Click)</strong></li>
                                 <li><i class="fas fa-check-circle"></i> <strong>Tạo đề ôn tập từ danh sách câu sai</strong></li>
+                                <li><i class="fas fa-check-circle"></i> <strong>Phân tích năng lực chuyên sâu</strong></li>
                                 <li><i class="fas fa-star" style="color: #e67e22;"></i> <strong>Tăng mức: 15 lượt tạo đề/tháng</strong></li>
                             </ul>
                         </div>
@@ -318,6 +319,11 @@
                         <option value="40">Số lượng: 40 câu</option>
                         <option value="50" selected>Số lượng: 50 câu</option>
                     </select>
+                    
+                    <button onclick="generateSubjectAnalysis()" class="w-full sm:w-auto px-4 py-3 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded-xl font-bold border-2 border-indigo-200 dark:border-indigo-800 hover:border-indigo-500 shadow-sm transition-all flex items-center justify-center">
+                        <i class="fas fa-microscope mr-2"></i>Phân Tích <span class="ml-2 badge-pill badge-silver text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-shield-alt"></i> Pro</span>
+                    </button>
+
                     <button onclick="generateCategoryErrorMock()" class="w-full sm:w-auto px-4 py-3 bg-gray-100 text-blue-900 dark:bg-gray-600 dark:text-white rounded-xl font-bold border-2 border-gray-300 hover:border-blue-500 shadow-sm transition-all flex items-center justify-center">
                         <i class="fas fa-tools mr-2"></i>Trộn Câu Sai <span class="ml-2 badge-pill badge-silver text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-shield-alt"></i> Pro</span>
                     </button>
@@ -571,14 +577,8 @@ D. Đáp án sai"></textarea>
                 <div class="p-4 sm:p-6 bg-purple-50 dark:bg-purple-700 rounded-2xl border border-purple-100 flex sm:flex-col justify-between items-center sm:block"><p class="text-gray-500 text-sm font-semibold sm:mb-1">Thời gian</p><p id="result-time" class="text-2xl sm:text-3xl font-bold text-purple-700">00:00</p></div>
             </div>
 
-            <div id="roadmap-container" class="hidden max-w-2xl mx-auto mb-8 p-6 bg-indigo-50 dark:bg-gray-700/50 border border-indigo-100 dark:border-indigo-900 rounded-2xl text-left shadow-inner">
-                <h3 class="text-xl font-bold text-indigo-900 dark:text-indigo-400 mb-4 flex items-center gap-2 border-b border-indigo-200 dark:border-gray-600 pb-3"><i class="fas fa-map-signs"></i> Lộ Trình Bứt Phá (Hệ thống phân tích)</h3>
-                <div id="roadmap-content" class="text-gray-700 dark:text-gray-300 font-medium space-y-4 text-sm sm:text-base leading-relaxed"></div>
-            </div>
-
             <div class="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mt-6">
-                <button id="btn-show-roadmap" class="w-full sm:w-auto px-6 sm:px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md text-sm sm:text-base transition-all"><i class="fas fa-chart-pie mr-2"></i> Lộ Trình & Điểm</button>
-                <button id="btn-review" class="w-full sm:w-auto px-6 sm:px-8 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 shadow-md text-sm sm:text-base transition-all"><i class="fas fa-search mr-2"></i> Câu Đúng/Sai</button>
+                <button id="btn-review" class="w-full sm:w-auto px-6 sm:px-8 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 shadow-md text-sm sm:text-base transition-all"><i class="fas fa-search mr-2"></i> Xem & Lọc Câu Đúng/Sai</button>
                 <button id="btn-home" class="w-full sm:w-auto px-6 sm:px-8 py-3 bg-white text-gray-700 border-2 border-gray-200 rounded-xl font-bold hover:bg-gray-50 text-sm sm:text-base transition-all">Về Trang Chủ</button>
             </div>
         </div>
@@ -619,6 +619,27 @@ D. Đáp án sai"></textarea>
         </div>
     </div>
 
+    <div id="analysis-modal" class="hidden fixed inset-0 bg-gray-900/80 z-[2000] flex items-center justify-center backdrop-blur-sm transition-opacity p-4">
+        <div class="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-3xl w-full max-w-2xl relative shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <button onclick="closeAnalysisModal()" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-red-500 rounded-full transition-colors"><i class="fas fa-times"></i></button>
+            
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-full text-3xl mb-3 shadow-inner">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white font-academic">Đài Quan Sát Năng Lực</h2>
+                <p id="analysis-subject-name" class="text-indigo-600 dark:text-indigo-400 font-bold mt-1">Tên Môn Học</p>
+            </div>
+
+            <div id="analysis-content" class="text-left">
+                </div>
+            
+            <div class="mt-8 flex justify-center">
+                <button onclick="closeAnalysisModal()" class="px-8 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">Đã Hiểu</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         function openPaymentModal(imgSrc, tierName, amount) {
             document.getElementById('payment-qr-img').src = imgSrc;
@@ -629,6 +650,10 @@ D. Đáp án sai"></textarea>
 
         function closePaymentModal() {
             document.getElementById('payment-modal').classList.add('hidden');
+        }
+        
+        function closeAnalysisModal() {
+            document.getElementById('analysis-modal').classList.add('hidden');
         }
     </script>
 
