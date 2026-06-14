@@ -1423,3 +1423,128 @@ function generateRoadmap(percent) {
     }
     content.innerHTML = html;
 }
+
+// =========================================================================
+// [VIP] ĐÀI QUAN SÁT NĂNG LỰC TOÀN MÔN (GÓI PRO)
+// =========================================================================
+window.generateSubjectAnalysis = function() {
+    // 1. Thiết quân luật: Chỉ Gói Pro, Ultra hoặc Admin mới được dùng
+    if (!checkIsMasterAdmin() && currentPlan !== 'pro' && currentPlan !== 'ultra') {
+        showToast("Bẩm bệ hạ, Đài Quan Sát Năng Lực chỉ dành riêng cho Gói PRO trở lên!");
+        switchScreen('pricing');
+        return;
+    }
+
+    if (!currentSelectedCategory) return showToast("Chưa xác định được môn học!");
+
+    showToast("Đang thu thập tinh hoa nhật nguyệt để bói toán...", false);
+
+    // 2. Truy xuất Lịch sử làm bài của riêng môn học này
+    db.collection("results")
+        .where("uid", "==", auth.currentUser.uid)
+        .where("category", "==", currentSelectedCategory)
+        .get()
+        .then(snapshot => {
+            if(snapshot.empty) {
+                return showToast("Bẩm Bệ hạ, chưa có lịch sử làm bài nào trong môn này để hệ thống đánh giá!");
+            }
+
+            let chapterStats = {};
+            
+            // 3. Phân tích số liệu
+            snapshot.forEach(doc => {
+                let data = doc.data();
+                
+                // Bỏ qua các đề trộn thi thử/vá lỗi, chỉ lấy điểm từ Chương gốc
+                if (data.quizId.startsWith("MOCK-") || data.quizId.startsWith("ERROR-")) return;
+                
+                let title = data.quizTitle;
+                if(!chapterStats[title]) {
+                    chapterStats[title] = { totalPercent: 0, count: 0 };
+                }
+                // Cộng dồn % điểm và số lần làm
+                chapterStats[title].totalPercent += data.percentage;
+                chapterStats[title].count += 1;
+            });
+
+            let chapters = Object.keys(chapterStats);
+            if(chapters.length === 0) {
+                return showToast("Bệ hạ cần làm ít nhất 1 bài tập theo Chương Gốc để hệ thống có dữ liệu phân tích!");
+            }
+
+            // 4. Tìm Chương mạnh nhất, Yếu nhất và Điểm tổng
+            let totalSubjectPercent = 0;
+            let processedChapters = [];
+            
+            chapters.forEach(ch => {
+                let avg = Math.round(chapterStats[ch].totalPercent / chapterStats[ch].count);
+                totalSubjectPercent += avg;
+                processedChapters.push({ name: ch, avg: avg });
+            });
+
+            let overallPercent = Math.round(totalSubjectPercent / chapters.length);
+            let predictedScore = (overallPercent / 10).toFixed(1);
+
+            // Sắp xếp từ thấp đến cao
+            processedChapters.sort((a, b) => a.avg - b.avg);
+            let weakest = processedChapters[0];
+            let strongest = processedChapters[processedChapters.length - 1];
+
+            // 5. Viết Sớ Lộ Trình
+            document.getElementById('analysis-subject-name').innerText = currentSelectedCategory;
+            
+            let adviceHTML = "";
+            if (overallPercent < 50) {
+                adviceHTML = 'Kiến thức tổng quan đang ở mức báo động! Bệ hạ nên tạm dừng thi thử tổng hợp và tập trung cày lại lý thuyết gốc.';
+            } else if (overallPercent < 80) {
+                adviceHTML = 'Căn cơ đã có nhưng chưa vững. Bệ hạ cần làm thêm các bài "Thi Thử Tổng Hợp" để làm quen với áp lực trộn câu hỏi bẫy.';
+            } else {
+                adviceHTML = 'Phong độ của Bệ hạ đang rực sáng như mặt trời ban trưa! Hãy duy trì tỉ lệ này bằng cách ôn tập lại 1 lần mỗi tuần.';
+            }
+
+            let contentHTML = `
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-blue-50 dark:bg-gray-700/50 p-4 rounded-2xl text-center border border-blue-100 dark:border-gray-600 shadow-sm">
+                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-bold mb-1 uppercase tracking-wider">Dự Đoán Điểm</p>
+                        <p class="text-4xl font-black text-blue-700 dark:text-blue-400 font-mono">${predictedScore}</p>
+                    </div>
+                    <div class="bg-indigo-50 dark:bg-gray-700/50 p-4 rounded-2xl text-center border border-indigo-100 dark:border-gray-600 shadow-sm">
+                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-bold mb-1 uppercase tracking-wider">Độ Bao Phủ</p>
+                        <p class="text-4xl font-black text-indigo-700 dark:text-indigo-400 font-mono">${chapters.length} <span class="text-sm font-medium text-gray-500">chương</span></p>
+                    </div>
+                </div>
+                
+                <div class="space-y-3 mb-6">
+                    <div class="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800 flex justify-between items-center">
+                        <div>
+                            <p class="text-[0.7rem] font-bold text-red-800 dark:text-red-400 mb-0.5 uppercase"><i class="fas fa-exclamation-triangle mr-1"></i> Gót Chân Achilles (Yếu nhất)</p>
+                            <p class="font-bold text-gray-800 dark:text-gray-200 text-sm sm:text-base">${weakest.name}</p>
+                        </div>
+                        <span class="font-mono text-xl font-black text-red-600 dark:text-red-400 bg-white dark:bg-gray-800 px-3 py-1 rounded-lg shadow-sm border border-red-100 dark:border-red-800">${weakest.avg}%</span>
+                    </div>
+                    
+                    <div class="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800 flex justify-between items-center">
+                        <div>
+                            <p class="text-[0.7rem] font-bold text-green-800 dark:text-green-400 mb-0.5 uppercase"><i class="fas fa-medal mr-1"></i> Tinh Hoa Hội Tụ (Mạnh nhất)</p>
+                            <p class="font-bold text-gray-800 dark:text-gray-200 text-sm sm:text-base">${strongest.name}</p>
+                        </div>
+                        <span class="font-mono text-xl font-black text-green-600 dark:text-green-400 bg-white dark:bg-gray-800 px-3 py-1 rounded-lg shadow-sm border border-green-100 dark:border-green-800">${strongest.avg}%</span>
+                    </div>
+                </div>
+
+                <div class="p-5 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-200 dark:border-gray-600 text-sm sm:text-base leading-relaxed text-gray-700 dark:text-gray-300 shadow-inner">
+                    <p class="font-bold mb-3 text-gray-900 dark:text-white flex items-center gap-2"><i class="fas fa-map-signs text-indigo-500"></i> Cẩm Nang Tu Luyện:</p>
+                    <ul class="list-disc pl-5 space-y-2 font-medium">
+                        <li>Lập tức dùng tính năng <strong>Trộn Câu Sai</strong> ngay bên ngoài để vá lại các lỗ hổng chí mạng của <strong class="text-red-600 dark:text-red-400">${weakest.name}</strong>.</li>
+                        <li>${adviceHTML}</li>
+                    </ul>
+                </div>
+            `;
+
+            document.getElementById('analysis-content').innerHTML = contentHTML;
+            
+            // 6. Trình tấu Modal lên màn hình
+            document.getElementById('analysis-modal').classList.remove('hidden');
+
+        }).catch(err => showToast("Lỗi thiên cơ: " + err.message));
+}
