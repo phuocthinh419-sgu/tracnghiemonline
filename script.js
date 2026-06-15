@@ -40,7 +40,7 @@ let currentPlan = 'basic';
 let mockGeneratedThisMonth = 0;
 let lastMockMonth = null;
 
-// --- 3. THEO DÕI TRẠNG THÁI & KHỞI TẠO ---
+// --- 3. THEO DÕI TRẠNG THÁI & KHỞI TẠO AN TOÀN ---
 document.addEventListener("DOMContentLoaded", () => { 
     screens = {
         auth: document.getElementById('auth-screen'),
@@ -95,7 +95,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
 
-            // XỬ LÝ ĐƯỜNG DẪN CHIA SẺ
             const urlParams = new URLSearchParams(window.location.search);
             const quizIdParam = urlParams.get('quiz');
             const folderParam = urlParams.get('folder');
@@ -129,7 +128,7 @@ function checkFeatureAccess(feature, silent = false) {
     
     if (!userFeatures.includes(feature)) {
         if(!silent) {
-            showToast("Tính năng này yêu cầu nâng cấp gói cước để sử dụng.");
+            showToast("Tính năng này yêu cầu nâng cấp gói cước để sử dụng.", true);
             switchScreen('pricing');
         }
         return false;
@@ -158,7 +157,7 @@ function fetchQuizzesFromFirebase() {
         snapshot.forEach((doc) => { quizDatabase.push(doc.data()); });
         if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList(); 
         if (screens.subjectDetail && !screens.subjectDetail.classList.contains('hidden')) renderSubjectDetailView(currentSelectedCategory);
-    }, (error) => { console.error("Lỗi tải dữ liệu: ", error); });
+    }, (error) => { console.error("Lỗi khi tải dữ liệu: ", error); });
 }
 
 function checkUrlForSharedQuiz(quizId) {
@@ -166,28 +165,31 @@ function checkUrlForSharedQuiz(quizId) {
         if (doc.exists) {
             activeQuiz = doc.data(); prepareWelcomeScreen();
         } else {
-            showToast("Đề thi này không tồn tại hoặc đã bị xóa khỏi hệ thống."); switchScreen('home');
+            showToast("Đề thi này không tồn tại hoặc đã bị gỡ bỏ khỏi hệ thống.", true); switchScreen('home');
         }
         window.history.replaceState({}, document.title, window.location.pathname);
     }).catch(err => { console.error("Lỗi đường dẫn: ", err); switchScreen('home'); });
 }
 
-// XỬ LÝ MỞ THƯ MỤC ĐƯỢC CHIA SẺ
+// LÁCH LUẬT LỖI INDEX KHI MỞ THƯ MỤC CHIA SẺ
 function loadSharedFolder(category, teacherId) {
     showToast("Đang tải dữ liệu môn học...", false);
     
     db.collection("quizzes")
       .where("authorId", "==", teacherId)
-      .where("category", "==", category)
       .get().then(snapshot => {
-          if(snapshot.empty) {
-              showToast("Thư mục này hiện tại không có dữ liệu.");
+          quizDatabase = []; 
+          snapshot.forEach(doc => { 
+              if (doc.data().category === category) {
+                  quizDatabase.push(doc.data()); 
+              }
+          });
+          
+          if(quizDatabase.length === 0) {
+              showToast("Thư mục này hiện tại không có dữ liệu.", true);
               switchScreen('home');
               return;
           }
-          
-          quizDatabase = []; 
-          snapshot.forEach(doc => { quizDatabase.push(doc.data()); });
           
           currentSelectedCategory = category;
           switchScreen('subjectDetail'); 
@@ -195,13 +197,39 @@ function loadSharedFolder(category, teacherId) {
           
           window.history.replaceState({}, document.title, window.location.pathname);
       }).catch(err => {
-          showToast("Lỗi khi tải thư mục: " + err.message);
+          showToast("Lỗi khi tải thư mục: " + err.message, true);
           switchScreen('home');
       });
 }
 
-function copyLink(link) {
-    navigator.clipboard.writeText(link).then(() => { showToast("Đã sao chép liên kết thành công.", false); });
+// BẢO VỆ CHỨC NĂNG COPY BẰNG FALLBACK
+window.copyLink = function(link) {
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(link).then(() => { 
+            showToast("Đã sao chép liên kết thành công.", false); 
+        }).catch(err => { 
+            fallbackCopy(link); 
+        });
+    } else {
+        fallbackCopy(link);
+    }
+};
+
+function fallbackCopy(text) {
+    let textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed"; 
+    textArea.style.top = "-9999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+        document.execCommand('copy');
+        showToast("Đã sao chép liên kết thành công.", false);
+    } catch (err) {
+        showToast("Lỗi: Trình duyệt của bạn không hỗ trợ sao chép.", true);
+    }
+    document.body.removeChild(textArea);
 }
 
 function setupEventListeners() {
@@ -223,7 +251,7 @@ function setupEventListeners() {
     addEvt('btn-exit-quiz', 'click', () => {
         if (isReviewMode) {
             switchScreen('result');
-        } else if (confirm("Thoát? Tiến trình làm bài sẽ được tự động lưu (áp dụng cho tài khoản đăng ký gói).")) {
+        } else if (confirm("Thoát? Tiến trình làm bài sẽ được tự động lưu (áp dụng cho tài khoản nâng cấp).")) {
             clearInterval(timerInterval); 
             exitFullscreen(); 
             saveProgressLocally(); 
@@ -285,8 +313,8 @@ function handleAuthSubmit() {
     const password = document.getElementById('auth-password').value.trim();
     const nameInput = document.getElementById('auth-name');
     const name = nameInput ? nameInput.value.trim() : "";
-    if (!email || !password) return alert("Vui lòng nhập đủ thông tin.");
-    if (isLoginMode) { auth.signInWithEmailAndPassword(email, password).catch(err => showToast("Đăng nhập thất bại: Kiểm tra lại thông tin.", true)); } 
+    if (!email || !password) return alert("Vui lòng nhập đầy đủ thông tin.");
+    if (isLoginMode) { auth.signInWithEmailAndPassword(email, password).catch(err => showToast("Đăng nhập thất bại, vui lòng kiểm tra lại.", true)); } 
     else {
         if (!name) return alert("Vui lòng nhập Họ và tên.");
         auth.createUserWithEmailAndPassword(email, password).then((result) => { return result.user.updateProfile({ displayName: name }); })
@@ -339,13 +367,14 @@ function toggleDarkMode() {
 
 function switchScreen(screenName) {
     if (screenName === 'admin' && !checkIsMasterAdmin()) {
-        showToast("Tài khoản không có quyền truy cập khu vực này.");
+        showToast("Tài khoản không có quyền truy cập khu vực quản trị.", true);
         return;
     }
 
     const toast = document.getElementById('system-toast');
     if (toast) {
-        toast.className = 'fixed top-[-100px] left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-xl shadow-2xl font-bold z-[9999] transition-all duration-300 flex items-center gap-3 opacity-0 pointer-events-none';
+        toast.style.top = '-100px';
+        toast.style.opacity = '0';
     }
 
     Object.values(screens).forEach(screen => {
@@ -382,7 +411,7 @@ function renderHomeQuizList() {
     
     if (currentRole === 'teacher' || currentStudentTab === 'browse') {
         if (quizDatabase.length === 0) {
-            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Chưa có dữ liệu môn học.</p>';
+            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Chưa có dữ liệu thư mục môn học.</p>';
             return;
         }
 
@@ -474,10 +503,11 @@ function renderHomeQuizList() {
 function redoQuizFromHistory(quizId) {
     db.collection("quizzes").doc(quizId).get().then((doc) => {
         if (doc.exists) { activeQuiz = doc.data(); prepareWelcomeScreen(); } 
-        else { showToast("Đề thi này không tồn tại hoặc đã bị gỡ bỏ."); }
-    }).catch(err => showToast("Lỗi tải đề thi: " + err.message));
+        else { showToast("Đề thi này không tồn tại hoặc đã bị gỡ bỏ.", true); }
+    }).catch(err => showToast("Lỗi tải đề thi: " + err.message, true));
 }
 
+// BỎ INDEX KHI LẤY CÂU SAI
 window.generateErrorCorrection = function(resultDocId) {
     if(!checkFeatureAccess('error_correction')) return; 
     showToast("Đang xử lý dữ liệu câu sai...", false);
@@ -485,7 +515,7 @@ window.generateErrorCorrection = function(resultDocId) {
     db.collection("results").doc(resultDocId).get().then((resDoc) => {
         if (resDoc.exists) {
             const pastData = resDoc.data();
-            if (!pastData.quizQuestionsSnapshot) return showToast("Dữ liệu không hỗ trợ tính năng này.");
+            if (!pastData.quizQuestionsSnapshot) return showToast("Dữ liệu không hỗ trợ tính năng này.", true);
             
             let wrongQuestions = [];
             pastData.userAnswers.forEach((ans, idx) => {
@@ -507,12 +537,12 @@ window.generateErrorCorrection = function(resultDocId) {
             };
             prepareWelcomeScreen();
         }
-    }).catch(err => showToast("Lỗi xử lý dữ liệu: " + err.message));
+    }).catch(err => showToast("Lỗi xử lý dữ liệu: " + err.message, true));
 }
 
 function reviewPastQuiz(quizId, resultDocId) {
     db.collection("quizzes").doc(quizId).get().then((quizDoc) => {
-        if (!quizDoc.exists) return showToast("Đề thi gốc không còn tồn tại trên hệ thống.");
+        if (!quizDoc.exists) return showToast("Đề thi gốc không còn tồn tại trên hệ thống.", true);
         activeQuiz = quizDoc.data();
         
         db.collection("results").doc(resultDocId).get().then((resDoc) => {
@@ -536,12 +566,12 @@ function reviewPastQuiz(quizId, resultDocId) {
                 switchScreen('result');
             }
         });
-    }).catch(err => showToast("Lỗi tải thông tin: " + err.message));
+    }).catch(err => showToast("Lỗi tải thông tin: " + err.message, true));
 }
 
 function deleteHistoryEntry(docId) {
     if (confirm("Xác nhận xóa kết quả này khỏi lịch sử?")) {
-        db.collection("results").doc(docId).delete().then(() => { renderHomeQuizList(); }).catch(err => showToast("Lỗi khi xóa: " + err.message));
+        db.collection("results").doc(docId).delete().then(() => { renderHomeQuizList(); }).catch(err => showToast("Lỗi khi xóa: " + err.message, true));
     }
 }
 
@@ -584,16 +614,17 @@ function renderSubjectDetailView(category) {
 
 function selectQuiz(quizId) {
     activeQuiz = quizDatabase.find(q => q.id === quizId);
-    if (!activeQuiz) return showToast("Đề thi không tồn tại.");
+    if (!activeQuiz) return showToast("Đề thi không tồn tại.", true);
     prepareWelcomeScreen();
 }
 
 function deleteQuiz(quizId) {
     if (confirm("Xác nhận xóa vĩnh viễn đề thi này khỏi hệ thống?")) {
-        db.collection("quizzes").doc(quizId).delete().then(() => { renderSubjectDetailView(currentSelectedCategory); }).catch(err => showToast("Lỗi hệ thống: " + err));
+        db.collection("quizzes").doc(quizId).delete().then(() => { renderSubjectDetailView(currentSelectedCategory); }).catch(err => showToast("Lỗi hệ thống: " + err, true));
     }
 }
 
+// LÁCH LUẬT LỖI INDEX KHI TRỘN CÂU SAI
 window.generateCategoryErrorMock = function() {
     if(!checkFeatureAccess('error_correction')) return;
     showToast("Đang tổng hợp dữ liệu câu sai...", false);
@@ -601,13 +632,14 @@ window.generateCategoryErrorMock = function() {
     const sel = document.getElementById('mock-question-count');
     const countSelect = sel ? parseInt(sel.value) : 50;
 
-    db.collection("results").where("uid", "==", auth.currentUser.uid).where("category", "==", currentSelectedCategory).get().then(snapshot => {
-        if(snapshot.empty) return showToast("Hệ thống chưa ghi nhận lịch sử câu trả lời sai trong môn này.");
-        
+    db.collection("results").where("uid", "==", auth.currentUser.uid).get().then(snapshot => {
         let uniqueWrong = {}; 
+        let hasData = false;
+
         snapshot.forEach(doc => {
             const data = doc.data();
-            if(data.quizQuestionsSnapshot && data.userAnswers) {
+            if(data.category === currentSelectedCategory && data.quizQuestionsSnapshot && data.userAnswers) {
+                hasData = true;
                 data.userAnswers.forEach((ans, idx) => {
                     if (ans === null || ans !== data.quizQuestionsSnapshot[idx].correctAnswer) {
                         let q = data.quizQuestionsSnapshot[idx];
@@ -616,6 +648,8 @@ window.generateCategoryErrorMock = function() {
                 });
             }
         });
+
+        if(!hasData) return showToast("Hệ thống chưa ghi nhận lịch sử làm bài trong môn này.", true);
 
         let wrongQuestions = Object.values(uniqueWrong);
         if(wrongQuestions.length === 0) return showToast("Bạn không có câu sai nào cần ôn tập trong môn học này.", false);
@@ -645,7 +679,7 @@ function generateSubjectMockTest() {
     else limit = 999999; 
 
     if(!checkIsMasterAdmin() && mockGeneratedThisMonth >= limit) {
-        showToast("Đã đạt giới hạn số lần tạo đề thi thử trong tháng.");
+        showToast("Đã đạt giới hạn số lần tạo đề thi thử trong tháng.", true);
         switchScreen('pricing');
         return;
     }
@@ -659,7 +693,7 @@ function generateSubjectMockTest() {
         if(quiz.questions && Array.isArray(quiz.questions)) poolQuestions = poolQuestions.concat(quiz.questions);
     });
 
-    if (poolQuestions.length === 0) return showToast("Môn học này chưa có đủ câu hỏi để tiến hành trộn đề.");
+    if (poolQuestions.length === 0) return showToast("Môn học này chưa có đủ câu hỏi để tiến hành trộn đề.", true);
 
     let currentIndex = poolQuestions.length, randomIndex;
     while (currentIndex != 0) {
@@ -707,7 +741,7 @@ function prepareWelcomeScreen() {
 function startQuiz(practice) {
     const nameInputEl = document.getElementById('student-name');
     const nameInput = nameInputEl ? nameInputEl.value.trim() : "";
-    if (!nameInput) return showToast("Vui lòng xác nhận Họ và Tên trước khi bắt đầu.");
+    if (!nameInput) return showToast("Vui lòng xác nhận Họ và Tên trước khi bắt đầu.", true);
     
     studentName = nameInput; isPracticeMode = practice; isReviewMode = false; tabSwitchCount = 0;
     activeQuiz = JSON.parse(JSON.stringify(activeQuiz));
@@ -958,7 +992,11 @@ function loadQuestion(index) {
 
     const bPrev = document.getElementById('btn-prev'); if(bPrev) bPrev.disabled = index === 0;
     const bNext = document.getElementById('btn-next'); if(bNext) bNext.classList.toggle('hidden', index === activeQuiz.questions.length - 1);
-    const bSub = document.getElementById('btn-submit'); if(bSub) bSub.classList.toggle('hidden', index !== activeQuiz.questions.length - 1 || isReviewMode);
+    
+    const bSub = document.getElementById('btn-submit'); 
+    if(bSub) {
+        bSub.classList.toggle('hidden', index !== activeQuiz.questions.length - 1 || isReviewMode);
+    }
 
     const explanationBox = document.getElementById('explanation-box');
     const isAnswerRevealed = isReviewMode || (isPracticeMode && userAnswers[index] !== null);
@@ -1002,9 +1040,9 @@ function startTimer() {
 function handleVisibilityChange() {
     if (document.hidden && !isPracticeMode && !isReviewMode && screens.quiz && !screens.quiz.classList.contains('hidden')) {
         if (++tabSwitchCount >= 2) { 
-            showToast("Hệ thống phát hiện thao tác rời khỏi màn hình thi 2 lần. Bài thi tự động được nộp."); 
+            showToast("Hệ thống phát hiện thao tác rời khỏi màn hình thi 2 lần. Bài thi tự động được nộp.", true); 
             submitQuiz(true); 
-        } else { showToast("Nhắc nhở: Không chuyển sang màn hình khác trong quá trình thi thử."); }
+        } else { showToast("Nhắc nhở: Không chuyển sang màn hình khác trong quá trình thi thử.", true); }
     }
 }
 
@@ -1013,7 +1051,7 @@ function submitQuiz(force) {
     const minimumTime = Math.floor(activeQuiz.timeLimit / 2);
 
     if (!force && timeUsed < minimumTime && !isPracticeMode) {
-        showToast("Hệ thống từ chối nộp bài. Vui lòng làm bài ít nhất 50% thời gian quy định.");
+        showToast("Hệ thống từ chối nộp bài. Vui lòng làm bài ít nhất 50% thời gian quy định.", true);
         return; 
     }
 
@@ -1452,33 +1490,34 @@ window.generateSubjectAnalysis = function() {
 
     showToast("Đang phân tích dữ liệu môn học...", false);
 
+    // LÁCH LUẬT LỖI INDEX
     db.collection("results")
         .where("uid", "==", auth.currentUser.uid)
-        .where("category", "==", currentSelectedCategory)
         .get()
         .then(snapshot => {
-            if(snapshot.empty) {
-                return showToast("Hệ thống chưa ghi nhận dữ liệu làm bài để tiến hành phân tích.", true);
-            }
-
             let chapterStats = {};
+            let hasData = false;
             
             snapshot.forEach(doc => {
                 let data = doc.data();
-                if (data.quizId.startsWith("MOCK-") || data.quizId.startsWith("ERROR-")) return;
                 
-                let title = data.quizTitle;
-                if(!chapterStats[title]) {
-                    chapterStats[title] = { totalPercent: 0, count: 0 };
+                // Lọc bằng JS thay vì Firebase để không cần Index
+                if (data.category === currentSelectedCategory && !data.quizId.startsWith("MOCK-") && !data.quizId.startsWith("ERROR-")) {
+                    hasData = true;
+                    let title = data.quizTitle;
+                    if(!chapterStats[title]) {
+                        chapterStats[title] = { totalPercent: 0, count: 0 };
+                    }
+                    chapterStats[title].totalPercent += data.percentage;
+                    chapterStats[title].count += 1;
                 }
-                chapterStats[title].totalPercent += data.percentage;
-                chapterStats[title].count += 1;
             });
 
-            let chapters = Object.keys(chapterStats);
-            if(chapters.length === 0) {
-                return showToast("Cần hoàn thành ít nhất 1 bài tập theo chương để sử dụng chức năng này.", true);
+            if(!hasData) {
+                return showToast("Hệ thống chưa ghi nhận dữ liệu làm bài để tiến hành phân tích.", true);
             }
+
+            let chapters = Object.keys(chapterStats);
 
             let totalSubjectPercent = 0;
             let processedChapters = [];
