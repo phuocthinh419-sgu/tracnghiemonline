@@ -13,7 +13,7 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 
 // =========================================================================
-// [VIP] NGỌC TỶ TRUYỀN QUỐC (MASTER ADMIN)
+// QUẢN TRỊ VIÊN HỆ THỐNG
 // =========================================================================
 const MASTER_ADMIN_UID = "bYMI3W1wh9Rzhc5AFXpIpYnWuJ13";
 
@@ -39,7 +39,7 @@ let screens = {};
 let currentPlan = 'basic';
 let mockGeneratedThisMonth = 0;
 let lastMockMonth = null;
-let isSharedMode = false; // [VIP] KHIÊN BẢO VỆ DỮ LIỆU CHIA SẺ
+let isSharedMode = false; // [KHIÊN BẢO VỆ DỮ LIỆU KHI XEM THƯ MỤC CHIA SẺ]
 
 // --- 3. THEO DÕI TRẠNG THÁI & KHỞI TẠO AN TOÀN ---
 document.addEventListener("DOMContentLoaded", () => { 
@@ -96,6 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
 
+            // NHẬN DIỆN VÀ PHÂN LUỒNG ĐƯỜNG DẪN CHIA SẺ
             const urlParams = new URLSearchParams(window.location.search);
             const quizIdParam = urlParams.get('quiz');
             const folderParam = urlParams.get('folder');
@@ -154,13 +155,13 @@ function fetchQuizzesFromFirebase() {
     db.collection("quizzes")
       .where("authorId", "==", auth.currentUser.uid)
       .onSnapshot((snapshot) => {
-        if (isSharedMode) return; // [VIP] Ngăn chặn việc xóa dữ liệu đang được share
+        if (isSharedMode) return; // Bảo vệ dữ liệu thư mục share không bị xóa mất
         
         quizDatabase = [];
         snapshot.forEach((doc) => { quizDatabase.push(doc.data()); });
         if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList(); 
         if (screens.subjectDetail && !screens.subjectDetail.classList.contains('hidden')) renderSubjectDetailView(currentSelectedCategory);
-    }, (error) => { console.error("Lỗi khi tải dữ liệu: ", error); });
+    }, (error) => { console.error("Lỗi tải dữ liệu: ", error); });
 }
 
 function checkUrlForSharedQuiz(quizId) {
@@ -175,15 +176,16 @@ function checkUrlForSharedQuiz(quizId) {
     }).catch(err => { console.error("Lỗi đường dẫn: ", err); switchScreen('home'); });
 }
 
-// [VIP] HÀM MỞ THƯ MỤC CHIA SẺ
+// XỬ LÝ MỞ THƯ MỤC ĐƯỢC CHIA SẺ
 function loadSharedFolder(category, teacherId) {
     showToast("Đang tải dữ liệu môn học...", false);
-    isSharedMode = true; // Bật khiên bảo vệ để snapshot không ghi đè
+    isSharedMode = true; // Bật khiên bảo vệ
     
     db.collection("quizzes")
       .where("authorId", "==", teacherId)
       .get().then(snapshot => {
           quizDatabase = []; 
+          // Lọc bằng JS để lách luật Firebase Composite Index
           snapshot.forEach(doc => { 
               if (doc.data().category === category) {
                   quizDatabase.push(doc.data()); 
@@ -207,7 +209,7 @@ function loadSharedFolder(category, teacherId) {
       });
 }
 
-// [VIP] HÀM BẢO VỆ COPY CHUẨN XÁC MỌI TRÌNH DUYỆT
+// CÔNG CỤ COPY HOẠT ĐỘNG TRÊN MỌI TRÌNH DUYỆT (PC & ĐIỆN THOẠI)
 window.copyLink = function(link) {
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(link).then(() => { 
@@ -230,9 +232,27 @@ function fallbackCopy(text) {
         document.execCommand('copy');
         showToast("Đã sao chép liên kết thành công.", false);
     } catch (err) {
-        showToast("Lỗi: Trình duyệt của bạn không hỗ trợ sao chép.", true);
+        showToast("Lỗi: Trình duyệt của bạn không hỗ trợ sao chép tự động.", true);
     }
     document.body.removeChild(textArea);
+}
+
+function showToast(message, isError = true) {
+    const toast = document.getElementById('system-toast');
+    const msg = document.getElementById('system-toast-msg');
+    if(!toast || !msg) { console.log(message); return; }
+    
+    // Gỡ bỏ hoàn toàn mọi style can thiệp làm tàng hình Toast
+    toast.style.cssText = ""; 
+    msg.innerText = message;
+    toast.className = `fixed top-6 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl shadow-2xl font-bold z-[9999] transition-all duration-300 flex items-center gap-3 opacity-100 ${isError ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`;
+    
+    setTimeout(() => {
+        if(toast.classList.contains('opacity-100')) {
+            toast.classList.replace('top-6', 'top-[-100px]');
+            toast.classList.replace('opacity-100', 'opacity-0');
+        }
+    }, 4000);
 }
 
 function setupEventListeners() {
@@ -244,7 +264,7 @@ function setupEventListeners() {
     
     addEvt('role-student', 'click', () => { setRole('student'); });
     addEvt('role-teacher', 'click', () => { 
-        isSharedMode = false; // Tắt khiên để nạp lại dữ liệu Giáo viên
+        isSharedMode = false; // Tắt khiên bảo vệ để giáo viên tự nạp lại kho của mình
         setRole('teacher'); 
         fetchQuizzesFromFirebase();
     });
@@ -260,6 +280,11 @@ function setupEventListeners() {
     addEvt('btn-exit-quiz', 'click', () => {
         if (isReviewMode) {
             switchScreen('result');
+            // Cập nhật lại thanh điểm và Roadmap nếu cần
+            const resultScoreEl = document.getElementById('result-score');
+            if (resultScoreEl && resultScoreEl.innerText === '0/0') { 
+                switchScreen('subjectDetail'); 
+            }
         } else if (confirm("Thoát? Tiến trình làm bài sẽ được tự động lưu (áp dụng cho tài khoản nâng cấp).")) {
             clearInterval(timerInterval); 
             exitFullscreen(); 
@@ -380,7 +405,6 @@ function switchScreen(screenName) {
         return;
     }
 
-    // [VIP] PHÁ PHONG ẤN TÀNG HÌNH: Trả thông báo về trạng thái nguyên thủy
     const toast = document.getElementById('system-toast');
     if (toast) {
         toast.style.cssText = ""; 
@@ -517,7 +541,7 @@ function redoQuizFromHistory(quizId) {
     }).catch(err => showToast("Lỗi tải đề thi: " + err.message, true));
 }
 
-// LÁCH LUẬT CẤM CỔNG KHÔNG GIAN BẰNG JAVASCRIPT
+// BỎ LỖI FIREBASE COMPOSITE INDEX BẰNG PHƯƠNG PHÁP QUERY ID
 window.generateErrorCorrection = function(resultDocId) {
     if(!checkFeatureAccess('error_correction')) return; 
     showToast("Đang xử lý dữ liệu câu sai...", false);
@@ -607,7 +631,7 @@ function renderSubjectDetailView(category) {
         if (checkIsMasterAdmin() || currentRole === 'teacher') {
             const shareLink = `${window.location.origin}${window.location.pathname}?quiz=${quiz.id}`;
             actionBtnsHTML = `
-                <button onclick="event.stopPropagation(); copyLink('${shareLink}')" class="absolute top-4 right-14 text-gray-400 hover:text-blue-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Sao chép liên kết"><i class="fas fa-link"></i></button>
+                <button onclick="event.stopPropagation(); copyLink('${shareLink}')" class="absolute top-4 right-14 text-gray-400 hover:text-blue-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Sao chép liên kết bài thi"><i class="fas fa-link"></i></button>
                 <button onclick="event.stopPropagation(); deleteQuiz('${quiz.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Xóa đề"><i class="fas fa-trash-alt"></i></button>
             `;
         }
@@ -642,6 +666,7 @@ window.generateCategoryErrorMock = function() {
     const sel = document.getElementById('mock-question-count');
     const countSelect = sel ? parseInt(sel.value) : 50;
 
+    // Truy vấn cơ bản, không xài danh mục kép
     db.collection("results").where("uid", "==", auth.currentUser.uid).get().then(snapshot => {
         let uniqueWrong = {}; 
         let hasData = false;
@@ -1488,7 +1513,7 @@ function generateRoadmap(percent) {
     content.innerHTML = html;
 }
 
-// ĐÀI QUAN SÁT NĂNG LỰC TOÀN MÔN (GÓI PRO)
+// LÁCH LUẬT LỖI INDEX BẰNG PHƯƠNG PHÁP LỌC JS CHO TÍNH NĂNG PHÂN TÍCH (PRO)
 window.generateSubjectAnalysis = function() {
     if (!checkIsMasterAdmin() && currentPlan !== 'pro' && currentPlan !== 'ultra') {
         showToast("Tính năng Phân Tích Năng Lực yêu cầu tài khoản cấp độ Pro trở lên.", true);
@@ -1500,7 +1525,6 @@ window.generateSubjectAnalysis = function() {
 
     showToast("Đang phân tích dữ liệu môn học...", false);
 
-    // LÁCH LUẬT LỖI INDEX
     db.collection("results")
         .where("uid", "==", auth.currentUser.uid)
         .get()
@@ -1511,14 +1535,14 @@ window.generateSubjectAnalysis = function() {
             snapshot.forEach(doc => {
                 let data = doc.data();
                 
-                // Lọc bằng JS thay vì Firebase để không cần Index
-                if (data.category === currentSelectedCategory && data.quizId && !data.quizId.startsWith("MOCK-") && !data.quizId.startsWith("ERROR-")) {
+                // Lọc bằng JS để lách luật Firebase Composite Index
+                if (data.category === currentSelectedCategory && data.quizId && !String(data.quizId).includes("MOCK-") && !String(data.quizId).includes("ERROR-")) {
                     hasData = true;
-                    let title = data.quizTitle;
+                    let title = data.quizTitle || "Chưa đặt tên";
                     if(!chapterStats[title]) {
                         chapterStats[title] = { totalPercent: 0, count: 0 };
                     }
-                    chapterStats[title].totalPercent += data.percentage;
+                    chapterStats[title].totalPercent += (data.percentage || 0);
                     chapterStats[title].count += 1;
                 }
             });
