@@ -13,7 +13,7 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 
 // =========================================================================
-// [VIP] NGỌC TỶ TRUYỀN QUỐC (MASTER ADMIN)
+// QUẢN TRỊ VIÊN HỆ THỐNG
 // =========================================================================
 const MASTER_ADMIN_UID = "bYMI3W1wh9Rzhc5AFXpIpYnWuJ13";
 
@@ -40,7 +40,7 @@ let currentPlan = 'basic';
 let mockGeneratedThisMonth = 0;
 let lastMockMonth = null;
 
-// --- 3. THEO DÕI TRẠNG THÁI & KHỞI TẠO AN TOÀN ---
+// --- 3. THEO DÕI TRẠNG THÁI & KHỞI TẠO ---
 document.addEventListener("DOMContentLoaded", () => { 
     screens = {
         auth: document.getElementById('auth-screen'),
@@ -95,10 +95,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
 
+            // XỬ LÝ ĐƯỜNG DẪN CHIA SẺ
             const urlParams = new URLSearchParams(window.location.search);
             const quizIdParam = urlParams.get('quiz');
+            const folderParam = urlParams.get('folder');
+            const teacherParam = urlParams.get('t');
+
             if (quizIdParam) {
                 checkUrlForSharedQuiz(quizIdParam);
+            } else if (folderParam && teacherParam) {
+                loadSharedFolder(folderParam, teacherParam);
             } else {
                 switchScreen('home'); 
             }
@@ -123,7 +129,7 @@ function checkFeatureAccess(feature, silent = false) {
     
     if (!userFeatures.includes(feature)) {
         if(!silent) {
-            showToast("Tính năng này đã bị khóa. Vui lòng nâng cấp Gói Đăng Ký để sử dụng!");
+            showToast("Tính năng này yêu cầu nâng cấp gói cước để sử dụng.");
             switchScreen('pricing');
         }
         return false;
@@ -152,7 +158,7 @@ function fetchQuizzesFromFirebase() {
         snapshot.forEach((doc) => { quizDatabase.push(doc.data()); });
         if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList(); 
         if (screens.subjectDetail && !screens.subjectDetail.classList.contains('hidden')) renderSubjectDetailView(currentSelectedCategory);
-    }, (error) => { console.error("Lỗi khi tải dữ liệu: ", error); });
+    }, (error) => { console.error("Lỗi tải dữ liệu: ", error); });
 }
 
 function checkUrlForSharedQuiz(quizId) {
@@ -160,14 +166,42 @@ function checkUrlForSharedQuiz(quizId) {
         if (doc.exists) {
             activeQuiz = doc.data(); prepareWelcomeScreen();
         } else {
-            showToast("Đề thi này không tồn tại hoặc đã bị gỡ bỏ khỏi hệ thống!"); switchScreen('home');
+            showToast("Đề thi này không tồn tại hoặc đã bị xóa khỏi hệ thống."); switchScreen('home');
         }
         window.history.replaceState({}, document.title, window.location.pathname);
-    }).catch(err => { console.error("Lỗi link: ", err); switchScreen('home'); });
+    }).catch(err => { console.error("Lỗi đường dẫn: ", err); switchScreen('home'); });
+}
+
+// XỬ LÝ MỞ THƯ MỤC ĐƯỢC CHIA SẺ
+function loadSharedFolder(category, teacherId) {
+    showToast("Đang tải dữ liệu môn học...", false);
+    
+    db.collection("quizzes")
+      .where("authorId", "==", teacherId)
+      .where("category", "==", category)
+      .get().then(snapshot => {
+          if(snapshot.empty) {
+              showToast("Thư mục này hiện tại không có dữ liệu.");
+              switchScreen('home');
+              return;
+          }
+          
+          quizDatabase = []; 
+          snapshot.forEach(doc => { quizDatabase.push(doc.data()); });
+          
+          currentSelectedCategory = category;
+          switchScreen('subjectDetail'); 
+          showToast(`Đã tải thành công thư mục: ${category}`, false);
+          
+          window.history.replaceState({}, document.title, window.location.pathname);
+      }).catch(err => {
+          showToast("Lỗi khi tải thư mục: " + err.message);
+          switchScreen('home');
+      });
 }
 
 function copyLink(link) {
-    navigator.clipboard.writeText(link).then(() => { showToast("Đã sao chép liên kết thành công!", false); });
+    navigator.clipboard.writeText(link).then(() => { showToast("Đã sao chép liên kết thành công.", false); });
 }
 
 function setupEventListeners() {
@@ -175,7 +209,7 @@ function setupEventListeners() {
 
     addEvt('btn-auth-toggle', 'click', () => toggleAuthMode(!isLoginMode));
     addEvt('btn-auth-submit', 'click', handleAuthSubmit);
-    addEvt('btn-logout', 'click', () => { if(confirm("Đăng xuất tài khoản?")) auth.signOut(); });
+    addEvt('btn-logout', 'click', () => { if(confirm("Xác nhận đăng xuất?")) auth.signOut(); });
     addEvt('role-student', 'click', () => setRole('student'));
     addEvt('role-teacher', 'click', () => setRole('teacher'));
     addEvt('btn-theme-toggle', 'click', toggleDarkMode);
@@ -189,7 +223,7 @@ function setupEventListeners() {
     addEvt('btn-exit-quiz', 'click', () => {
         if (isReviewMode) {
             switchScreen('result');
-        } else if (confirm("Thoát? Tiến trình làm bài sẽ được tự động lưu (Nếu là hội viên).")) {
+        } else if (confirm("Thoát? Tiến trình làm bài sẽ được tự động lưu (áp dụng cho tài khoản đăng ký gói).")) {
             clearInterval(timerInterval); 
             exitFullscreen(); 
             saveProgressLocally(); 
@@ -202,7 +236,12 @@ function setupEventListeners() {
     addEvt('btn-mock', 'click', () => startQuiz(false));
     addEvt('btn-prev', 'click', () => loadQuestion(currentQuestionIndex - 1));
     addEvt('btn-next', 'click', () => loadQuestion(currentQuestionIndex + 1));
-    addEvt('btn-submit', 'click', () => submitQuiz(false));
+    
+    addEvt('btn-submit', 'click', () => {
+        if (isReviewMode) switchScreen('result'); 
+        else submitQuiz(false); 
+    });
+    
     addEvt('btn-review', 'click', reviewQuiz);
     addEvt('btn-hint', 'click', () => {
         const hintBox = document.getElementById('hint-box');
@@ -210,7 +249,6 @@ function setupEventListeners() {
     });
     addEvt('btn-flag', 'click', toggleFlag);
     
-    // Nút cuộn lộ trình ở màn hình kết quả
     addEvt('btn-show-roadmap', 'click', () => {
         const rc = document.getElementById('roadmap-container');
         if(rc) { 
@@ -247,12 +285,12 @@ function handleAuthSubmit() {
     const password = document.getElementById('auth-password').value.trim();
     const nameInput = document.getElementById('auth-name');
     const name = nameInput ? nameInput.value.trim() : "";
-    if (!email || !password) return alert("Nhập đủ Email và Mật khẩu!");
-    if (isLoginMode) { auth.signInWithEmailAndPassword(email, password).catch(err => showToast("Đăng nhập thất bại: " + err.message)); } 
+    if (!email || !password) return alert("Vui lòng nhập đủ thông tin.");
+    if (isLoginMode) { auth.signInWithEmailAndPassword(email, password).catch(err => showToast("Đăng nhập thất bại: Kiểm tra lại thông tin.", true)); } 
     else {
-        if (!name) return alert("Nhập Họ và tên để tạo hồ sơ!");
+        if (!name) return alert("Vui lòng nhập Họ và tên.");
         auth.createUserWithEmailAndPassword(email, password).then((result) => { return result.user.updateProfile({ displayName: name }); })
-        .then(() => { showToast("Đăng ký thành công!", false); auth.currentUser.reload(); }).catch(err => showToast("Lỗi đăng ký: " + err.message));
+        .then(() => { showToast("Đăng ký thành công.", false); auth.currentUser.reload(); }).catch(err => showToast("Lỗi đăng ký: " + err.message, true));
     }
 }
 
@@ -301,7 +339,7 @@ function toggleDarkMode() {
 
 function switchScreen(screenName) {
     if (screenName === 'admin' && !checkIsMasterAdmin()) {
-        showToast("Cảnh báo: Bạn không có quyền truy cập Nội Cung!");
+        showToast("Tài khoản không có quyền truy cập khu vực này.");
         return;
     }
 
@@ -344,7 +382,7 @@ function renderHomeQuizList() {
     
     if (currentRole === 'teacher' || currentStudentTab === 'browse') {
         if (quizDatabase.length === 0) {
-            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Chưa có dữ liệu môn học nào do bạn quản lý.</p>';
+            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Chưa có dữ liệu môn học.</p>';
             return;
         }
 
@@ -352,18 +390,27 @@ function renderHomeQuizList() {
         categories.forEach(category => {
             const totalQuizzes = quizDatabase.filter(q => q.category === category).length;
             const card = document.createElement('div');
-            card.className = 'p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-xl transition-all cursor-pointer flex items-center justify-between group';
+            
+            card.className = 'relative p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-xl transition-all cursor-pointer flex items-center justify-between group';
+            
+            let shareBtnHTML = '';
+            if (checkIsMasterAdmin() || currentRole === 'teacher') {
+                const folderLink = `${window.location.origin}${window.location.pathname}?folder=${encodeURIComponent(category)}&t=${auth.currentUser.uid}`;
+                shareBtnHTML = `<button onclick="event.stopPropagation(); copyLink('${folderLink}')" class="absolute top-4 right-4 text-gray-400 hover:text-blue-500 bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Chia sẻ toàn bộ môn này"><i class="fas fa-share-alt"></i></button>`;
+            }
+
             card.innerHTML = `
+                ${shareBtnHTML}
                 <div class="flex items-center gap-4">
                     <div class="w-14 h-14 bg-blue-50 dark:bg-gray-800 text-blue-900 dark:text-blue-400 rounded-xl flex items-center justify-center text-2xl group-hover:bg-blue-900 group-hover:text-white transition-colors">
                         <i class="fas fa-folder"></i>
                     </div>
                     <div>
                         <h3 class="text-xl font-bold text-gray-800 dark:text-white group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors">${category}</h3>
-                        <p class="text-sm text-gray-400 mt-1">Gồm có ${totalQuizzes} bộ đề / chương</p>
+                        <p class="text-sm text-gray-400 mt-1">Gồm có ${totalQuizzes} bộ đề</p>
                     </div>
                 </div>
-                <div class="text-gray-300 group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors"><i class="fas fa-chevron-right text-xl"></i></div>
+                <div class="text-gray-300 group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors pr-6"><i class="fas fa-chevron-right text-xl"></i></div>
             `;
             card.onclick = () => { currentSelectedCategory = category; switchScreen('subjectDetail'); };
             container.appendChild(card);
@@ -371,12 +418,12 @@ function renderHomeQuizList() {
     } 
     else if (currentRole === 'student' && currentStudentTab === 'history') {
         if (!auth.currentUser) return;
-        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-4">Đang kết nối tải tệp đề đã làm...</p>';
+        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-4">Đang tải lịch sử...</p>';
         
         db.collection("results").where("uid", "==", auth.currentUser.uid).get().then((snapshot) => {
             container.innerHTML = '';
             if (snapshot.empty) {
-                container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Kho trống. Bạn chưa thực hiện bài thi nào.</p>'; return;
+                container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Bạn chưa thực hiện bài thi nào.</p>'; return;
             }
             
             let listHistory = [];
@@ -396,16 +443,15 @@ function renderHomeQuizList() {
                 
                 let isMock = res.quizId.startsWith("MOCK-") || res.quizId.startsWith("ERROR-CORRECTION-");
                 let actionBtnHTML = isMock ? '' : `<button onclick="redoQuizFromHistory('${res.quizId}')" class="px-3 py-1.5 bg-blue-900 text-white text-xs font-bold rounded-lg hover:bg-blue-800 transition-colors"><i class="fas fa-redo mr-1"></i>Làm lại</button>`;
-                let reviewBtnHTML = `<button onclick="reviewPastQuiz('${res.quizId}', '${item.id}')" class="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors mr-2"><i class="fas fa-eye mr-1"></i>Xem bài</button>`;
-                
+                let reviewBtnHTML = `<button onclick="reviewPastQuiz('${res.quizId}', '${item.id}')" class="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors mr-2"><i class="fas fa-eye mr-1"></i>Xem lại</button>`;
                 let errorBtnHTML = `<button onclick="generateErrorCorrection('${item.id}')" class="px-3 py-1.5 bg-orange-500 text-white text-xs font-bold rounded-lg hover:bg-orange-600 transition-colors mr-2"><i class="fas fa-tools mr-1"></i>Vá lỗi sai</button>`;
 
                 card.innerHTML = `
-                    <button onclick="deleteHistoryEntry('${item.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 bg-gray-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors" title="Xóa lịch sử này"><i class="fas fa-times"></i></button>
+                    <button onclick="deleteHistoryEntry('${item.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 bg-gray-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors" title="Xóa dữ liệu"><i class="fas fa-times"></i></button>
                     <div>
                         <span class="text-[0.7rem] px-2 py-0.5 bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 rounded-full font-bold border dark:border-purple-800">${res.category}</span>
                         <h3 class="text-base font-bold text-gray-800 dark:text-white mt-2 pr-6 line-clamp-2">${res.quizTitle}</h3>
-                        <p class="text-[0.7rem] text-gray-400 mt-1"><i class="far fa-clock"></i> Nộp: ${formatStr}</p>
+                        <p class="text-[0.7rem] text-gray-400 mt-1"><i class="far fa-clock"></i> Cập nhật: ${formatStr}</p>
                         
                         <div class="grid grid-cols-2 gap-2 mt-3 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl text-xs">
                             <div><span class="text-gray-400">Đúng:</span> <strong class="text-blue-600 font-mono">${res.score}</strong></div>
@@ -421,20 +467,52 @@ function renderHomeQuizList() {
                 `;
                 container.appendChild(card);
             });
-        }).catch(err => { container.innerHTML = '<p class="col-span-full text-center text-red-500 py-4">Lỗi kết nối tệp điểm đám mây.</p>'; });
+        }).catch(err => { container.innerHTML = '<p class="col-span-full text-center text-red-500 py-4">Lỗi kết nối cơ sở dữ liệu.</p>'; });
     }
 }
 
 function redoQuizFromHistory(quizId) {
     db.collection("quizzes").doc(quizId).get().then((doc) => {
         if (doc.exists) { activeQuiz = doc.data(); prepareWelcomeScreen(); } 
-        else { showToast("Đề thi này đã bị Giáo viên xóa hoặc không còn tồn tại trên hệ thống!"); }
-    }).catch(err => showToast("Lỗi khi tải đề thi: " + err.message));
+        else { showToast("Đề thi này không tồn tại hoặc đã bị gỡ bỏ."); }
+    }).catch(err => showToast("Lỗi tải đề thi: " + err.message));
+}
+
+window.generateErrorCorrection = function(resultDocId) {
+    if(!checkFeatureAccess('error_correction')) return; 
+    showToast("Đang xử lý dữ liệu câu sai...", false);
+    
+    db.collection("results").doc(resultDocId).get().then((resDoc) => {
+        if (resDoc.exists) {
+            const pastData = resDoc.data();
+            if (!pastData.quizQuestionsSnapshot) return showToast("Dữ liệu không hỗ trợ tính năng này.");
+            
+            let wrongQuestions = [];
+            pastData.userAnswers.forEach((ans, idx) => {
+                if (ans === null || ans !== pastData.quizQuestionsSnapshot[idx].correctAnswer) {
+                    wrongQuestions.push(pastData.quizQuestionsSnapshot[idx]);
+                }
+            });
+
+            if (wrongQuestions.length === 0) return showToast("Không có câu trả lời sai trong bài thi này.", false);
+
+            activeQuiz = {
+                id: "ERROR-CORRECTION-" + Date.now(),
+                title: `[Ôn Tập] - ` + pastData.quizTitle,
+                category: pastData.category,
+                timeLimit: wrongQuestions.length * 60, 
+                questions: wrongQuestions,
+                isTestOnly: false,
+                authorId: auth.currentUser ? auth.currentUser.uid : "GUEST"
+            };
+            prepareWelcomeScreen();
+        }
+    }).catch(err => showToast("Lỗi xử lý dữ liệu: " + err.message));
 }
 
 function reviewPastQuiz(quizId, resultDocId) {
     db.collection("quizzes").doc(quizId).get().then((quizDoc) => {
-        if (!quizDoc.exists) return showToast("Đề thi gốc này đã bị Giáo viên xóa hoặc gỡ bỏ!");
+        if (!quizDoc.exists) return showToast("Đề thi gốc không còn tồn tại trên hệ thống.");
         activeQuiz = quizDoc.data();
         
         db.collection("results").doc(resultDocId).get().then((resDoc) => {
@@ -447,7 +525,7 @@ function reviewPastQuiz(quizId, resultDocId) {
                 
                 isReviewMode = true; isPracticeMode = false;
                 
-                const dName = document.getElementById('display-student-name'); if(dName) dName.innerText = pastData.studentName + " (Chế độ xem lại)";
+                const dName = document.getElementById('display-student-name'); if(dName) dName.innerText = pastData.studentName + " (Xem lại)";
                 const qTitle = document.getElementById('quiz-header-title'); if(qTitle) qTitle.innerText = activeQuiz.title;
                 
                 const sc = document.getElementById('result-score'); if(sc) sc.innerText = pastData.score;
@@ -458,12 +536,12 @@ function reviewPastQuiz(quizId, resultDocId) {
                 switchScreen('result');
             }
         });
-    }).catch(err => showToast("Lỗi tải tệp: " + err.message));
+    }).catch(err => showToast("Lỗi tải thông tin: " + err.message));
 }
 
 function deleteHistoryEntry(docId) {
-    if (confirm("Xóa lịch sử này khỏi Kho Đã Làm? Đề gốc sẽ không bị ảnh hưởng.")) {
-        db.collection("results").doc(docId).delete().then(() => { renderHomeQuizList(); }).catch(err => showToast("Lỗi xóa: " + err.message));
+    if (confirm("Xác nhận xóa kết quả này khỏi lịch sử?")) {
+        db.collection("results").doc(docId).delete().then(() => { renderHomeQuizList(); }).catch(err => showToast("Lỗi khi xóa: " + err.message));
     }
 }
 
@@ -474,7 +552,7 @@ function renderSubjectDetailView(category) {
 
     const quizzesInFolder = quizDatabase.filter(q => q.category === category);
     if(quizzesInFolder.length === 0) {
-        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-4">Thư mục môn học này hiện đang trống.</p>'; return;
+        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-4">Thư mục hiện tại chưa có đề thi.</p>'; return;
     }
 
     quizzesInFolder.forEach(quiz => {
@@ -483,14 +561,14 @@ function renderSubjectDetailView(category) {
         
         let actionBtnsHTML = '';
         let badgeHTML = quiz.isTestOnly ? 
-            '<span class="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold rounded-full border dark:border-red-800">Đề Kiểm Tra</span>' : 
-            '<span class="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold rounded-full border dark:border-gray-500">Đề bài lẻ</span>';
+            '<span class="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold rounded-full border dark:border-red-800">Kiểm tra</span>' : 
+            '<span class="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold rounded-full border dark:border-gray-500">Luyện tập</span>';
 
-        if (checkIsMasterAdmin()) {
+        if (checkIsMasterAdmin() || currentRole === 'teacher') {
             const shareLink = `${window.location.origin}${window.location.pathname}?quiz=${quiz.id}`;
             actionBtnsHTML = `
-                <button onclick="copyLink('${shareLink}')" class="absolute top-4 right-14 text-gray-400 hover:text-blue-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Copy Link"><i class="fas fa-link"></i></button>
-                <button onclick="deleteQuiz('${quiz.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Xóa đề"><i class="fas fa-trash-alt"></i></button>
+                <button onclick="event.stopPropagation(); copyLink('${shareLink}')" class="absolute top-4 right-14 text-gray-400 hover:text-blue-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Sao chép liên kết"><i class="fas fa-link"></i></button>
+                <button onclick="event.stopPropagation(); deleteQuiz('${quiz.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Xóa đề"><i class="fas fa-trash-alt"></i></button>
             `;
         }
 
@@ -506,14 +584,57 @@ function renderSubjectDetailView(category) {
 
 function selectQuiz(quizId) {
     activeQuiz = quizDatabase.find(q => q.id === quizId);
-    if (!activeQuiz) return showToast("Đề thi này không tồn tại!");
+    if (!activeQuiz) return showToast("Đề thi không tồn tại.");
     prepareWelcomeScreen();
 }
 
 function deleteQuiz(quizId) {
-    if (confirm("Xóa vĩnh viễn đề thi này khỏi hệ thống?")) {
-        db.collection("quizzes").doc(quizId).delete().then(() => { renderSubjectDetailView(currentSelectedCategory); }).catch(err => showToast("Lỗi khi xóa dữ liệu: " + err));
+    if (confirm("Xác nhận xóa vĩnh viễn đề thi này khỏi hệ thống?")) {
+        db.collection("quizzes").doc(quizId).delete().then(() => { renderSubjectDetailView(currentSelectedCategory); }).catch(err => showToast("Lỗi hệ thống: " + err));
     }
+}
+
+window.generateCategoryErrorMock = function() {
+    if(!checkFeatureAccess('error_correction')) return;
+    showToast("Đang tổng hợp dữ liệu câu sai...", false);
+
+    const sel = document.getElementById('mock-question-count');
+    const countSelect = sel ? parseInt(sel.value) : 50;
+
+    db.collection("results").where("uid", "==", auth.currentUser.uid).where("category", "==", currentSelectedCategory).get().then(snapshot => {
+        if(snapshot.empty) return showToast("Hệ thống chưa ghi nhận lịch sử câu trả lời sai trong môn này.");
+        
+        let uniqueWrong = {}; 
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if(data.quizQuestionsSnapshot && data.userAnswers) {
+                data.userAnswers.forEach((ans, idx) => {
+                    if (ans === null || ans !== data.quizQuestionsSnapshot[idx].correctAnswer) {
+                        let q = data.quizQuestionsSnapshot[idx];
+                        uniqueWrong[q.content] = q; 
+                    }
+                });
+            }
+        });
+
+        let wrongQuestions = Object.values(uniqueWrong);
+        if(wrongQuestions.length === 0) return showToast("Bạn không có câu sai nào cần ôn tập trong môn học này.", false);
+
+        for (let i = wrongQuestions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [wrongQuestions[i], wrongQuestions[j]] = [wrongQuestions[j], wrongQuestions[i]];
+        }
+
+        activeQuiz = {
+            id: "MOCK-PRO-ERR-" + Date.now(),
+            title: `[Ôn Tập] Câu Sai - ${currentSelectedCategory}`,
+            category: currentSelectedCategory,
+            timeLimit: Math.min(wrongQuestions.length, countSelect) * 60, 
+            questions: wrongQuestions.slice(0, countSelect),
+            isTestOnly: false, authorId: auth.currentUser.uid
+        };
+        prepareWelcomeScreen();
+    });
 }
 
 function generateSubjectMockTest() {
@@ -524,7 +645,7 @@ function generateSubjectMockTest() {
     else limit = 999999; 
 
     if(!checkIsMasterAdmin() && mockGeneratedThisMonth >= limit) {
-        showToast(`Bạn đã dùng hết ${mockGeneratedThisMonth}/${limit} lượt tạo đề trong tháng này. Vui lòng nâng cấp gói cước cao hơn để tiếp tục cày cuốc!`);
+        showToast("Đã đạt giới hạn số lần tạo đề thi thử trong tháng.");
         switchScreen('pricing');
         return;
     }
@@ -538,7 +659,7 @@ function generateSubjectMockTest() {
         if(quiz.questions && Array.isArray(quiz.questions)) poolQuestions = poolQuestions.concat(quiz.questions);
     });
 
-    if (poolQuestions.length === 0) return showToast("Môn này chưa có câu hỏi để trộn đề!");
+    if (poolQuestions.length === 0) return showToast("Môn học này chưa có đủ câu hỏi để tiến hành trộn đề.");
 
     let currentIndex = poolQuestions.length, randomIndex;
     while (currentIndex != 0) {
@@ -550,11 +671,11 @@ function generateSubjectMockTest() {
     const finalCount = Math.min(countSelect, poolQuestions.length);
     const slicedQuestions = poolQuestions.slice(0, finalCount);
 
-    if(finalCount < countSelect) showToast(`Chỉ gom được tối đa ${poolQuestions.length} câu.`);
+    if(finalCount < countSelect) showToast(`Hệ thống chỉ có thể tổng hợp tối đa ${poolQuestions.length} câu.`, false);
 
     activeQuiz = {
         id: "MOCK-GENERATED-" + Date.now(),
-        title: `Đề Tổng Hợp / Thích Ứng Môn ${currentSelectedCategory}`,
+        title: `Thi Thử Tổng Hợp - ${currentSelectedCategory}`,
         category: currentSelectedCategory,
         timeLimit: finalCount * 60, 
         questions: slicedQuestions,
@@ -586,7 +707,7 @@ function prepareWelcomeScreen() {
 function startQuiz(practice) {
     const nameInputEl = document.getElementById('student-name');
     const nameInput = nameInputEl ? nameInputEl.value.trim() : "";
-    if (!nameInput) return showToast("Vui lòng nhập họ và tên trước khi bắt đầu!");
+    if (!nameInput) return showToast("Vui lòng xác nhận Họ và Tên trước khi bắt đầu.");
     
     studentName = nameInput; isPracticeMode = practice; isReviewMode = false; tabSwitchCount = 0;
     activeQuiz = JSON.parse(JSON.stringify(activeQuiz));
@@ -595,7 +716,7 @@ function startQuiz(practice) {
     if (checkFeatureAccess('autosave', true)) {
         const savedData = localStorage.getItem('quizProgress_' + activeQuiz.id);
         if (savedData) {
-            if (confirm("Hệ thống tìm thấy tiến độ làm bài đang dang dở của bạn trong đề này. Bạn có muốn phục hồi và làm tiếp không?")) {
+            if (confirm("Hệ thống phát hiện tiến trình chưa hoàn thành. Bạn có muốn tiếp tục bài làm không?")) {
                 const parsed = JSON.parse(savedData);
                 userAnswers = parsed.userAnswers;
                 flaggedQuestions = parsed.flaggedQuestions;
@@ -669,7 +790,7 @@ function startQuiz(practice) {
         startTimer();
     } else {
         const timeText = document.getElementById('time-text');
-        if (timeText) timeText.innerText = "Vô hạn";
+        if (timeText) timeText.innerText = "Không giới hạn";
         if (eBar) eBar.classList.add('hidden');
     }
 }
@@ -782,7 +903,7 @@ function loadQuestion(index) {
                     btnBorder = 'border-green-500'; btnBg = 'bg-green-50 dark:bg-green-900/20'; labelBg = 'bg-green-500'; labelText = 'text-white';
                     if (optExpText) {
                         expBlock = `<div class="mt-3 pl-11 sm:pl-14 text-sm text-green-700 dark:text-green-400 text-left">
-                            <div class="font-bold mb-1"><i class="fas fa-check mr-1"></i> Câu trả lời chính xác</div>
+                            <div class="font-bold mb-1"><i class="fas fa-check mr-1"></i> Chính xác</div>
                             <div class="font-academic leading-relaxed opacity-90">${optExpText}</div>
                         </div>`;
                     }
@@ -790,7 +911,7 @@ function loadQuestion(index) {
                     btnBorder = 'border-red-500'; btnBg = 'bg-red-50 dark:bg-red-900/20'; labelBg = 'bg-red-500'; labelText = 'text-white';
                     if (optExpText) {
                         expBlock = `<div class="mt-3 pl-11 sm:pl-14 text-sm text-red-700 dark:text-red-400 text-left">
-                            <div class="font-bold mb-1"><i class="fas fa-times mr-1"></i> Chưa đúng lắm!</div>
+                            <div class="font-bold mb-1"><i class="fas fa-times mr-1"></i> Sai</div>
                             <div class="font-academic leading-relaxed opacity-90">${optExpText}</div>
                         </div>`;
                     }
@@ -837,12 +958,7 @@ function loadQuestion(index) {
 
     const bPrev = document.getElementById('btn-prev'); if(bPrev) bPrev.disabled = index === 0;
     const bNext = document.getElementById('btn-next'); if(bNext) bNext.classList.toggle('hidden', index === activeQuiz.questions.length - 1);
-    
-    // Nút Nộp Bài
-    const bSub = document.getElementById('btn-submit'); 
-    if(bSub) {
-        bSub.classList.toggle('hidden', index !== activeQuiz.questions.length - 1 || isReviewMode);
-    }
+    const bSub = document.getElementById('btn-submit'); if(bSub) bSub.classList.toggle('hidden', index !== activeQuiz.questions.length - 1 || isReviewMode);
 
     const explanationBox = document.getElementById('explanation-box');
     const isAnswerRevealed = isReviewMode || (isPracticeMode && userAnswers[index] !== null);
@@ -851,7 +967,7 @@ function loadQuestion(index) {
         if (isAnswerRevealed && q.explanation && q.explanation !== "Tạo tự động từ dữ liệu văn bản." && q.explanation !== "Chưa có giải thích.") {
             
             if(!checkFeatureAccess('explanation', true)) {
-                if(eText) eText.innerHTML = `<span class="text-gray-500 italic"><i class="fas fa-lock"></i> Lời giải thích đã bị khóa trong Gói Basic. <a href="#" onclick="switchScreen('pricing')" class="text-blue-600 font-bold underline">Nâng Cấp Gói Cước</a> để mở khóa.</span>`;
+                if(eText) eText.innerHTML = `<span class="text-gray-500 italic"><i class="fas fa-lock"></i> Chi tiết giải thích yêu cầu tài khoản nâng cấp. <a href="#" onclick="switchScreen('pricing')" class="text-blue-600 font-bold underline">Xem các gói cước</a>.</span>`;
                 explanationBox.classList.remove('hidden');
             } else {
                 if(eText) eText.innerText = q.explanation;
@@ -878,9 +994,7 @@ function startTimer() {
             else { energyFill.className = 'energy-fill bg-safe'; timeText.className = 'font-mono font-bold text-2xl sm:text-3xl text-blue-900 dark:text-white tabular-nums'; }
         }
         if (timeLeft <= 0) {
-            clearInterval(timerInterval); 
-            showToast("Hết giờ làm bài! Hệ thống đang tự động thu bài...", false); 
-            submitQuiz(true);
+            clearInterval(timerInterval); showToast("Đã hết thời gian làm bài. Hệ thống đang xử lý nộp bài...", false); submitQuiz(true);
         }
     }, 1000);
 }
@@ -888,9 +1002,9 @@ function startTimer() {
 function handleVisibilityChange() {
     if (document.hidden && !isPracticeMode && !isReviewMode && screens.quiz && !screens.quiz.classList.contains('hidden')) {
         if (++tabSwitchCount >= 2) { 
-            showToast("CẢNH BÁO VI PHẠM: Tự ý rời khỏi trường thi 2 lần, tự động thu bài!"); 
+            showToast("Hệ thống phát hiện thao tác rời khỏi màn hình thi 2 lần. Bài thi tự động được nộp."); 
             submitQuiz(true); 
-        } else { showToast("NHẮC NHỞ: Tuyệt đối không được chuyển tab ra ngoài khi đang thi thử!"); }
+        } else { showToast("Nhắc nhở: Không chuyển sang màn hình khác trong quá trình thi thử."); }
     }
 }
 
@@ -899,11 +1013,11 @@ function submitQuiz(force) {
     const minimumTime = Math.floor(activeQuiz.timeLimit / 2);
 
     if (!force && timeUsed < minimumTime && !isPracticeMode) {
-        showToast("Yêu cầu nộp bài bị từ chối. Thời gian làm bài chưa trôi qua được 50%!");
+        showToast("Hệ thống từ chối nộp bài. Vui lòng làm bài ít nhất 50% thời gian quy định.");
         return; 
     }
 
-    if (force || confirm("Bạn có chắc chắn muốn nộp bài làm hiện tại không?")) {
+    if (force || confirm("Xác nhận nộp bài thi?")) {
         clearInterval(timerInterval);
         exitFullscreen();
         localStorage.removeItem('quizProgress_' + activeQuiz.id);
@@ -931,7 +1045,7 @@ function submitQuiz(force) {
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        db.collection("results").add(scorePayload).catch(err => console.error("Lỗi lưu điểm: ", err));
+        db.collection("results").add(scorePayload).catch(err => console.error("Lỗi cập nhật điểm: ", err));
     }
 }
 
@@ -968,12 +1082,12 @@ function switchAdminTab(tab) {
 
 function fetchResultsFromFirebase() {
     const tableBody = document.getElementById('stats-table-body'); if(!tableBody) return;
-    tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Đang tải điểm...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Đang xử lý dữ liệu...</td></tr>';
     if (!auth.currentUser) return;
 
     db.collection("results").where("teacherId", "==", auth.currentUser.uid).get().then((snapshot) => {
         tableBody.innerHTML = '';
-        if (snapshot.empty) { tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">Chưa có học sinh nộp bài.</td></tr>'; return; }
+        if (snapshot.empty) { tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">Chưa có dữ liệu bài làm.</td></tr>'; return; }
 
         let results = []; snapshot.forEach(doc => results.push(doc.data()));
         results.sort((a, b) => { let timeA = a.timestamp ? a.timestamp.seconds : 0; let timeB = b.timestamp ? b.timestamp.seconds : 0; return timeB - timeA; });
@@ -994,7 +1108,7 @@ function fetchResultsFromFirebase() {
             `;
             tableBody.appendChild(row);
         });
-    }).catch(err => { tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-500">Lỗi kết nối.</td></tr>'; });
+    }).catch(err => { tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-500">Lỗi kết nối máy chủ.</td></tr>'; });
 }
 
 let currentSmartQuestions = [];
@@ -1051,7 +1165,7 @@ function processSmartText() {
                     </div>`;
             } else {
                 let c = trimmed.substring(0, 40).replace(/\n/g, ' ') + "...";
-                previewHTML += `<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg text-red-600 dark:text-red-400 text-xs font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> Lỗi nhận diện: Cấu trúc không hợp lệ tại đoạn: "${c}"</div>`;
+                previewHTML += `<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg text-red-600 dark:text-red-400 text-xs font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> Không thể nhận diện định dạng tại: "${c}"</div>`;
             }
         }
     });
@@ -1059,7 +1173,7 @@ function processSmartText() {
     const sqc = document.getElementById('smart-question-count'); if (sqc) sqc.innerText = `Đã nhận diện: ${currentSmartQuestions.length} câu`;
     const spb = document.getElementById('smart-preview-box');
     if (spb) {
-        if (previewHTML === "") spb.innerHTML = `<p class="text-sm text-gray-400 text-center mt-10 italic">Chưa phát hiện câu hỏi nào đúng định dạng.</p>`;
+        if (previewHTML === "") spb.innerHTML = `<p class="text-sm text-gray-400 text-center mt-10 italic">Bản xem trước dữ liệu sẽ hiển thị tại đây.</p>`;
         else spb.innerHTML = previewHTML;
     }
 }
@@ -1069,11 +1183,11 @@ function saveSmartQuiz() {
     const timeInput = document.getElementById('smart-time').value; const isTestOnly = document.getElementById('smart-test-only').checked;
     const statusDiv = document.getElementById('smart-status');
     
-    if (!title) return alert("Vui lòng nhập Tên Đề Thi!");
-    if (currentSmartQuestions.length === 0) return alert("Khung văn bản trống hoặc hệ thống chưa nhận diện được câu hỏi nào hợp lệ.");
+    if (!title) return alert("Vui lòng nhập Tên Đề Thi.");
+    if (currentSmartQuestions.length === 0) return alert("Khung văn bản trống hoặc định dạng chưa hợp lệ.");
     
     const finalTimeLimit = (timeInput && !isNaN(timeInput) && timeInput > 0) ? parseInt(timeInput) * 60 : 900;
-    statusDiv.classList.remove('hidden'); statusDiv.innerText = "Đang lưu dữ liệu lên máy chủ..."; statusDiv.className = "mt-4 text-center font-bold text-amber-600 text-sm";
+    statusDiv.classList.remove('hidden'); statusDiv.innerText = "Đang tải dữ liệu lên hệ thống..."; statusDiv.className = "mt-4 text-center font-bold text-amber-600 text-sm";
 
     const newQuiz = {
         id: "QZ-SMART-" + Date.now(), title: title, category: category, timeLimit: finalTimeLimit, 
@@ -1083,10 +1197,10 @@ function saveSmartQuiz() {
     db.collection("quizzes").doc(newQuiz.id).set(newQuiz).then(() => {
         document.getElementById('smart-title').value = ''; document.getElementById('smart-input-area').value = ''; document.getElementById('smart-preview-box').innerHTML = ''; document.getElementById('smart-question-count').innerText = "Đã nhận diện: 0 câu";
         currentSmartQuestions = [];
-        statusDiv.innerText = `Lưu thành công đề thi "${title}" với ${newQuiz.questions.length} câu hỏi!`;
+        statusDiv.innerText = `Cập nhật thành công đề thi "${title}" với ${newQuiz.questions.length} câu hỏi.`;
         statusDiv.className = "mt-4 text-center font-bold text-green-600 text-sm";
         setTimeout(() => statusDiv.classList.add('hidden'), 5000);
-    }).catch(err => { statusDiv.innerText = "Đã xảy ra lỗi đường truyền: " + err; statusDiv.className = "mt-4 text-center font-bold text-red-600 text-sm"; });
+    }).catch(err => { statusDiv.innerText = "Lỗi đường truyền: " + err; statusDiv.className = "mt-4 text-center font-bold text-red-600 text-sm"; });
 }
 
 function addManualQuestionForm() {
@@ -1094,12 +1208,12 @@ function addManualQuestionForm() {
     const qDiv = document.createElement('div'); qDiv.className = 'manual-q-block p-4 sm:p-6 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl relative';
     qDiv.innerHTML = `
         <button onclick="this.parentElement.remove()" class="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-red-500 transition-colors"><i class="fas fa-times text-lg sm:text-xl"></i></button>
-        <h4 class="font-bold mb-3 sm:mb-4 dark:text-white text-blue-600 text-sm sm:text-base">Nội dung câu hỏi nhập liệu</h4>
+        <h4 class="font-bold mb-3 sm:mb-4 dark:text-white text-blue-600 text-sm sm:text-base">Nội dung câu hỏi</h4>
         <div class="mb-3 sm:mb-4">
             <label class="text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-400">Đoạn văn (Bỏ trống nếu không có):</label>
-            <textarea placeholder="Nhập Reading tại đây..." class="q-passage w-full p-2 sm:p-3 mt-1 border rounded outline-none focus:border-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 text-sm sm:text-base" rows="3"></textarea>
+            <textarea placeholder="Nội dung bài đọc..." class="q-passage w-full p-2 sm:p-3 mt-1 border rounded outline-none focus:border-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 text-sm sm:text-base" rows="3"></textarea>
         </div>
-        <textarea placeholder="Câu hỏi chính..." class="q-content w-full p-2 sm:p-3 mb-3 sm:mb-4 border rounded outline-none focus:border-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 text-sm sm:text-base" rows="2"></textarea>
+        <textarea placeholder="Nội dung câu hỏi chính..." class="q-content w-full p-2 sm:p-3 mb-3 sm:mb-4 border rounded outline-none focus:border-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 text-sm sm:text-base" rows="2"></textarea>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
             <input type="text" placeholder="Lựa chọn A" class="q-opt-0 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none text-sm sm:text-base">
             <input type="text" placeholder="Lựa chọn B" class="q-opt-1 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none text-sm sm:text-base">
@@ -1110,7 +1224,7 @@ function addManualQuestionForm() {
             <label class="font-bold dark:text-gray-300 text-sm sm:text-base">Đáp án đúng:</label>
             <select class="q-correct p-2 border rounded outline-none dark:bg-gray-800 dark:text-white dark:border-gray-600 w-full sm:w-auto text-sm sm:text-base"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select>
         </div>
-        <input type="text" placeholder="Giải thích (Nếu có)..." class="q-expl w-full p-2 mt-3 sm:mt-4 border rounded outline-none dark:bg-gray-800 dark:text-white dark:border-gray-600 text-sm sm:text-base">
+        <input type="text" placeholder="Giải thích chi tiết (Tùy chọn)..." class="q-expl w-full p-2 mt-3 sm:mt-4 border rounded outline-none dark:bg-gray-800 dark:text-white dark:border-gray-600 text-sm sm:text-base">
     `;
     container.appendChild(qDiv);
 }
@@ -1119,8 +1233,8 @@ function saveManualQuiz() {
     const titleEl = document.getElementById('manual-title'); const catEl = document.getElementById('manual-category'); const timeEl = document.getElementById('manual-time'); const testEl = document.getElementById('manual-test-only');
     const title = titleEl ? titleEl.value.trim() : ""; const category = catEl ? catEl.value.trim() : "";
     const manualMinutes = timeEl ? timeEl.value : ""; const timeLimit = parseInt(manualMinutes) * 60; const isTestOnly = testEl ? testEl.checked : false; 
-    if (!title || !category || isNaN(timeLimit) || timeLimit <= 0) return alert("Vui lòng điền đủ Tên đề, Môn học và Thời gian!");
-    const qBlocks = document.querySelectorAll('.manual-q-block'); if (qBlocks.length === 0) return alert("Vui lòng tạo ít nhất 1 câu hỏi!");
+    if (!title || !category || isNaN(timeLimit) || timeLimit <= 0) return alert("Vui lòng điền đủ Tên đề, Môn học và Thời gian quy định.");
+    const qBlocks = document.querySelectorAll('.manual-q-block'); if (qBlocks.length === 0) return alert("Vui lòng tạo ít nhất 1 câu hỏi.");
 
     let questions = []; let isValid = true;
     qBlocks.forEach(block => {
@@ -1131,14 +1245,14 @@ function saveManualQuiz() {
         questions.push({ passage: passage, content: content, options: opts, correctAnswer: correct, explanation: expl });
     });
 
-    if (!isValid) return alert("Vui lòng nhập đủ câu hỏi và 4 đáp án!");
+    if (!isValid) return alert("Vui lòng hoàn thiện nội dung câu hỏi và 4 lựa chọn.");
     const newQuiz = { id: "QZ-MANUAL-" + Date.now(), title: title, category: category, timeLimit: timeLimit, questions: questions, isTestOnly: isTestOnly, authorId: auth.currentUser ? auth.currentUser.uid : "GUEST" };
 
     db.collection("quizzes").doc(newQuiz.id).set(newQuiz).then(() => {
-        alert("Lưu đề thành công!"); if(titleEl) titleEl.value = ''; if(catEl) catEl.value = ''; if(timeEl) timeEl.value = ''; if(testEl) testEl.checked = false;
+        alert("Lưu thông tin thành công."); if(titleEl) titleEl.value = ''; if(catEl) catEl.value = ''; if(timeEl) timeEl.value = ''; if(testEl) testEl.checked = false;
         const mc = document.getElementById('manual-questions-container'); if(mc) mc.innerHTML = '';
         window.history.pushState({}, '', window.location.pathname); switchScreen('home'); 
-    }).catch(err => alert("Lỗi lưu trữ: " + err.message));
+    }).catch(err => alert("Lỗi hệ thống: " + err.message));
 }
 
 let currentSelectionRange = null;
@@ -1170,6 +1284,7 @@ window.applyHighlight = function(colorHex) {
     if(passageEl) passageEl.contentEditable = "true"; if(questionEl) questionEl.contentEditable = "true";
     
     if (colorHex === 'transparent') { document.execCommand('backColor', false, 'rgba(0,0,0,0)'); document.execCommand('hiliteColor', false, 'rgba(0,0,0,0)'); } 
+    else if (colorHex === 'underline') { document.execCommand('underline', false, null); }
     else { document.execCommand('backColor', false, colorHex); document.execCommand('hiliteColor', false, colorHex); }
     
     if(passageEl) passageEl.contentEditable = "false"; if(questionEl) questionEl.contentEditable = "false";
@@ -1181,25 +1296,25 @@ window.applyHighlight = function(colorHex) {
 
 window.upgradeUserPlanByEmail = function() {
     if (!checkIsMasterAdmin()) {
-        alert("To gan! Kẻ mạo danh không có quyền sử dụng Ngọc Tỷ!");
+        alert("Tài khoản không đủ quyền hạn thực hiện thao tác này.");
         return;
     }
 
     const email = document.getElementById('admin-upgrade-email').value.trim().toLowerCase();
     const newPlan = document.getElementById('admin-upgrade-plan').value;
 
-    if (!email) return alert("Bệ hạ chưa nhập Email của sĩ tử!");
+    if (!email) return alert("Vui lòng cung cấp địa chỉ Email người dùng.");
 
     db.collection("users").where("email", "==", email).get().then(snapshot => {
-        if (snapshot.empty) return alert("Bẩm bệ hạ, không tìm thấy sĩ tử nào mang Email này trong hệ thống!");
+        if (snapshot.empty) return alert("Không tìm thấy thông tin người dùng trong cơ sở dữ liệu.");
         
         snapshot.forEach(doc => {
             doc.ref.update({ plan: newPlan }).then(() => {
-                alert(`Thánh chỉ đã ban! Tài khoản ${email} đã được thăng cấp lên Gói ${newPlan.toUpperCase()}.`);
+                alert(`Cập nhật thành công. Tài khoản ${email} đã được chuyển sang Gói ${newPlan.toUpperCase()}.`);
                 document.getElementById('admin-upgrade-email').value = ""; 
             });
         });
-    }).catch(err => alert("Có tà khí can nhiễu đường truyền: " + err.message));
+    }).catch(err => alert("Lỗi xử lý yêu cầu: " + err.message));
 }
 
 function enterFullscreen() {
@@ -1235,12 +1350,12 @@ function showFullscreenLock() {
         lockOverlay.className = 'fixed inset-0 bg-gray-900/95 z-[9999] flex flex-col items-center justify-center backdrop-blur-md';
         lockOverlay.innerHTML = `
             <i class="fas fa-user-shield text-red-500 text-6xl mb-6 animate-bounce"></i>
-            <h2 class="font-academic text-3xl sm:text-4xl font-bold text-white mb-3 text-center">CẢNH BÁO THIẾT QUÂN LUẬT</h2>
+            <h2 class="font-academic text-3xl sm:text-4xl font-bold text-white mb-3 text-center">CẢNH BÁO HỆ THỐNG</h2>
             <p class="text-gray-300 mb-8 text-center max-w-lg text-sm sm:text-base px-4">
-                Ngươi đã thoát chế độ toàn màn hình trong lúc thi. Để đảm bảo tính minh bạch, bài thi đã bị tạm khóa. Thời gian vẫn đang trôi qua!
+                Thao tác thoát chế độ toàn màn hình không được phép trong quá trình làm bài kiểm tra. Bài thi tạm thời bị khóa. Thời gian vẫn đang được tính.
             </p>
             <button id="btn-return-fullscreen" class="px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg transition-all text-lg flex items-center gap-2">
-                <i class="fas fa-expand"></i> Quay Lại Bài Thi Ngay
+                <i class="fas fa-expand"></i> Quay lại màn hình thi
             </button>
         `;
         document.body.appendChild(lockOverlay);
@@ -1264,135 +1379,36 @@ function updatePlanBadge() {
     
     switch(currentPlan) {
         case 'plus':
-            badgeHTML = `<span class="badge-pill badge-bronze" title="Gói Plus (Đồng)"><i class="fas fa-medal mr-1.5"></i> Plus</span>`;
+            badgeHTML = `<span class="badge-pill badge-bronze" title="Gói Plus"><i class="fas fa-medal mr-1.5"></i> Plus</span>`;
             break;
         case 'pro':
-            badgeHTML = `<span class="badge-pill badge-silver" title="Gói Pro (Bạc)"><i class="fas fa-shield-alt mr-1.5"></i> Pro</span>`;
+            badgeHTML = `<span class="badge-pill badge-silver" title="Gói Pro"><i class="fas fa-shield-alt mr-1.5"></i> Pro</span>`;
             break;
         case 'ultra':
-            badgeHTML = `<span class="badge-pill badge-gold" title="Gói Ultra (Vàng)"><i class="fas fa-crown mr-1.5"></i> Ultra</span>`;
+            badgeHTML = `<span class="badge-pill badge-gold" title="Gói Ultra"><i class="fas fa-crown mr-1.5"></i> Ultra</span>`;
             break;
         default:
-            badgeHTML = `<span class="badge-pill badge-basic" title="Gói Mặc Định"><i class="fas fa-user mr-1.5"></i> Basic</span>`;
+            badgeHTML = `<span class="badge-pill badge-basic" title="Gói Cơ Bản"><i class="fas fa-user mr-1.5"></i> Cơ bản</span>`;
     }
 
     if (homeBadge) homeBadge.innerHTML = badgeHTML;
     if (quizBadge) quizBadge.innerHTML = badgeHTML;
 }
 
-// =========================================================================
-// [VIP] CÁC TÍNH NĂNG ĐƯỢC PHỤC HỒI HOÀN TOÀN: TOAST, ROADMAP, DỰ ĐOÁN ĐIỂM
-// =========================================================================
-
-function showToast(message, isError = true) {
-    const toast = document.getElementById('system-toast');
-    const msg = document.getElementById('system-toast-msg');
-    if(!toast || !msg) { console.log(message); return; }
-    
-    msg.innerText = message;
-    toast.className = `fixed top-6 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl shadow-2xl font-bold z-[9999] transition-all duration-300 flex items-center gap-3 opacity-100 ${isError ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`;
-    
-    setTimeout(() => {
-        if(toast.classList.contains('opacity-100')) {
-            toast.classList.replace('top-6', 'top-[-100px]');
-            toast.classList.replace('opacity-100', 'opacity-0');
-        }
-    }, 4000);
-}
-
-// TẠO ĐỀ CÂU SAI TRONG 1 MÔN (GÓI PRO)
-window.generateCategoryErrorMock = function() {
-    if(!checkFeatureAccess('error_correction')) return;
-    showToast("Đang gom nhặt câu sai trong môn này...", false);
-
-    const sel = document.getElementById('mock-question-count');
-    const countSelect = sel ? parseInt(sel.value) : 50;
-
-    db.collection("results").where("uid", "==", auth.currentUser.uid).where("category", "==", currentSelectedCategory).get().then(snapshot => {
-        if(snapshot.empty) return showToast("Sĩ tử chưa từng làm bài nào trong môn này để có dữ liệu câu sai!");
-        
-        let uniqueWrong = {}; 
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if(data.quizQuestionsSnapshot && data.userAnswers) {
-                data.userAnswers.forEach((ans, idx) => {
-                    if (ans === null || ans !== data.quizQuestionsSnapshot[idx].correctAnswer) {
-                        let q = data.quizQuestionsSnapshot[idx];
-                        uniqueWrong[q.content] = q; 
-                    }
-                });
-            }
-        });
-
-        let wrongQuestions = Object.values(uniqueWrong);
-        if(wrongQuestions.length === 0) return showToast("Sĩ tử không có câu sai nào trong môn này. Quá xuất sắc!", false);
-
-        for (let i = wrongQuestions.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [wrongQuestions[i], wrongQuestions[j]] = [wrongQuestions[j], wrongQuestions[i]];
-        }
-
-        activeQuiz = {
-            id: "MOCK-PRO-ERR-" + Date.now(),
-            title: `[Luyện Đan] Thích Ứng Câu Sai - ${currentSelectedCategory}`,
-            category: currentSelectedCategory,
-            timeLimit: Math.min(wrongQuestions.length, countSelect) * 60, 
-            questions: wrongQuestions.slice(0, countSelect),
-            isTestOnly: false, authorId: auth.currentUser.uid
-        };
-        prepareWelcomeScreen();
-    });
-}
-
-// VÁ LỖ LỖI CỦA kết quả ĐÃ LÀM (Vá câu sai bài cụ thể)
-window.generateErrorCorrection = function(resultDocId) {
-    if(!checkFeatureAccess('error_correction')) return; 
-    showToast("Đang trích xuất câu sai từ bài thi này...", false);
-    
-    db.collection("results").doc(resultDocId).get().then((resDoc) => {
-        if (resDoc.exists) {
-            const pastData = resDoc.data();
-            if (!pastData.quizQuestionsSnapshot) return showToast("Dữ liệu cũ không hỗ trợ tính năng này!");
-            
-            let wrongQuestions = [];
-            pastData.userAnswers.forEach((ans, idx) => {
-                if (ans === null || ans !== pastData.quizQuestionsSnapshot[idx].correctAnswer) {
-                    wrongQuestions.push(pastData.quizQuestionsSnapshot[idx]);
-                }
-            });
-
-            if (wrongQuestions.length === 0) return showToast("Bạn không làm sai câu nào trong đề này!", false);
-
-            activeQuiz = {
-                id: "ERROR-CORRECTION-" + Date.now(),
-                title: `[Vá Lỗ Hổng] - ` + pastData.quizTitle,
-                category: pastData.category,
-                timeLimit: wrongQuestions.length * 60, 
-                questions: wrongQuestions,
-                isTestOnly: false,
-                authorId: auth.currentUser ? auth.currentUser.uid : "GUEST"
-            };
-            prepareWelcomeScreen();
-        }
-    }).catch(err => showToast("Lỗi khi tải dữ liệu: " + err.message));
-}
-
-// BẢNG LỘ TRÌNH ĐÁNH GIÁ (ROADMAP) VÀ DỰ ĐOÁN ĐIỂM SỐ CHÍNH XÁC
+// BẢNG LỘ TRÌNH ĐÁNH GIÁ (ROADMAP) VÀ DỰ ĐOÁN ĐIỂM SỐ
 function generateRoadmap(percent) {
     const container = document.getElementById('roadmap-container');
     const content = document.getElementById('roadmap-content');
     if(!container || !content) return;
 
-    // LUÔN GIẤU BẢNG ĐI, CHỜ BẤM NÚT MỚI HIỆN
     container.classList.add('hidden');
 
     if(!checkFeatureAccess('roadmap', true)) {
-        content.innerHTML = `<p class="text-center text-gray-500 italic py-4"><i class="fas fa-lock"></i> Lộ Trình và Dự Đoán Điểm đã bị khóa. <a href="#" onclick="switchScreen('pricing')" class="text-blue-600 font-bold underline">Nâng Cấp Gói Cước</a> để mở khóa.</p>`;
+        content.innerHTML = `<p class="text-center text-gray-500 italic py-4"><i class="fas fa-lock"></i> Nội dung phân tích yêu cầu tài khoản được nâng cấp. <a href="#" onclick="switchScreen('pricing')" class="text-blue-600 font-bold underline">Xem chi tiết gói cước</a>.</p>`;
         return;
     }
 
     let html = "";
-    
     let predictedScore = (percent / 10).toFixed(1); 
     let scoreBadgeClass = percent >= 80 ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700' : 
                           percent >= 50 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700' : 
@@ -1401,78 +1417,69 @@ function generateRoadmap(percent) {
     html += `
         <div class="mb-5 p-4 sm:p-5 ${scoreBadgeClass} border-2 rounded-xl flex items-center justify-between shadow-sm">
             <div>
-                <p class="text-sm sm:text-base font-bold uppercase tracking-wider mb-1"><i class="fas fa-bullseye mr-1"></i> Dự Đoán Điểm Thi</p>
-                <p class="text-xs sm:text-sm opacity-80 font-medium">Phân tích dựa trên phổ điểm % hiện tại</p>
+                <p class="text-sm sm:text-base font-bold uppercase tracking-wider mb-1"><i class="fas fa-bullseye mr-1"></i> Điểm Số Ước Tính</p>
+                <p class="text-xs sm:text-sm opacity-80 font-medium">Căn cứ theo tỷ lệ hoàn thành bài thi</p>
             </div>
             <div class="text-3xl sm:text-4xl font-black font-mono">${predictedScore} <span class="text-base sm:text-lg font-medium opacity-80">/ 10</span></div>
         </div>
     `;
 
     if (percent < 50) {
-        html += `<p><i class="fas fa-times-circle text-red-500 text-lg mr-2"></i><strong>Chẩn đoán:</strong> Kiến thức nền tảng của sĩ tử đang thủng lỗ chỗ như tổ ong.</p>
-                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 1:</strong> Quay lại Kho Môn Học, mở xem Giải thích chi tiết các câu sai.</p>
-                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 2:</strong> Dùng nút <strong>"Vá lỗi sai"</strong> ở lịch sử để làm lại chính đề này cho đến khi đạt 100%.</p>`;
+        html += `<p><i class="fas fa-times-circle text-red-500 text-lg mr-2"></i><strong>Đánh giá chung:</strong> Kiến thức cơ bản cần được củng cố thêm.</p>
+                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Khuyến nghị 1:</strong> Sử dụng tính năng xem Giải thích chi tiết cho các câu trả lời sai.</p>
+                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Khuyến nghị 2:</strong> Thực hiện lại đề thi này thông qua chức năng "Vá lỗi sai" trong lịch sử.</p>`;
     } else if (percent < 80) {
-        html += `<p><i class="fas fa-exclamation-circle text-amber-500 text-lg mr-2"></i><strong>Chẩn đoán:</strong> Căn cơ khá vững, nhưng hay sập hầm ở các câu bẫy hoặc từ vựng lạ.</p>
-                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 1:</strong> Dùng công cụ Highlight 7 màu trong lúc đọc câu hỏi để không bị lừa.</p>
-                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 2:</strong> Sử dụng <strong>"Trộn Câu Sai (PRO)"</strong> của chương này để rèn luyện trí nhớ.</p>`;
-   } else {
-        html += `<p><i class="fas fa-check-circle text-green-500 text-lg mr-2"></i><strong>Chẩn đoán:</strong> Xuất sắc! Sĩ tử đã lĩnh ngộ được tinh hoa của chương này.</p>
-                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 1:</strong> Chuyển sang tính năng <strong>"Thi thử tổng hợp"</strong> để rèn tốc độ phản xạ với kho dữ liệu lớn hơn.</p>
-                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Bước 2:</strong> Tiếp tục duy trì phong độ và chuyển sang chinh phục các môn học khác.</p>`;
+        html += `<p><i class="fas fa-exclamation-circle text-amber-500 text-lg mr-2"></i><strong>Đánh giá chung:</strong> Nắm vững trọng tâm nhưng cần lưu ý các dạng câu hỏi phân loại.</p>
+                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Khuyến nghị 1:</strong> Sử dụng công cụ Highlight để phân tích kỹ từ khóa trong câu hỏi.</p>
+                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Khuyến nghị 2:</strong> Áp dụng chức năng "Trộn Câu Sai" để khắc phục các lỗi thường gặp.</p>`;
+    } else {
+        html += `<p><i class="fas fa-check-circle text-green-500 text-lg mr-2"></i><strong>Đánh giá chung:</strong> Kết quả xuất sắc, kiến thức được vận dụng tốt.</p>
+                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Khuyến nghị 1:</strong> Tiếp tục thực hành với các bài "Thi thử tổng hợp" để rèn luyện kỹ năng quản lý thời gian.</p>
+                <p class="pl-7 mt-2"><i class="fas fa-arrow-right text-blue-500 mr-2"></i><strong>Khuyến nghị 2:</strong> Mở rộng phạm vi ôn tập sang các chuyên đề khác.</p>`;
     }
     content.innerHTML = html;
 }
 
-// =========================================================================
-// [VIP] ĐÀI QUAN SÁT NĂNG LỰC TOÀN MÔN (GÓI PRO)
-// =========================================================================
+// ĐÀI QUAN SÁT NĂNG LỰC TOÀN MÔN (GÓI PRO)
 window.generateSubjectAnalysis = function() {
-    // 1. Thiết quân luật: Chỉ Gói Pro, Ultra hoặc Admin mới được dùng
     if (!checkIsMasterAdmin() && currentPlan !== 'pro' && currentPlan !== 'ultra') {
-        showToast("Bẩm bệ hạ, Đài Quan Sát Năng Lực chỉ dành riêng cho Gói PRO trở lên!");
+        showToast("Tính năng Phân Tích Năng Lực yêu cầu tài khoản cấp độ Pro trở lên.", true);
         switchScreen('pricing');
         return;
     }
 
-    if (!currentSelectedCategory) return showToast("Chưa xác định được môn học!");
+    if (!currentSelectedCategory) return showToast("Hệ thống chưa xác định được môn học hiện tại.", true);
 
-    showToast("Đang thu thập tinh hoa nhật nguyệt để bói toán...", false);
+    showToast("Đang phân tích dữ liệu môn học...", false);
 
-    // 2. Truy xuất Lịch sử làm bài của riêng môn học này
     db.collection("results")
         .where("uid", "==", auth.currentUser.uid)
         .where("category", "==", currentSelectedCategory)
         .get()
         .then(snapshot => {
             if(snapshot.empty) {
-                return showToast("Bẩm Bệ hạ, chưa có lịch sử làm bài nào trong môn này để hệ thống đánh giá!");
+                return showToast("Hệ thống chưa ghi nhận dữ liệu làm bài để tiến hành phân tích.", true);
             }
 
             let chapterStats = {};
             
-            // 3. Phân tích số liệu
             snapshot.forEach(doc => {
                 let data = doc.data();
-                
-                // Bỏ qua các đề trộn thi thử/vá lỗi, chỉ lấy điểm từ Chương gốc
                 if (data.quizId.startsWith("MOCK-") || data.quizId.startsWith("ERROR-")) return;
                 
                 let title = data.quizTitle;
                 if(!chapterStats[title]) {
                     chapterStats[title] = { totalPercent: 0, count: 0 };
                 }
-                // Cộng dồn % điểm và số lần làm
                 chapterStats[title].totalPercent += data.percentage;
                 chapterStats[title].count += 1;
             });
 
             let chapters = Object.keys(chapterStats);
             if(chapters.length === 0) {
-                return showToast("Bệ hạ cần làm ít nhất 1 bài tập theo Chương Gốc để hệ thống có dữ liệu phân tích!");
+                return showToast("Cần hoàn thành ít nhất 1 bài tập theo chương để sử dụng chức năng này.", true);
             }
 
-            // 4. Tìm Chương mạnh nhất, Yếu nhất và Điểm tổng
             let totalSubjectPercent = 0;
             let processedChapters = [];
             
@@ -1485,31 +1492,29 @@ window.generateSubjectAnalysis = function() {
             let overallPercent = Math.round(totalSubjectPercent / chapters.length);
             let predictedScore = (overallPercent / 10).toFixed(1);
 
-            // Sắp xếp từ thấp đến cao
             processedChapters.sort((a, b) => a.avg - b.avg);
             let weakest = processedChapters[0];
             let strongest = processedChapters[processedChapters.length - 1];
 
-            // 5. Viết Sớ Lộ Trình
             document.getElementById('analysis-subject-name').innerText = currentSelectedCategory;
             
             let adviceHTML = "";
             if (overallPercent < 50) {
-                adviceHTML = 'Kiến thức tổng quan đang ở mức báo động! Bệ hạ nên tạm dừng thi thử tổng hợp và tập trung cày lại lý thuyết gốc.';
+                adviceHTML = 'Mức độ nắm bắt kiến thức chung đang khá thấp. Khuyến nghị ôn tập lại các lý thuyết nền tảng trước khi làm bài tập nâng cao.';
             } else if (overallPercent < 80) {
-                adviceHTML = 'Căn cơ đã có nhưng chưa vững. Bệ hạ cần làm thêm các bài "Thi Thử Tổng Hợp" để làm quen với áp lực trộn câu hỏi bẫy.';
+                adviceHTML = 'Cơ sở kiến thức tương đối ổn định. Khuyến nghị tăng cường cường độ thực hành qua các bài Thi Thử Tổng Hợp.';
             } else {
-                adviceHTML = 'Phong độ của Bệ hạ đang rực sáng như mặt trời ban trưa! Hãy duy trì tỉ lệ này bằng cách ôn tập lại 1 lần mỗi tuần.';
+                adviceHTML = 'Kết quả tổng quan rất tích cực. Khuyến nghị duy trì nhịp độ ôn tập định kỳ để bảo toàn lượng kiến thức đã học.';
             }
 
             let contentHTML = `
                 <div class="grid grid-cols-2 gap-4 mb-6">
                     <div class="bg-blue-50 dark:bg-gray-700/50 p-4 rounded-2xl text-center border border-blue-100 dark:border-gray-600 shadow-sm">
-                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-bold mb-1 uppercase tracking-wider">Dự Đoán Điểm</p>
+                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-bold mb-1 uppercase tracking-wider">Điểm Dự Đoán</p>
                         <p class="text-4xl font-black text-blue-700 dark:text-blue-400 font-mono">${predictedScore}</p>
                     </div>
                     <div class="bg-indigo-50 dark:bg-gray-700/50 p-4 rounded-2xl text-center border border-indigo-100 dark:border-gray-600 shadow-sm">
-                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-bold mb-1 uppercase tracking-wider">Độ Bao Phủ</p>
+                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-bold mb-1 uppercase tracking-wider">Phạm Vi Ôn Tập</p>
                         <p class="text-4xl font-black text-indigo-700 dark:text-indigo-400 font-mono">${chapters.length} <span class="text-sm font-medium text-gray-500">chương</span></p>
                     </div>
                 </div>
@@ -1517,7 +1522,7 @@ window.generateSubjectAnalysis = function() {
                 <div class="space-y-3 mb-6">
                     <div class="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800 flex justify-between items-center">
                         <div>
-                            <p class="text-[0.7rem] font-bold text-red-800 dark:text-red-400 mb-0.5 uppercase"><i class="fas fa-exclamation-triangle mr-1"></i> Gót Chân Achilles (Yếu nhất)</p>
+                            <p class="text-[0.7rem] font-bold text-red-800 dark:text-red-400 mb-0.5 uppercase"><i class="fas fa-exclamation-triangle mr-1"></i> Trọng điểm cần khắc phục</p>
                             <p class="font-bold text-gray-800 dark:text-gray-200 text-sm sm:text-base">${weakest.name}</p>
                         </div>
                         <span class="font-mono text-xl font-black text-red-600 dark:text-red-400 bg-white dark:bg-gray-800 px-3 py-1 rounded-lg shadow-sm border border-red-100 dark:border-red-800">${weakest.avg}%</span>
@@ -1525,7 +1530,7 @@ window.generateSubjectAnalysis = function() {
                     
                     <div class="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800 flex justify-between items-center">
                         <div>
-                            <p class="text-[0.7rem] font-bold text-green-800 dark:text-green-400 mb-0.5 uppercase"><i class="fas fa-medal mr-1"></i> Tinh Hoa Hội Tụ (Mạnh nhất)</p>
+                            <p class="text-[0.7rem] font-bold text-green-800 dark:text-green-400 mb-0.5 uppercase"><i class="fas fa-medal mr-1"></i> Chương đạt kết quả tốt nhất</p>
                             <p class="font-bold text-gray-800 dark:text-gray-200 text-sm sm:text-base">${strongest.name}</p>
                         </div>
                         <span class="font-mono text-xl font-black text-green-600 dark:text-green-400 bg-white dark:bg-gray-800 px-3 py-1 rounded-lg shadow-sm border border-green-100 dark:border-green-800">${strongest.avg}%</span>
@@ -1533,18 +1538,16 @@ window.generateSubjectAnalysis = function() {
                 </div>
 
                 <div class="p-5 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-200 dark:border-gray-600 text-sm sm:text-base leading-relaxed text-gray-700 dark:text-gray-300 shadow-inner">
-                    <p class="font-bold mb-3 text-gray-900 dark:text-white flex items-center gap-2"><i class="fas fa-map-signs text-indigo-500"></i> Cẩm Nang Tu Luyện:</p>
+                    <p class="font-bold mb-3 text-gray-900 dark:text-white flex items-center gap-2"><i class="fas fa-map-signs text-indigo-500"></i> Hướng Dẫn Ôn Tập:</p>
                     <ul class="list-disc pl-5 space-y-2 font-medium">
-                        <li>Lập tức dùng tính năng <strong>Trộn Câu Sai</strong> ngay bên ngoài để vá lại các lỗ hổng chí mạng của <strong class="text-red-600 dark:text-red-400">${weakest.name}</strong>.</li>
+                        <li>Khuyến nghị ưu tiên sử dụng chức năng <strong>Trộn Câu Sai</strong> để củng cố chuyên đề <strong class="text-red-600 dark:text-red-400">${weakest.name}</strong>.</li>
                         <li>${adviceHTML}</li>
                     </ul>
                 </div>
             `;
 
             document.getElementById('analysis-content').innerHTML = contentHTML;
-            
-            // 6. Trình tấu Modal lên màn hình
             document.getElementById('analysis-modal').classList.remove('hidden');
 
-        }).catch(err => showToast("Lỗi thiên cơ: " + err.message));
+        }).catch(err => showToast("Lỗi xử lý dữ liệu: " + err.message, true));
 }
