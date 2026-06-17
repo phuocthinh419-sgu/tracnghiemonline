@@ -23,6 +23,7 @@ function checkIsMasterAdmin() {
 
 // --- 2. BIẾN TOÀN CỤC CỦA HỆ THỐNG ---
 let quizDatabase = []; 
+let historyDatabase = []; // [VIP] BIẾN LƯU TRỮ LỊCH SỬ THỜI GIAN THỰC
 let activeQuiz = null; 
 let currentQuestionIndex = 0;
 let studentName = "";
@@ -39,7 +40,7 @@ let screens = {};
 let currentPlan = 'basic';
 let mockGeneratedThisMonth = 0;
 let lastMockMonth = null;
-let isSharedMode = false; // [KHIÊN BẢO VỆ DỮ LIỆU KHI XEM THƯ MỤC CHIA SẺ]
+let isSharedMode = false; 
 
 // --- 3. THEO DÕI TRẠNG THÁI & KHỞI TẠO AN TOÀN ---
 document.addEventListener("DOMContentLoaded", () => { 
@@ -64,7 +65,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 if(nameEl) nameEl.value = user.displayName;
             }
             setRole('student');
+            
+            // [VIP] NẠP CẢ 2 LUỒNG DỮ LIỆU NGAY TỪ ĐẦU
             fetchQuizzesFromFirebase(); 
+            fetchHistoryFromFirebase(); 
 
             db.collection("users").doc(user.uid).get().then(doc => {
                 if(doc.exists) {
@@ -96,7 +100,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
 
-            // NHẬN DIỆN VÀ PHÂN LUỒNG ĐƯỜNG DẪN CHIA SẺ
             const urlParams = new URLSearchParams(window.location.search);
             const quizIdParam = urlParams.get('quiz');
             const folderParam = urlParams.get('folder');
@@ -155,17 +158,38 @@ function fetchQuizzesFromFirebase() {
     db.collection("quizzes")
       .where("authorId", "==", auth.currentUser.uid)
       .onSnapshot((snapshot) => {
-        if (isSharedMode) return; // Bảo vệ dữ liệu thư mục share không bị xóa mất
+        if (isSharedMode) return; 
         
         quizDatabase = [];
         snapshot.forEach((doc) => { quizDatabase.push(doc.data()); });
-        if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList(); 
+        if (screens.home && !screens.home.classList.contains('hidden') && currentStudentTab === 'browse') renderHomeQuizList(); 
         if (screens.subjectDetail && !screens.subjectDetail.classList.contains('hidden')) renderSubjectDetailView(currentSelectedCategory);
     }, (error) => { console.error("Lỗi tải dữ liệu: ", error); });
 }
 
+// [VIP] CƠ CHẾ LẮNG NGHE LỊCH SỬ THỜI GIAN THỰC
+function fetchHistoryFromFirebase() {
+    if (!auth.currentUser) return;
+    db.collection("results")
+      .where("uid", "==", auth.currentUser.uid)
+      .onSnapshot((snapshot) => {
+          historyDatabase = [];
+          snapshot.forEach(doc => { historyDatabase.push({ id: doc.id, data: doc.data() }); });
+          
+          historyDatabase.sort((a, b) => {
+              let sA = a.data.timestamp ? a.data.timestamp.seconds : 0;
+              let sB = b.data.timestamp ? b.data.timestamp.seconds : 0;
+              return sB - sA;
+          });
+          
+          if (currentRole === 'student' && currentStudentTab === 'history' && screens.home && !screens.home.classList.contains('hidden')) {
+              renderHomeQuizList(); 
+          }
+      }, (error) => { console.error("Lỗi tải lịch sử: ", error); });
+}
+
 function checkUrlForSharedQuiz(quizId) {
-    isSharedMode = true; // Bật khiên bảo vệ
+    isSharedMode = true; 
     db.collection("quizzes").doc(quizId).get().then((doc) => {
         if (doc.exists) {
             activeQuiz = doc.data(); prepareWelcomeScreen();
@@ -176,16 +200,14 @@ function checkUrlForSharedQuiz(quizId) {
     }).catch(err => { console.error("Lỗi đường dẫn: ", err); switchScreen('home'); });
 }
 
-// XỬ LÝ MỞ THƯ MỤC ĐƯỢC CHIA SẺ
 function loadSharedFolder(category, teacherId) {
     showToast("Đang tải dữ liệu môn học...", false);
-    isSharedMode = true; // Bật khiên bảo vệ
+    isSharedMode = true; 
     
     db.collection("quizzes")
       .where("authorId", "==", teacherId)
       .get().then(snapshot => {
           quizDatabase = []; 
-          // Lọc bằng JS để lách luật Firebase Composite Index
           snapshot.forEach(doc => { 
               if (doc.data().category === category) {
                   quizDatabase.push(doc.data()); 
@@ -209,7 +231,6 @@ function loadSharedFolder(category, teacherId) {
       });
 }
 
-// CÔNG CỤ COPY HOẠT ĐỘNG TRÊN MỌI TRÌNH DUYỆT (PC & ĐIỆN THOẠI)
 window.copyLink = function(link) {
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(link).then(() => { 
@@ -242,7 +263,6 @@ function showToast(message, isError = true) {
     const msg = document.getElementById('system-toast-msg');
     if(!toast || !msg) { console.log(message); return; }
     
-    // Gỡ bỏ hoàn toàn mọi style can thiệp làm tàng hình Toast
     toast.style.cssText = ""; 
     msg.innerText = message;
     toast.className = `fixed top-6 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl shadow-2xl font-bold z-[9999] transition-all duration-300 flex items-center gap-3 opacity-100 ${isError ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`;
@@ -264,7 +284,7 @@ function setupEventListeners() {
     
     addEvt('role-student', 'click', () => { setRole('student'); });
     addEvt('role-teacher', 'click', () => { 
-        isSharedMode = false; // Tắt khiên bảo vệ để giáo viên tự nạp lại kho của mình
+        isSharedMode = false; 
         setRole('teacher'); 
         fetchQuizzesFromFirebase();
     });
@@ -280,7 +300,6 @@ function setupEventListeners() {
     addEvt('btn-exit-quiz', 'click', () => {
         if (isReviewMode) {
             switchScreen('result');
-            // Cập nhật lại thanh điểm và Roadmap nếu cần
             const resultScoreEl = document.getElementById('result-score');
             if (resultScoreEl && resultScoreEl.innerText === '0/0') { 
                 switchScreen('subjectDetail'); 
@@ -438,6 +457,7 @@ function switchScreen(screenName) {
     }
 }
 
+// [VIP] HIỂN THỊ LIỀN MẠCH BẰNG DỮ LIỆU BỘ NHỚ
 function renderHomeQuizList() {
     const container = document.getElementById('quiz-list-container');
     if(!container) return;
@@ -481,56 +501,45 @@ function renderHomeQuizList() {
     } 
     else if (currentRole === 'student' && currentStudentTab === 'history') {
         if (!auth.currentUser) return;
-        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-4">Đang tải lịch sử...</p>';
         
-        db.collection("results").where("uid", "==", auth.currentUser.uid).get().then((snapshot) => {
-            container.innerHTML = '';
-            if (snapshot.empty) {
-                container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Bạn chưa thực hiện bài thi nào.</p>'; return;
-            }
+        // [VIP] HIỂN THỊ TRỰC TIẾP TỪ BIẾN TOÀN CỤC ĐÃ TẢI SẴN
+        if (historyDatabase.length === 0) {
+            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Bạn chưa thực hiện bài thi nào.</p>'; return;
+        }
+
+        historyDatabase.forEach(item => {
+            const res = item.data;
+            const formatStr = res.timestamp ? new Date(res.timestamp.seconds * 1000).toLocaleString('vi-VN') : "Vừa xong";
             
-            let listHistory = [];
-            snapshot.forEach(doc => { listHistory.push({ id: doc.id, data: doc.data() }); });
-            listHistory.sort((a, b) => {
-                let sA = a.data.timestamp ? a.data.timestamp.seconds : 0;
-                let sB = b.data.timestamp ? b.data.timestamp.seconds : 0;
-                return sB - sA;
-            });
+            const card = document.createElement('div');
+            card.className = 'p-5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm flex flex-col justify-between gap-4 relative group';
+            
+            let isMock = res.quizId && (String(res.quizId).startsWith("MOCK-") || String(res.quizId).startsWith("ERROR-CORRECTION-"));
+            let actionBtnHTML = isMock ? '' : `<button onclick="redoQuizFromHistory('${res.quizId}')" class="px-3 py-1.5 bg-blue-900 text-white text-xs font-bold rounded-lg hover:bg-blue-800 transition-colors"><i class="fas fa-redo mr-1"></i>Làm lại</button>`;
+            let reviewBtnHTML = `<button onclick="reviewPastQuiz('${res.quizId}', '${item.id}')" class="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors mr-2"><i class="fas fa-eye mr-1"></i>Xem lại</button>`;
+            let errorBtnHTML = `<button onclick="generateErrorCorrection('${item.id}')" class="px-3 py-1.5 bg-orange-500 text-white text-xs font-bold rounded-lg hover:bg-orange-600 transition-colors mr-2"><i class="fas fa-tools mr-1"></i>Vá lỗi sai</button>`;
 
-            listHistory.forEach(item => {
-                const res = item.data;
-                const formatStr = res.timestamp ? new Date(res.timestamp.seconds * 1000).toLocaleString('vi-VN') : "Vừa xong";
-                
-                const card = document.createElement('div');
-                card.className = 'p-5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm flex flex-col justify-between gap-4 relative group';
-                
-                let isMock = res.quizId.startsWith("MOCK-") || res.quizId.startsWith("ERROR-CORRECTION-");
-                let actionBtnHTML = isMock ? '' : `<button onclick="redoQuizFromHistory('${res.quizId}')" class="px-3 py-1.5 bg-blue-900 text-white text-xs font-bold rounded-lg hover:bg-blue-800 transition-colors"><i class="fas fa-redo mr-1"></i>Làm lại</button>`;
-                let reviewBtnHTML = `<button onclick="reviewPastQuiz('${res.quizId}', '${item.id}')" class="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors mr-2"><i class="fas fa-eye mr-1"></i>Xem lại</button>`;
-                let errorBtnHTML = `<button onclick="generateErrorCorrection('${item.id}')" class="px-3 py-1.5 bg-orange-500 text-white text-xs font-bold rounded-lg hover:bg-orange-600 transition-colors mr-2"><i class="fas fa-tools mr-1"></i>Vá lỗi sai</button>`;
-
-                card.innerHTML = `
-                    <button onclick="deleteHistoryEntry('${item.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 bg-gray-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors" title="Xóa dữ liệu"><i class="fas fa-times"></i></button>
-                    <div>
-                        <span class="text-[0.7rem] px-2 py-0.5 bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 rounded-full font-bold border dark:border-purple-800">${res.category}</span>
-                        <h3 class="text-base font-bold text-gray-800 dark:text-white mt-2 pr-6 line-clamp-2">${res.quizTitle}</h3>
-                        <p class="text-[0.7rem] text-gray-400 mt-1"><i class="far fa-clock"></i> Cập nhật: ${formatStr}</p>
-                        
-                        <div class="grid grid-cols-2 gap-2 mt-3 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl text-xs">
-                            <div><span class="text-gray-400">Đúng:</span> <strong class="text-blue-600 font-mono">${res.score}</strong></div>
-                            <div><span class="text-gray-400">Tỷ lệ:</span> <strong class="${res.percentage >= 50 ? 'text-green-600' : 'text-red-500'}">${res.percentage}%</strong></div>
-                            <div class="col-span-2"><span class="text-gray-400">Thời gian:</span> <strong class="text-gray-700 dark:text-gray-300 font-mono">${res.timeUsed}</strong></div>
-                        </div>
+            card.innerHTML = `
+                <button onclick="deleteHistoryEntry('${item.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 bg-gray-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors" title="Xóa dữ liệu"><i class="fas fa-times"></i></button>
+                <div>
+                    <span class="text-[0.7rem] px-2 py-0.5 bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 rounded-full font-bold border dark:border-purple-800">${res.category}</span>
+                    <h3 class="text-base font-bold text-gray-800 dark:text-white mt-2 pr-6 line-clamp-2">${res.quizTitle}</h3>
+                    <p class="text-[0.7rem] text-gray-400 mt-1"><i class="far fa-clock"></i> Cập nhật: ${formatStr}</p>
+                    
+                    <div class="grid grid-cols-2 gap-2 mt-3 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl text-xs">
+                        <div><span class="text-gray-400">Đúng:</span> <strong class="text-blue-600 font-mono">${res.score}</strong></div>
+                        <div><span class="text-gray-400">Tỷ lệ:</span> <strong class="${res.percentage >= 50 ? 'text-green-600' : 'text-red-500'}">${res.percentage}%</strong></div>
+                        <div class="col-span-2"><span class="text-gray-400">Thời gian:</span> <strong class="text-gray-700 dark:text-gray-300 font-mono">${res.timeUsed}</strong></div>
                     </div>
-                    <div class="flex justify-end border-t dark:border-gray-600 pt-2 mt-auto flex-wrap gap-y-2">
-                        ${errorBtnHTML}
-                        ${reviewBtnHTML}
-                        ${actionBtnHTML}
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }).catch(err => { container.innerHTML = '<p class="col-span-full text-center text-red-500 py-4">Lỗi kết nối cơ sở dữ liệu.</p>'; });
+                </div>
+                <div class="flex justify-end border-t dark:border-gray-600 pt-2 mt-auto flex-wrap gap-y-2">
+                    ${errorBtnHTML}
+                    ${reviewBtnHTML}
+                    ${actionBtnHTML}
+                </div>
+            `;
+            container.appendChild(card);
+        });
     }
 }
 
@@ -541,7 +550,6 @@ function redoQuizFromHistory(quizId) {
     }).catch(err => showToast("Lỗi tải đề thi: " + err.message, true));
 }
 
-// BỎ LỖI FIREBASE COMPOSITE INDEX BẰNG PHƯƠNG PHÁP QUERY ID
 window.generateErrorCorrection = function(resultDocId) {
     if(!checkFeatureAccess('error_correction')) return; 
     showToast("Đang xử lý dữ liệu câu sai...", false);
@@ -562,7 +570,7 @@ window.generateErrorCorrection = function(resultDocId) {
 
             activeQuiz = {
                 id: "ERROR-CORRECTION-" + Date.now(),
-                title: `[Ôn Tập] - ` + pastData.quizTitle,
+                title: `[Ôn Tập] - ${pastData.quizTitle}`,
                 category: pastData.category,
                 timeLimit: wrongQuestions.length * 60, 
                 questions: wrongQuestions,
@@ -605,7 +613,8 @@ function reviewPastQuiz(quizId, resultDocId) {
 
 function deleteHistoryEntry(docId) {
     if (confirm("Xác nhận xóa kết quả này khỏi lịch sử?")) {
-        db.collection("results").doc(docId).delete().then(() => { renderHomeQuizList(); }).catch(err => showToast("Lỗi khi xóa: " + err.message, true));
+        // Lệnh onSnapshot sẽ tự động cập nhật lại danh sách, không cần gọi renderHomeQuizList thủ công
+        db.collection("results").doc(docId).delete().catch(err => showToast("Lỗi khi xóa: " + err.message, true));
     }
 }
 
@@ -658,7 +667,6 @@ function deleteQuiz(quizId) {
     }
 }
 
-// LÁCH LUẬT CẤM CỔNG KHÔNG GIAN BẰNG JAVASCRIPT
 window.generateCategoryErrorMock = function() {
     if(!checkFeatureAccess('error_correction')) return;
     showToast("Đang tổng hợp dữ liệu câu sai...", false);
@@ -666,7 +674,6 @@ window.generateCategoryErrorMock = function() {
     const sel = document.getElementById('mock-question-count');
     const countSelect = sel ? parseInt(sel.value) : 50;
 
-    // Truy vấn cơ bản, không xài danh mục kép
     db.collection("results").where("uid", "==", auth.currentUser.uid).get().then(snapshot => {
         let uniqueWrong = {}; 
         let hasData = false;
@@ -1067,7 +1074,7 @@ function startTimer() {
             else { energyFill.className = 'energy-fill bg-safe'; timeText.className = 'font-mono font-bold text-2xl sm:text-3xl text-blue-900 dark:text-white tabular-nums'; }
         }
         if (timeLeft <= 0) {
-            clearInterval(timerInterval); showToast("Đã hết thời gian làm bài. Hệ thống đang xử lý nộp bài...", false); submitQuiz(true);
+            clearInterval(timerInterval); showToast("Đã hết thời gian làm bài. Hệ thống đang tự động nộp bài...", false); submitQuiz(true);
         }
     }, 1000);
 }
@@ -1513,7 +1520,7 @@ function generateRoadmap(percent) {
     content.innerHTML = html;
 }
 
-// LÁCH LUẬT LỖI INDEX BẰNG PHƯƠNG PHÁP LỌC JS CHO TÍNH NĂNG PHÂN TÍCH (PRO)
+// ĐÀI QUAN SÁT NĂNG LỰC TOÀN MÔN (GÓI PRO)
 window.generateSubjectAnalysis = function() {
     if (!checkIsMasterAdmin() && currentPlan !== 'pro' && currentPlan !== 'ultra') {
         showToast("Tính năng Phân Tích Năng Lực yêu cầu tài khoản cấp độ Pro trở lên.", true);
@@ -1535,7 +1542,7 @@ window.generateSubjectAnalysis = function() {
             snapshot.forEach(doc => {
                 let data = doc.data();
                 
-                // Lọc bằng JS để lách luật Firebase Composite Index
+                // Lọc bằng JS để xử lý mượt mà và loại trừ đề Mock/Error
                 if (data.category === currentSelectedCategory && data.quizId && !String(data.quizId).includes("MOCK-") && !String(data.quizId).includes("ERROR-")) {
                     hasData = true;
                     let title = data.quizTitle || "Chưa đặt tên";
