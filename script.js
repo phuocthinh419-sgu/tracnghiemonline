@@ -148,7 +148,9 @@ function saveProgressLocally() {
         quizId: activeQuiz.id,
         userAnswers: userAnswers,
         timeLeft: timeLeft,
-        flaggedQuestions: flaggedQuestions
+        flaggedQuestions: flaggedQuestions,
+        // [VIP] KHÓA CHẶT TRẬN PHÁP: Lưu lại đúng bản nháp đã đảo lộn
+        shuffledQuestions: activeQuiz.questions 
     };
     localStorage.setItem('quizProgress_' + activeQuiz.id, JSON.stringify(progress));
 }
@@ -791,6 +793,12 @@ function startQuiz(practice) {
                 userAnswers = parsed.userAnswers;
                 flaggedQuestions = parsed.flaggedQuestions;
                 timeLeft = parsed.timeLeft;
+                
+                // [VIP] PHỤC HỒI NGUYÊN TRẠNG BẢN SAO ĐÃ ĐẢO VỊ TRÍ
+                if (parsed.shuffledQuestions) {
+                    activeQuiz.questions = parsed.shuffledQuestions;
+                }
+                
                 shouldLoadSaved = true;
             } else {
                 localStorage.removeItem('quizProgress_' + activeQuiz.id);
