@@ -23,7 +23,7 @@ function checkIsMasterAdmin() {
 
 // --- 2. BIẾN TOÀN CỤC CỦA HỆ THỐNG ---
 let quizDatabase = []; 
-let historyDatabase = []; // [VIP] BIẾN LƯU TRỮ LỊCH SỬ THỜI GIAN THỰC
+let historyDatabase = []; 
 let activeQuiz = null; 
 let currentQuestionIndex = 0;
 let studentName = "";
@@ -66,7 +66,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             setRole('student');
             
-            // [VIP] NẠP CẢ 2 LUỒNG DỮ LIỆU NGAY TỪ ĐẦU
             fetchQuizzesFromFirebase(); 
             fetchHistoryFromFirebase(); 
 
@@ -119,14 +118,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
+// [VIP] CẬP NHẬT PHÂN QUYỀN MỚI
 function checkFeatureAccess(feature, silent = false) {
     if (checkIsMasterAdmin()) return true; 
 
     const plans = {
         'basic': ['highlight', 'fullscreen'],
-        'plus': ['highlight', 'fullscreen', 'explanation', 'autosave', 'roadmap', 'adaptive'],
-        'pro': ['highlight', 'fullscreen', 'explanation', 'autosave', 'roadmap', 'adaptive', 'crossout', 'error_correction'],
-        'ultra': ['highlight', 'fullscreen', 'explanation', 'autosave', 'roadmap', 'adaptive', 'crossout', 'error_correction', 'infinite_mock']
+        'plus': ['highlight', 'fullscreen', 'explanation', 'autosave', 'adaptive', 'stats_basic'],
+        'pro': ['highlight', 'fullscreen', 'explanation', 'autosave', 'roadmap', 'adaptive', 'crossout', 'error_correction', 'stats_basic', 'stats_pro'],
+        'ultra': ['highlight', 'fullscreen', 'explanation', 'autosave', 'roadmap', 'adaptive', 'crossout', 'error_correction', 'infinite_mock', 'stats_basic', 'stats_pro', 'stats_ultra']
     };
 
     const userFeatures = plans[currentPlan] || plans['basic'];
@@ -167,7 +167,6 @@ function fetchQuizzesFromFirebase() {
     }, (error) => { console.error("Lỗi tải dữ liệu: ", error); });
 }
 
-// [VIP] CƠ CHẾ LẮNG NGHE LỊCH SỬ THỜI GIAN THỰC
 function fetchHistoryFromFirebase() {
     if (!auth.currentUser) return;
     db.collection("results")
@@ -457,7 +456,6 @@ function switchScreen(screenName) {
     }
 }
 
-// [VIP] HIỂN THỊ LIỀN MẠCH BẰNG DỮ LIỆU BỘ NHỚ
 function renderHomeQuizList() {
     const container = document.getElementById('quiz-list-container');
     if(!container) return;
@@ -502,7 +500,6 @@ function renderHomeQuizList() {
     else if (currentRole === 'student' && currentStudentTab === 'history') {
         if (!auth.currentUser) return;
         
-        // [VIP] HIỂN THỊ TRỰC TIẾP TỪ BIẾN TOÀN CỤC ĐÃ TẢI SẴN
         if (historyDatabase.length === 0) {
             container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Bạn chưa thực hiện bài thi nào.</p>'; return;
         }
@@ -613,7 +610,6 @@ function reviewPastQuiz(quizId, resultDocId) {
 
 function deleteHistoryEntry(docId) {
     if (confirm("Xác nhận xóa kết quả này khỏi lịch sử?")) {
-        // Lệnh onSnapshot sẽ tự động cập nhật lại danh sách, không cần gọi renderHomeQuizList thủ công
         db.collection("results").doc(docId).delete().catch(err => showToast("Lỗi khi xóa: " + err.message, true));
     }
 }
@@ -674,54 +670,52 @@ window.generateCategoryErrorMock = function() {
     const sel = document.getElementById('mock-question-count');
     const countSelect = sel ? parseInt(sel.value) : 50;
 
-    db.collection("results").where("uid", "==", auth.currentUser.uid).get().then(snapshot => {
-        let uniqueWrong = {}; 
-        let hasData = false;
+    let uniqueWrong = {}; 
+    let hasData = false;
 
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if(data.category === currentSelectedCategory && data.quizQuestionsSnapshot && data.userAnswers) {
-                hasData = true;
-                data.userAnswers.forEach((ans, idx) => {
-                    if (ans === null || ans !== data.quizQuestionsSnapshot[idx].correctAnswer) {
-                        let q = data.quizQuestionsSnapshot[idx];
-                        uniqueWrong[q.content] = q; 
-                    }
-                });
-            }
-        });
-
-        if(!hasData) return showToast("Hệ thống chưa ghi nhận lịch sử làm bài trong môn này.", true);
-
-        let wrongQuestions = Object.values(uniqueWrong);
-        if(wrongQuestions.length === 0) return showToast("Bạn không có câu sai nào cần ôn tập trong môn học này.", false);
-
-        for (let i = wrongQuestions.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [wrongQuestions[i], wrongQuestions[j]] = [wrongQuestions[j], wrongQuestions[i]];
+    historyDatabase.forEach(item => {
+        const data = item.data;
+        if(data.category === currentSelectedCategory && data.quizQuestionsSnapshot && data.userAnswers) {
+            hasData = true;
+            data.userAnswers.forEach((ans, idx) => {
+                if (ans === null || ans !== data.quizQuestionsSnapshot[idx].correctAnswer) {
+                    let q = data.quizQuestionsSnapshot[idx];
+                    uniqueWrong[q.content] = q; 
+                }
+            });
         }
-
-        activeQuiz = {
-            id: "MOCK-PRO-ERR-" + Date.now(),
-            title: `[Ôn Tập] Câu Sai - ${currentSelectedCategory}`,
-            category: currentSelectedCategory,
-            timeLimit: Math.min(wrongQuestions.length, countSelect) * 60, 
-            questions: wrongQuestions.slice(0, countSelect),
-            isTestOnly: false, authorId: auth.currentUser.uid
-        };
-        prepareWelcomeScreen();
     });
+
+    if(!hasData) return showToast("Hệ thống chưa ghi nhận lịch sử làm bài trong môn này.", true);
+
+    let wrongQuestions = Object.values(uniqueWrong);
+    if(wrongQuestions.length === 0) return showToast("Bạn không có câu sai nào cần ôn tập trong môn học này.", false);
+
+    for (let i = wrongQuestions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [wrongQuestions[i], wrongQuestions[j]] = [wrongQuestions[j], wrongQuestions[i]];
+    }
+
+    activeQuiz = {
+        id: "MOCK-PRO-ERR-" + Date.now(),
+        title: `[Ôn Tập] Câu Sai - ${currentSelectedCategory}`,
+        category: currentSelectedCategory,
+        timeLimit: Math.min(wrongQuestions.length, countSelect) * 60, 
+        questions: wrongQuestions.slice(0, countSelect),
+        isTestOnly: false, authorId: auth.currentUser.uid
+    };
+    prepareWelcomeScreen();
 }
 
 function generateSubjectMockTest() {
     let limit = 0;
-    if(currentPlan === 'basic') limit = 0;
-    else if(currentPlan === 'plus') limit = 3;
+    if(currentPlan === 'basic') limit = 3;
+    else if(currentPlan === 'plus') limit = 5;
     else if(currentPlan === 'pro') limit = 15;
     else limit = 999999; 
 
     if(!checkIsMasterAdmin() && mockGeneratedThisMonth >= limit) {
-        showToast("Đã đạt giới hạn số lần tạo đề thi thử trong tháng.", true);
+        showToast(`Bạn đã sử dụng hết hạn mức tạo đề thử trong tháng (${mockGeneratedThisMonth}/${limit}).`, true);
         switchScreen('pricing');
         return;
     }
@@ -1483,7 +1477,8 @@ function generateRoadmap(percent) {
 
     container.classList.add('hidden');
 
-    if(!checkFeatureAccess('roadmap', true)) {
+    // Chặn Basic
+    if(!checkFeatureAccess('stats_basic', true)) {
         content.innerHTML = `<p class="text-center text-gray-500 italic py-4"><i class="fas fa-lock"></i> Nội dung phân tích yêu cầu tài khoản được nâng cấp. <a href="#" onclick="switchScreen('pricing')" class="text-blue-600 font-bold underline">Xem chi tiết gói cước</a>.</p>`;
         return;
     }
@@ -1520,142 +1515,33 @@ function generateRoadmap(percent) {
     content.innerHTML = html;
 }
 
-// ĐÀI QUAN SÁT NĂNG LỰC TOÀN MÔN (GÓI PRO)
-window.generateSubjectAnalysis = function() {
-    if (!checkIsMasterAdmin() && currentPlan !== 'pro' && currentPlan !== 'ultra') {
-        showToast("Tính năng Phân Tích Năng Lực yêu cầu tài khoản cấp độ Pro trở lên.", true);
-        switchScreen('pricing');
-        return;
-    }
-
-    if (!currentSelectedCategory) return showToast("Hệ thống chưa xác định được môn học hiện tại.", true);
-
-    showToast("Đang phân tích dữ liệu môn học...", false);
-
-    db.collection("results")
-        .where("uid", "==", auth.currentUser.uid)
-        .get()
-        .then(snapshot => {
-            let chapterStats = {};
-            let hasData = false;
-            
-            snapshot.forEach(doc => {
-                let data = doc.data();
-                
-                // Lọc bằng JS để xử lý mượt mà và loại trừ đề Mock/Error
-                if (data.category === currentSelectedCategory && data.quizId && !String(data.quizId).includes("MOCK-") && !String(data.quizId).includes("ERROR-")) {
-                    hasData = true;
-                    let title = data.quizTitle || "Chưa đặt tên";
-                    if(!chapterStats[title]) {
-                        chapterStats[title] = { totalPercent: 0, count: 0 };
-                    }
-                    chapterStats[title].totalPercent += (data.percentage || 0);
-                    chapterStats[title].count += 1;
-                }
-            });
-
-            if(!hasData) {
-                return showToast("Hệ thống chưa ghi nhận dữ liệu làm bài để tiến hành phân tích.", true);
-            }
-
-            let chapters = Object.keys(chapterStats);
-
-            let totalSubjectPercent = 0;
-            let processedChapters = [];
-            
-            chapters.forEach(ch => {
-                let avg = Math.round(chapterStats[ch].totalPercent / chapterStats[ch].count);
-                totalSubjectPercent += avg;
-                processedChapters.push({ name: ch, avg: avg });
-            });
-
-            let overallPercent = Math.round(totalSubjectPercent / chapters.length);
-            let predictedScore = (overallPercent / 10).toFixed(1);
-
-            processedChapters.sort((a, b) => a.avg - b.avg);
-            let weakest = processedChapters[0];
-            let strongest = processedChapters[processedChapters.length - 1];
-
-            document.getElementById('analysis-subject-name').innerText = currentSelectedCategory;
-            
-            let adviceHTML = "";
-            if (overallPercent < 50) {
-                adviceHTML = 'Mức độ nắm bắt kiến thức chung đang khá thấp. Khuyến nghị ôn tập lại các lý thuyết nền tảng trước khi làm bài tập nâng cao.';
-            } else if (overallPercent < 80) {
-                adviceHTML = 'Cơ sở kiến thức tương đối ổn định. Khuyến nghị tăng cường cường độ thực hành qua các bài Thi Thử Tổng Hợp.';
-            } else {
-                adviceHTML = 'Kết quả tổng quan rất tích cực. Khuyến nghị duy trì nhịp độ ôn tập định kỳ để bảo toàn lượng kiến thức đã học.';
-            }
-
-            let contentHTML = `
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="bg-blue-50 dark:bg-gray-700/50 p-4 rounded-2xl text-center border border-blue-100 dark:border-gray-600 shadow-sm">
-                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-bold mb-1 uppercase tracking-wider">Điểm Dự Đoán</p>
-                        <p class="text-4xl font-black text-blue-700 dark:text-blue-400 font-mono">${predictedScore}</p>
-                    </div>
-                    <div class="bg-indigo-50 dark:bg-gray-700/50 p-4 rounded-2xl text-center border border-indigo-100 dark:border-gray-600 shadow-sm">
-                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-bold mb-1 uppercase tracking-wider">Phạm Vi Ôn Tập</p>
-                        <p class="text-4xl font-black text-indigo-700 dark:text-indigo-400 font-mono">${chapters.length} <span class="text-sm font-medium text-gray-500">chương</span></p>
-                    </div>
-                </div>
-                
-                <div class="space-y-3 mb-6">
-                    <div class="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800 flex justify-between items-center">
-                        <div>
-                            <p class="text-[0.7rem] font-bold text-red-800 dark:text-red-400 mb-0.5 uppercase"><i class="fas fa-exclamation-triangle mr-1"></i> Trọng điểm cần khắc phục</p>
-                            <p class="font-bold text-gray-800 dark:text-gray-200 text-sm sm:text-base">${weakest.name}</p>
-                        </div>
-                        <span class="font-mono text-xl font-black text-red-600 dark:text-red-400 bg-white dark:bg-gray-800 px-3 py-1 rounded-lg shadow-sm border border-red-100 dark:border-red-800">${weakest.avg}%</span>
-                    </div>
-                    
-                    <div class="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800 flex justify-between items-center">
-                        <div>
-                            <p class="text-[0.7rem] font-bold text-green-800 dark:text-green-400 mb-0.5 uppercase"><i class="fas fa-medal mr-1"></i> Chương đạt kết quả tốt nhất</p>
-                            <p class="font-bold text-gray-800 dark:text-gray-200 text-sm sm:text-base">${strongest.name}</p>
-                        </div>
-                        <span class="font-mono text-xl font-black text-green-600 dark:text-green-400 bg-white dark:bg-gray-800 px-3 py-1 rounded-lg shadow-sm border border-green-100 dark:border-green-800">${strongest.avg}%</span>
-                    </div>
-                </div>
-
-                <div class="p-5 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-200 dark:border-gray-600 text-sm sm:text-base leading-relaxed text-gray-700 dark:text-gray-300 shadow-inner">
-                    <p class="font-bold mb-3 text-gray-900 dark:text-white flex items-center gap-2"><i class="fas fa-map-signs text-indigo-500"></i> Hướng Dẫn Ôn Tập:</p>
-                    <ul class="list-disc pl-5 space-y-2 font-medium">
-                        <li>Khuyến nghị ưu tiên sử dụng chức năng <strong>Trộn Câu Sai</strong> để củng cố chuyên đề <strong class="text-red-600 dark:text-red-400">${weakest.name}</strong>.</li>
-                        <li>${adviceHTML}</li>
-                    </ul>
-                </div>
-            `;
-
-            document.getElementById('analysis-content').innerHTML = contentHTML;
-            document.getElementById('analysis-modal').classList.remove('hidden');
-
-        }).catch(err => showToast("Lỗi xử lý dữ liệu: " + err.message, true));
-}
-
 // =========================================================================
-// [VIP] HỆ THỐNG THỐNG KÊ & LỘ TRÌNH HIỆN ĐẠI
+// [VIP] HỆ THỐNG THỐNG KÊ & LỘ TRÌNH ĐA TẦNG (PLUS / PRO / ULTRA)
 // =========================================================================
 
-let subjectChartInstance = null; // Biến lưu trữ biểu đồ để tránh lỗi đè lặp
+let subjectChartInstance = null; 
 
 function switchSubjectTab(tab) {
     if (tab === 'stats') {
-        if (!checkFeatureAccess('roadmap')) return; // Chặn nếu không có gói PRO
+        // CHẶN BẬC THẤP: Basic không được phép vào tab này
+        if (!checkFeatureAccess('stats_basic')) {
+            switchSubjectTab('list');
+            return;
+        }
         renderSubjectStats();
     }
     
-    // Đổi màu nút
     const btnList = document.getElementById('tab-btn-list');
     const btnStats = document.getElementById('tab-btn-stats');
     
     if(tab === 'list') {
-        btnList.className = "pb-3 text-base sm:text-lg font-bold text-blue-700 border-b-4 border-blue-700 dark:text-blue-400 dark:border-blue-400 transition-all";
-        btnStats.className = "pb-3 text-base sm:text-lg font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-4 border-transparent transition-all";
+        if (btnList) btnList.className = "pb-3 text-base sm:text-lg font-bold text-blue-700 border-b-4 border-blue-700 dark:text-blue-400 dark:border-blue-400 transition-all";
+        if (btnStats) btnStats.className = "pb-3 text-base sm:text-lg font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-4 border-transparent transition-all";
         document.getElementById('subject-tab-list').classList.remove('hidden');
         document.getElementById('subject-tab-stats').classList.add('hidden');
     } else {
-        btnStats.className = "pb-3 text-base sm:text-lg font-bold text-indigo-600 border-b-4 border-indigo-600 dark:text-indigo-400 dark:border-indigo-400 transition-all";
-        btnList.className = "pb-3 text-base sm:text-lg font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-4 border-transparent transition-all";
+        if (btnStats) btnStats.className = "pb-3 text-base sm:text-lg font-bold text-indigo-600 border-b-4 border-indigo-600 dark:text-indigo-400 dark:border-indigo-400 transition-all";
+        if (btnList) btnList.className = "pb-3 text-base sm:text-lg font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-4 border-transparent transition-all";
         document.getElementById('subject-tab-list').classList.add('hidden');
         document.getElementById('subject-tab-stats').classList.remove('hidden');
     }
@@ -1664,11 +1550,9 @@ function switchSubjectTab(tab) {
 function renderSubjectStats() {
     if (!currentSelectedCategory) return;
     
-    // 1. Lọc tất cả các chương gốc trong môn học này (từ kho đề)
     const baseQuizzes = quizDatabase.filter(q => q.category === currentSelectedCategory && !q.isTestOnly);
     const totalChapters = baseQuizzes.length;
     
-    // 2. Lọc lịch sử làm bài của môn này (Loại bỏ đề Trộn Mock/Error)
     const relevantHistory = historyDatabase.filter(h => 
         h.data.category === currentSelectedCategory && 
         h.data.quizId && 
@@ -1678,10 +1562,10 @@ function renderSubjectStats() {
 
     let totalQuizzesTaken = relevantHistory.length;
     
-    // Nếu chưa làm gì cả
+    // Nếu chưa làm bài tập nào
     if (totalQuizzesTaken === 0) {
-        document.getElementById('ai-roadmap-content').innerHTML = `<div class="text-center py-6 text-gray-500"><i class="fas fa-folder-open text-3xl mb-2"></i><br>Hệ thống chưa ghi nhận dữ liệu. Hãy làm ít nhất 1 bài để xem phân tích.</div>`;
-        document.getElementById('stat-table-body').innerHTML = `<tr><td colspan="5" class="text-center py-6 text-gray-500">Chưa có dữ liệu</td></tr>`;
+        document.getElementById('ai-roadmap-content').innerHTML = `<div class="text-center py-6 text-gray-500"><i class="fas fa-folder-open text-3xl mb-2"></i><br>Hệ thống hiện tại chưa ghi nhận lịch sử làm bài tập theo chương.</div>`;
+        document.getElementById('stat-table-body').innerHTML = `<tr><td colspan="4" class="text-center py-6 text-gray-500">Chưa có dữ liệu</td></tr>`;
         ['stat-mastery', 'stat-avg-score', 'stat-max-score'].forEach(id => document.getElementById(id).innerText = '0%');
         document.getElementById('stat-completion').innerHTML = `0/${totalChapters} <span class="text-xs text-gray-500">chương</span>`;
         document.getElementById('stat-total-quizzes').innerText = '0';
@@ -1689,7 +1573,7 @@ function renderSubjectStats() {
         return;
     }
 
-    // 3. Gom nhóm dữ liệu theo từng Chương
+    // Tính toán số liệu thô
     let chapterStats = {};
     let sumAllScores = 0;
     let absoluteMaxScore = 0;
@@ -1708,27 +1592,24 @@ function renderSubjectStats() {
     });
 
     let completedChaptersCount = Object.keys(chapterStats).length;
-    
-    // Tính toán Tổng quan
     let globalAvgScore = Math.round(sumAllScores / totalQuizzesTaken);
-    
-    // Mastery Index: Trọng số giữa % hoàn thành môn học và % điểm trung bình
     let completionPercentage = totalChapters === 0 ? 100 : Math.round((completedChaptersCount / totalChapters) * 100);
+    
+    // Công thức tính Chỉ số thành thạo (Trọng số 70% Điểm TB + 30% Độ phủ chương)
     let masteryIndex = Math.round((globalAvgScore * 0.7) + (completionPercentage * 0.3));
 
-    // Cập nhật text tổng quan
+    // Xuất dữ liệu lên 5 khối Tổng Quan (Plus/Pro/Ultra đều thấy)
     document.getElementById('stat-mastery').innerText = `${masteryIndex}%`;
     document.getElementById('stat-completion').innerHTML = `${completedChaptersCount}/${totalChapters} <span class="text-xs font-medium text-gray-500">chương</span>`;
     document.getElementById('stat-total-quizzes').innerText = totalQuizzesTaken;
     document.getElementById('stat-avg-score').innerText = `${globalAvgScore}%`;
     document.getElementById('stat-max-score').innerText = `${absoluteMaxScore}%`;
 
-    // 4. Chuẩn bị dữ liệu cho Bảng và Biểu đồ
+    // Cấu trúc danh sách chương phục vụ bảng và biểu đồ
     let chartLabels = [];
     let chartData = [];
     let chartColors = [];
     let tableHTML = "";
-    
     let processedChapters = [];
 
     Object.keys(chapterStats).forEach(ch => {
@@ -1737,19 +1618,15 @@ function renderSubjectStats() {
         processedChapters.push({ name: ch, avg: avg, max: max, count: chapterStats[ch].count });
     });
 
-    // Sắp xếp chương theo thứ tự
     processedChapters.sort((a, b) => a.name.localeCompare(b.name));
 
     processedChapters.forEach(ch => {
         chartLabels.push(ch.name.length > 15 ? ch.name.substring(0, 15) + '...' : ch.name);
         chartData.push(ch.avg);
         
-        let badge = "";
-        let color = "";
-        if (ch.avg >= 85) { badge = `<span class="px-2 py-1 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 rounded-md font-bold text-xs"><i class="fas fa-star mr-1"></i> Xuất sắc</span>`; color = '#22c55e'; }
-        else if (ch.avg >= 65) { badge = `<span class="px-2 py-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400 rounded-md font-bold text-xs"><i class="fas fa-check mr-1"></i> Khá</span>`; color = '#eab308'; }
-        else { badge = `<span class="px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 rounded-md font-bold text-xs"><i class="fas fa-exclamation-triangle mr-1"></i> Cần cải thiện</span>`; color = '#ef4444'; }
-        
+        let color = '#ef4444'; // Đỏ: Yếu
+        if (ch.avg >= 85) color = '#22c55e'; // Xanh: Mạnh
+        else if (ch.avg >= 65) color = '#eab308'; // Vàng: Trung bình
         chartColors.push(color);
 
         tableHTML += `
@@ -1758,18 +1635,28 @@ function renderSubjectStats() {
                 <td class="p-4 text-center text-gray-500 font-mono">${ch.count}</td>
                 <td class="p-4 text-center font-bold text-blue-600 dark:text-blue-400 font-mono">${ch.avg}%</td>
                 <td class="p-4 text-center font-bold text-gray-700 dark:text-gray-300 font-mono">${ch.max}%</td>
-                <td class="p-4">${badge}</td>
             </tr>
         `;
     });
-
     document.getElementById('stat-table-body').innerHTML = tableHTML;
 
-    // 5. Vẽ Biểu đồ Chart.js
-    const ctx = document.getElementById('masteryChart').getContext('2d');
-    if (subjectChartInstance) subjectChartInstance.destroy(); // Hủy biểu đồ cũ nếu có
+    // KẾT GIỚI KIỂM SOÁT TẦNG TRUNG NÂNG CAO (GÓI PRO)
+    const lockOverlay = document.getElementById('pro-lock-overlay');
+    if (!checkFeatureAccess('stats_pro', true)) {
+        // Nếu là gói Plus: Hiện màng khóa mờ, dừng xử lý biểu đồ và lộ trình sâu
+        if (lockOverlay) lockOverlay.classList.remove('hidden');
+        if (subjectChartInstance) subjectChartInstance.destroy();
+        removeUltraDashboard();
+        return;
+    }
     
-    // Tự động nhận diện màu chữ theo Dark mode
+    // Nếu là Pro trở lên: Mở khóa kết giới mờ
+    if (lockOverlay) lockOverlay.classList.add('hidden');
+
+    // Tiến hành vẽ biểu đồ cột thành thạo
+    const ctx = document.getElementById('masteryChart').getContext('2d');
+    if (subjectChartInstance) subjectChartInstance.destroy();
+    
     const isDark = document.documentElement.classList.contains('dark');
     const textColor = isDark ? '#9ca3af' : '#4b5563';
 
@@ -1778,12 +1665,10 @@ function renderSubjectStats() {
         data: {
             labels: chartLabels,
             datasets: [{
-                label: 'Điểm Trung Bình (%)',
+                label: 'Mức độ thành thạo (%)',
                 data: chartData,
                 backgroundColor: chartColors,
                 borderRadius: 6,
-                borderSkipped: false,
-                barThickness: 'flex',
                 maxBarThickness: 40
             }]
         },
@@ -1798,28 +1683,110 @@ function renderSubjectStats() {
         }
     });
 
-    // 6. Xây dựng Lộ trình AI
+    // Sinh tự động Lộ trình hướng dẫn
     let roadmapHTML = "";
     if (completedChaptersCount < totalChapters) {
-        roadmapHTML += `<div class="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-yellow-800 dark:text-yellow-400 text-xs mb-3">
-            <i class="fas fa-info-circle mr-1"></i> Bạn đã hoàn thành ${completedChaptersCount}/${totalChapters} chương. Dữ liệu hiện tại chỉ mang tính tham khảo. Hãy học các chương tiếp theo.
+        roadmapHTML += `<div class="p-2.5 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800 rounded-xl text-yellow-800 dark:text-yellow-400 text-xs mb-2 font-medium">
+            <i class="fas fa-info-circle mr-1"></i> Số chương đã học: ${completedChaptersCount}/${totalChapters}. Khuyến nghị hoàn thành các chương còn lại để số liệu chuẩn xác hơn.
         </div>`;
     }
 
     processedChapters.sort((a, b) => a.avg - b.avg);
     let weakest = processedChapters[0];
     
-    roadmapHTML += `<p><strong class="text-indigo-700 dark:text-indigo-400"><i class="fas fa-crosshairs mr-1"></i> Mục tiêu ưu tiên:</strong> Ôn lại lý thuyết <strong>${weakest.name}</strong> (Mức độ thành thạo thấp nhất: ${weakest.avg}%).</p>`;
-    
-    if (weakest.avg < 70) {
-        roadmapHTML += `<p><strong class="text-indigo-700 dark:text-indigo-400"><i class="fas fa-tools mr-1"></i> Hành động:</strong> Ra ngoài bấm <strong>"Trộn Câu Sai"</strong> để ép bản thân đối mặt với các lỗi thuộc chương này.</p>`;
-    } else {
-        roadmapHTML += `<p><strong class="text-indigo-700 dark:text-indigo-400"><i class="fas fa-layer-group mr-1"></i> Hành động:</strong> Cơ sở tốt. Hãy làm thêm 1-2 đề <strong>"Thi thử tổng hợp"</strong> để kiểm tra khả năng liên kết kiến thức.</p>`;
-    }
-    
-    roadmapHTML += `<p><strong class="text-green-600 dark:text-green-400"><i class="fas fa-flag-checkered mr-1"></i> Đích đến:</strong> Nâng điểm trung bình chương này lên trên 85% để đạt chuẩn Xuất sắc.</p>`;
+    roadmapHTML += `<p><strong class="text-indigo-900 dark:text-indigo-400"><i class="fas fa-arrow-circle-right mr-1"></i> Học phần yếu nhất:</strong> <br>Học sinh cần dành thời gian ôn tập lại chương <span class="text-red-600 dark:text-red-400 font-bold">${weakest.name}</span> (Hiệu suất đạt: ${weakest.avg}%).</p>`;
+    roadmapHTML += `<p><strong class="text-indigo-900 dark:text-indigo-400"><i class="fas fa-arrow-circle-right mr-1"></i> Khuyến nghị hành động:</strong> <br>Sử dụng chức năng "Trộn Câu Sai" thuộc chương học này để khắc phục triệt để các lỗ hổng kiến thức.</p>`;
+    roadmapHTML += `<p><strong class="text-indigo-900 dark:text-indigo-400"><i class="fas fa-arrow-circle-right mr-1"></i> Bước tiếp theo:</strong> <br>Sau khi nâng điểm chương này lên trên 80%, thực hiện luyện tập Mock Test tổng hợp để rèn luyện phản xạ trộn câu hỏi bẫy.</p>`;
 
     document.getElementById('ai-roadmap-content').innerHTML = roadmapHTML;
+
+    // ĐỘC QUYỀN VÔ THƯỢNG: ĐÀI QUAN SÁT CHIẾN LƯỢC TOÀN KHO (GÓI ULTRA)
+    if (checkFeatureAccess('stats_ultra', true)) {
+        renderUltraDashboard();
+    } else {
+        removeUltraDashboard();
+    }
+}
+
+// [VIP] THUẬT TOÁN ĐỘC QUYỀN GÓI ULTRA: PHÂN TÍCH TOÀN BỘ KHO VÀ TIẾN TRÌNH THEO THỜI GIAN
+function renderUltraDashboard() {
+    let ultraSection = document.getElementById('ultra-premium-dashboard');
+    if (!ultraSection) {
+        ultraSection = document.createElement('div');
+        ultraSection.id = 'ultra-premium-dashboard';
+        ultraSection.className = 'mt-8 p-6 bg-gradient-to-r from-gray-900 to-slate-900 text-white rounded-3xl border border-yellow-500/30 shadow-2xl relative overflow-hidden';
+        document.getElementById('subject-tab-stats').appendChild(ultraSection);
+    }
+
+    // 1. Phân tích tiến trình Mock Test gần nhất
+    const mockHistory = historyDatabase.filter(h => h.data.quizId && String(h.data.quizId).startsWith("MOCK-GENERATED-")).slice(0, 3).reverse();
+    let mockCompareHTML = "Chưa đủ dữ liệu thi thử tổng hợp.";
+    if (mockHistory.length > 0) {
+        mockCompareHTML = mockHistory.map((m, idx) => `
+            <div class="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-xl">
+                <span class="text-sm text-gray-400 font-medium">Lần thử ${idx + 1}</span>
+                <span class="font-mono font-black text-xl text-yellow-400">${m.data.percentage}%</span>
+            </div>
+        `).join('');
+    }
+
+    // 2. Phân tích toàn diện tất cả các môn học trong hệ thống
+    let subjectAggr = {};
+    historyDatabase.forEach(h => {
+        let cat = h.data.category || "Chưa phân loại";
+        let pct = h.data.percentage || 0;
+        if (!subjectAggr[cat]) subjectAggr[cat] = { sum: 0, count: 0 };
+        subjectAggr[cat].sum += pct;
+        subjectAggr[cat].count += 1;
+    });
+
+    let subjectList = Object.keys(subjectAggr).map(cat => ({
+        name: cat,
+        avg: Math.round(subjectAggr[cat].sum / subjectAggr[cat].count)
+    }));
+
+    let strongestSub = "Chưa rõ", weakestSub = "Chưa rõ";
+    if (subjectList.length > 0) {
+        subjectList.sort((a, b) => b.avg - a.avg);
+        strongestSub = `${subjectList[0].name} (${subjectList[0].avg}%)`;
+        weakestSub = `${subjectList[subjectList.length - 1].name} (${subjectList[subjectList.length - 1].avg}%)`;
+    }
+
+    ultraSection.innerHTML = `
+        <div class="absolute top-0 right-0 p-4 opacity-10 text-6xl pointer-events-none"><i class="fas fa-crown text-yellow-400"></i></div>
+        <h3 class="text-xl font-bold text-yellow-400 mb-6 flex items-center gap-2 font-academic"><i class="fas fa-chart-line"></i> Báo Cáo Chiến Lược Toàn Diện (Đặc quyền ULTRA)</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="p-5 bg-white/5 rounded-2xl border border-white/10">
+                <h4 class="text-sm font-bold uppercase tracking-wider text-gray-400 mb-3"><i class="fas fa-history mr-2"></i>Lịch sử kiểm tra Mock Test liên tiếp</h4>
+                <div class="space-y-2">
+                    ${mockCompareHTML}
+                </div>
+            </div>
+            
+            <div class="p-5 bg-white/5 rounded-2xl border border-white/10 flex flex-col justify-between">
+                <div>
+                    <h4 class="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4"><i class="fas fa-globe mr-2"></i>Phân tích toàn bộ kho học tập</h4>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400 font-medium">Lĩnh vực mạnh nhất:</span>
+                            <span class="text-green-400 font-bold">${strongestSub}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400 font-medium">Lĩnh vực yếu nhất:</span>
+                            <span class="text-red-400 font-bold">${weakestSub}</span>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-xs text-yellow-500/70 italic mt-4 border-t border-white/5 pt-2">* Số liệu tổng hợp tự động theo thời gian thực từ toàn bộ kết quả nộp bài.</p>
+            </div>
+        </div>
+    `;
+}
+
+function removeUltraDashboard() {
+    const el = document.getElementById('ultra-premium-dashboard');
+    if (el) el.remove();
 }
 
 // Bổ sung reset tab khi Bệ hạ mở 1 môn học khác
