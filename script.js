@@ -488,8 +488,8 @@ function toggleDarkMode() {
 }
 
 function switchScreen(screenName) {
-    if (screenName === 'admin' && !checkIsMasterAdmin()) {
-        showToast("Tài khoản không có quyền truy cập khu vực quản trị.", true);
+    if (screenName === 'admin' && !checkIsMasterAdmin() && currentRole !== 'teacher') {
+        showToast("Tài khoản không có quyền truy cập khu vực quản trị giáo viên.", true);
         return;
     }
 
@@ -1219,6 +1219,12 @@ function reviewQuiz() {
 
 // --- 9. ADMIN ZONE ---
 function switchAdminTab(tab) {
+    // [ĐÃ VÁ]: Kết giới bảo vệ nút Duyệt VIP, chỉ duy nhất Ngọc Tỷ của Bệ hạ mới mở được phòng này
+    if (tab === 'users' && !checkIsMasterAdmin()) {
+        showToast("Chỉ có bậc Hoàng đế tối cao mới có quyền sắc phong đặc quyền VIP.", true);
+        return;
+    }
+
     const panels = ['panel-smart', 'panel-manual', 'panel-stats', 'panel-users'];
     panels.forEach(p => {
         const el = document.getElementById(p);
