@@ -1876,3 +1876,52 @@ renderSubjectDetailView = function(category) {
     originalRenderSubjectDetailView(category);
     switchSubjectTab('list');
 }
+
+function updatePlanBadge() {
+    let homeBadge = document.getElementById('home-plan-badge');
+    const quizBadge = document.getElementById('quiz-plan-badge');
+    const statsBadge = document.getElementById('dynamic-stats-badge'); 
+    
+    let badgeHTML = '';
+    let statsBadgeHTML = '';
+    
+    // Lấy đúng gói cước, ép về chữ thường để chống lỗi tàng hình (Ví dụ: ULTRA -> ultra)
+    const planToUse = (currentPlan || 'basic').toLowerCase();
+    
+    switch(planToUse) {
+        case 'plus':
+            badgeHTML = `<span class="badge-pill badge-bronze" title="Gói Plus"><i class="fas fa-medal mr-1.5"></i> Plus</span>`;
+            statsBadgeHTML = `<span class="ml-1 badge-pill badge-bronze text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-medal"></i> Plus</span>`;
+            break;
+        case 'pro':
+            badgeHTML = `<span class="badge-pill badge-silver" title="Gói Pro"><i class="fas fa-shield-alt mr-1.5"></i> Pro</span>`;
+            statsBadgeHTML = `<span class="ml-1 badge-pill badge-silver text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-shield-alt"></i> Pro</span>`;
+            break;
+        case 'ultra':
+            badgeHTML = `<span class="badge-pill badge-gold" title="Gói Ultra"><i class="fas fa-crown mr-1.5"></i> Ultra</span>`;
+            statsBadgeHTML = `<span class="ml-1 badge-pill badge-gold text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-crown"></i> Ultra</span>`;
+            break;
+        default:
+            badgeHTML = `<span class="badge-pill badge-basic" title="Gói Cơ Bản"><i class="fas fa-user mr-1.5"></i> Cơ bản</span>`;
+            statsBadgeHTML = `<span class="ml-1 badge-pill badge-basic text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-lock"></i> Khóa</span>`;
+    }
+
+    // [VIP] Khôi phục tự động nếu thẻ HTML chứa huy hiệu bị Bệ hạ lỡ tay xóa mất
+    if (!homeBadge) {
+        const logoutBtn = document.getElementById('btn-logout');
+        if (logoutBtn && logoutBtn.parentElement) {
+            homeBadge = document.createElement('div');
+            homeBadge.id = 'home-plan-badge';
+            homeBadge.className = 'shrink-0';
+            logoutBtn.parentElement.appendChild(homeBadge);
+        }
+    }
+
+    // Xuất huy hiệu ra màn hình
+    if (homeBadge) homeBadge.innerHTML = badgeHTML;
+    if (quizBadge) quizBadge.innerHTML = badgeHTML;
+    if (statsBadge) statsBadge.innerHTML = statsBadgeHTML;
+}
+
+// Kích hoạt cưỡng chế hiển thị ngay lập tức để chống kẹt
+setTimeout(updatePlanBadge, 500);
