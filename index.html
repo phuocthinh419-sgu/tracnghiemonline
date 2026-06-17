@@ -90,27 +90,15 @@
         }
         @keyframes golden-rain { 0% { background-position: 0 0; } 100% { background-position: 40px 160px; } }
 
-        /* ========================================= */
-        /* [VIP] BADGE HỘI VIÊN - VIÊN THUỐC PHÁT SÁNG */
-        /* ========================================= */
+        /* [VIP] BADGE HỘI VIÊN */
         @keyframes light-sweep {
             0% { left: -100%; }
             50%, 100% { left: 200%; }
         }
         .badge-pill {
-            position: relative;
-            overflow: hidden;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 4px 14px;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-            letter-spacing: 0.5px;
-            transition: transform 0.2s;
+            position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center;
+            padding: 4px 14px; border-radius: 9999px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); letter-spacing: 0.5px; transition: transform 0.2s;
         }
         .badge-pill:hover { transform: scale(1.05); }
         .badge-pill::after {
@@ -122,6 +110,15 @@
         .badge-silver { background: linear-gradient(135deg, #e5e7eb, #9ca3af); color: #1f2937; border: 1px solid #f3f4f6; }
         .badge-gold { background: linear-gradient(135deg, #fbbf24, #d97706); color: white; border: 1px solid #fcd34d; text-shadow: 1px 1px 1px rgba(0,0,0,0.2); }
         .badge-basic { background: #9ca3af; color: white; border: 1px solid #d1d5db; }
+        
+        /* Hiệu ứng làm mờ cho phần Pro Locked */
+        .pro-blur-overlay {
+            backdrop-filter: blur(8px);
+            background: rgba(255, 255, 255, 0.6);
+        }
+        .dark .pro-blur-overlay {
+            background: rgba(31, 41, 55, 0.7);
+        }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-2 sm:p-4 transition-colors duration-300 dark:bg-gray-900">
@@ -167,7 +164,6 @@
 
         <div id="home-screen" class="hidden p-4 sm:p-8 relative">
             <div class="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
-                
                 <div class="flex items-center gap-3 w-full lg:w-auto">
                     <button id="btn-logout" class="w-full lg:w-auto justify-center flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-lg font-bold hover:bg-gray-200 transition-colors shadow-sm">
                         <i class="fas fa-sign-out-alt"></i> Đăng xuất
@@ -225,13 +221,13 @@
                             <span class="matcha-tag"><i class="fas fa-seedling"></i> Miễn phí mặc định</span>
                         </div>
                         <ul>
-                            <li><i class="fas fa-check-circle"></i> Làm đề chương lẻ có sẵn</li>
                             <li><i class="fas fa-check-circle"></i> Chấm điểm & hiện câu đúng/sai</li>
                             <li><i class="fas fa-check-circle"></i> Công cụ Highlight văn bản</li>
-                            <li><i class="fas fa-check-circle"></i> Giao diện thi thử tiêu chuẩn</li>
+                            <li><i class="fas fa-check-circle"></i> <strong>Giới hạn: 3 lượt tạo đề/tháng</strong></li>
                             <li><i class="fas fa-times-circle"></i> Xem giải thích chi tiết câu hỏi</li>
                             <li><i class="fas fa-times-circle"></i> Tự động lưu tiến độ bài làm</li>
-                            <li><i class="fas fa-times-circle"></i> Phân tích năng lực chuyên sâu</li>
+                            <li><i class="fas fa-times-circle"></i> Thống kê & Lộ trình môn học</li>
+                            <li><i class="fas fa-times-circle"></i> Trộn đề ôn tập từ câu sai</li>
                         </ul>
                     </div>
                     <button class="w-full py-3 mt-4 rounded-xl font-bold bg-transparent border-2 border-gray-300 text-gray-500 cursor-not-allowed">Gói Mặc Định</button>
@@ -243,17 +239,17 @@
                         <p style="color: #888; font-size: 0.85rem;">Ôn luyện tiêu chuẩn</p>
                         <div class="price-box">
                             <h1>20.000đ<span style="font-size: 1rem; font-weight: normal; color: #666;">/tháng</span></h1>
-                            <span class="matcha-tag"><i class="fas fa-mug-hot"></i> = 1 ly Matcha Latte (M)</span>
+                            <span class="matcha-tag"><i class="fas fa-mug-hot"></i> = 1 ly trà sữa</span>
                         </div>
                         <ul>
                             <li><i class="fas fa-check-circle"></i> Toàn bộ quyền lợi gói Basic</li>
                             <li><i class="fas fa-check-circle"></i> <strong>Mở khóa Giải thích chi tiết</strong></li>
                             <li><i class="fas fa-check-circle"></i> <strong>Tự động lưu tiến độ làm bài</strong></li>
-                            <li><i class="fas fa-check-circle"></i> Dự đoán điểm & Vạch lộ trình</li>
-                            <li><i class="fas fa-check-circle"></i> Tính năng Đề thích ứng</li>
-                            <li><i class="fas fa-star" style="color: #e67e22;"></i> <strong>Giới hạn: 3 lượt tạo đề/tháng</strong></li>
-                            <li><i class="fas fa-times-circle"></i> Chuột phải gạch mờ đáp án</li>
-                            <li><i class="fas fa-times-circle"></i> Phân tích năng lực chuyên sâu</li>
+                            <li><i class="fas fa-check-circle"></i> <strong>Tăng mức: 5 lượt tạo đề/tháng</strong></li>
+                            <li><i class="fas fa-check-circle"></i> <strong>Thống kê Cơ bản</strong> (Điểm TB môn)</li>
+                            <li><i class="fas fa-times-circle"></i> Gạch mờ đáp án nhiễu (R-Click)</li>
+                            <li><i class="fas fa-times-circle"></i> Thống kê Nâng cao & Lộ trình AI</li>
+                            <li><i class="fas fa-times-circle"></i> Trộn đề ôn tập từ câu sai</li>
                         </ul>
                     </div>
                     <button class="w-full py-3 mt-4 rounded-xl font-bold bg-transparent border-2 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors" onclick="openPaymentModal('qr-plus.webp', 'Gói Plus', '20.000đ')">Nâng Cấp Ngay</button>
@@ -266,18 +262,18 @@
                             <h3>Pro</h3>
                             <p style="color: #888; font-size: 0.85rem;">Tối ưu luyện đề</p>
                             <div class="price-box">
-                                <h1>25.000đ<span style="font-size: 1rem; font-weight: normal; color: #666;">/tháng</span></h1>
+                                <h1>35.000đ<span style="font-size: 1rem; font-weight: normal; color: #666;">/tháng</span></h1>
                                 <span class="matcha-tag"><i class="fas fa-mug-hot"></i> = 1 ly Matcha Latte (L)</span>
                             </div>
                             <ul>
                                 <li><i class="fas fa-check-circle"></i> Toàn bộ quyền lợi gói Plus</li>
                                 <li><i class="fas fa-check-circle"></i> <strong>Gạch mờ đáp án nhiễu (R-Click)</strong></li>
+                                <li><i class="fas fa-check-circle"></i> <strong>Thống kê Nâng cao & Lộ trình AI</strong></li>
                                 <li><i class="fas fa-check-circle"></i> <strong>Tạo đề ôn tập từ danh sách câu sai</strong></li>
-                                <li><i class="fas fa-check-circle"></i> <strong>Phân tích năng lực chuyên sâu</strong></li>
                                 <li><i class="fas fa-star" style="color: #e67e22;"></i> <strong>Tăng mức: 15 lượt tạo đề/tháng</strong></li>
                             </ul>
                         </div>
-                        <button class="w-full py-3 mt-4 rounded-xl font-bold bg-yellow-500 text-blue-900 hover:bg-yellow-400 shadow-lg transition-colors" onclick="openPaymentModal('qr-pro.webp', 'Gói Pro', '25.000đ')">NÂNG CẤP PRO</button>
+                        <button class="w-full py-3 mt-4 rounded-xl font-bold bg-yellow-500 text-blue-900 hover:bg-yellow-400 shadow-lg transition-colors" onclick="openPaymentModal('qr-pro.webp', 'Gói Pro', '35.000đ')">NÂNG CẤP PRO</button>
                     </div>
                 </div>
                 
@@ -287,12 +283,12 @@
                         <p style="opacity: 0.8; font-size: 0.85rem;">Giải pháp toàn diện</p>
                         <div class="price-box">
                             <h1>50.000đ<span style="font-size: 1rem; font-weight: normal; opacity: 0.7;">/tháng</span></h1>
-                            <span class="matcha-tag"><i class="fas fa-bolt"></i> = 2 ly Matcha Latte (L)</span>
+                            <span class="matcha-tag"><i class="fas fa-bolt"></i> Bá chủ Tàng Kinh Các</span>
                         </div>
                         <ul style="z-index: 10; position: relative;">
                             <li><i class="fas fa-check-circle"></i> Mở khóa toàn bộ đặc quyền hệ thống</li>
+                            <li><i class="fas fa-chart-line" style="color: var(--secondary-light);"></i> <strong>Báo cáo tiến bộ theo thời gian</strong></li>
                             <li><i class="fas fa-infinity" style="color: var(--secondary-light);"></i> <strong>VÔ HẠN lượt tạo đề/tháng</strong></li>
-                            <li><i class="fas fa-crown" style="color: var(--secondary-light);"></i> Không giới hạn tài nguyên học</li>
                         </ul>
                     </div>
                     <button class="w-full py-3 mt-4 rounded-xl font-bold bg-yellow-400 text-black hover:bg-yellow-300 shadow-xl z-10 position-relative transition-colors" onclick="openPaymentModal('qr-ultra.webp', 'Gói Ultra', '50.000đ')">NÂNG CẤP ULTRA</button>
@@ -312,7 +308,7 @@
                     <i class="fas fa-list-ul mr-2"></i>Danh sách Đề
                 </button>
                 <button id="tab-btn-stats" onclick="switchSubjectTab('stats')" class="pb-3 text-base sm:text-lg font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-4 border-transparent transition-all">
-                    <i class="fas fa-chart-bar mr-2"></i>Thống Kê & Lộ Trình <span class="ml-1 badge-pill badge-silver text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-shield-alt"></i> Pro</span>
+                    <i class="fas fa-chart-bar mr-2"></i>Thống Kê & Lộ Trình <span class="ml-1 badge-pill badge-bronze text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-medal"></i> Plus</span>
                 </button>
             </div>
 
@@ -365,22 +361,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                    <div class="lg:col-span-2 bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                        <h3 class="font-bold text-gray-800 dark:text-white mb-4 text-base"><i class="fas fa-chart-column mr-2 text-blue-500"></i>Biểu đồ năng lực theo chương</h3>
-                        <div class="relative h-[250px] w-full">
-                            <canvas id="masteryChart"></canvas>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-800 dark:to-gray-700 p-5 rounded-2xl border border-indigo-100 dark:border-gray-600 shadow-sm flex flex-col">
-                        <h3 class="font-bold text-indigo-900 dark:text-indigo-400 mb-4 text-base border-b border-indigo-200 dark:border-gray-600 pb-2"><i class="fas fa-map-signs mr-2"></i>Gợi ý Lộ trình (AI)</h3>
-                        <div id="ai-roadmap-content" class="text-sm sm:text-base text-gray-700 dark:text-gray-300 space-y-3 flex-grow font-medium leading-relaxed">
-                            </div>
-                    </div>
-                </div>
-
-                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden mb-6">
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
@@ -389,12 +370,35 @@
                                     <th class="p-4 text-center">Lượt làm</th>
                                     <th class="p-4 text-center">Điểm TB</th>
                                     <th class="p-4 text-center">Cao nhất</th>
-                                    <th class="p-4">Mức độ thành thạo</th>
                                 </tr>
                             </thead>
                             <tbody id="stat-table-body" class="divide-y dark:divide-gray-700 text-sm">
                                 </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <div class="relative rounded-2xl overflow-hidden">
+                    <div id="pro-stats-container" class="grid grid-cols-1 lg:grid-cols-3 gap-6 transition-all duration-500">
+                        <div class="lg:col-span-2 bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                            <h3 class="font-bold text-gray-800 dark:text-white mb-4 text-base"><i class="fas fa-chart-column mr-2 text-blue-500"></i>Biểu đồ năng lực theo chương</h3>
+                            <div class="relative h-[250px] w-full">
+                                <canvas id="masteryChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-800 dark:to-gray-700 p-5 rounded-2xl border border-indigo-100 dark:border-gray-600 shadow-sm flex flex-col">
+                            <h3 class="font-bold text-indigo-900 dark:text-indigo-400 mb-4 text-base border-b border-indigo-200 dark:border-gray-600 pb-2"><i class="fas fa-map-signs mr-2"></i>Gợi ý Lộ trình (AI)</h3>
+                            <div id="ai-roadmap-content" class="text-sm sm:text-base text-gray-700 dark:text-gray-300 space-y-3 flex-grow font-medium leading-relaxed">
+                                </div>
+                        </div>
+                    </div>
+
+                    <div id="pro-lock-overlay" class="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center pro-blur-overlay hidden">
+                        <i class="fas fa-lock text-5xl text-yellow-500 mb-4"></i>
+                        <h3 class="text-2xl font-bold text-gray-800 dark:text-white mb-2 font-academic">Tính Năng Chuyên Sâu Bị Khóa</h3>
+                        <p class="text-gray-600 dark:text-gray-300 max-w-md mb-6">Nâng cấp lên <strong>Gói PRO</strong> để mở khóa biểu đồ phân tích năng lực, chỉ ra điểm yếu và nhận Lộ trình khắc phục AI.</p>
+                        <button onclick="switchScreen('pricing')" class="px-8 py-3 bg-yellow-500 text-blue-900 rounded-xl font-bold shadow-lg hover:bg-yellow-400 transition-all"><i class="fas fa-crown mr-2"></i> Nâng Cấp Pro Ngay</button>
                     </div>
                 </div>
             </div>
@@ -528,7 +532,7 @@ D. Đáp án sai"></textarea>
                         <select id="admin-upgrade-plan" class="w-full sm:w-auto p-3 border rounded-lg dark:bg-gray-700 dark:text-white font-bold outline-none focus:border-blue-500 text-sm sm:text-base">
                             <option value="basic">Gói Basic (Mặc định)</option>
                             <option value="plus">Gói Plus (20.000đ)</option>
-                            <option value="pro">Gói Pro (25.000đ)</option>
+                            <option value="pro">Gói Pro (35.000đ)</option>
                             <option value="ultra">Gói Ultra (50.000đ)</option>
                         </select>
                         <button onclick="upgradeUserPlanByEmail()" class="w-full sm:w-auto px-6 py-3 bg-blue-900 text-white rounded-lg font-bold hover:bg-blue-800 transition-all shadow-md whitespace-nowrap"><i class="fas fa-check-circle mr-1"></i>Kích Hoạt</button>
@@ -693,10 +697,6 @@ D. Đáp án sai"></textarea>
 
         function closePaymentModal() {
             document.getElementById('payment-modal').classList.add('hidden');
-        }
-        
-        function closeAnalysisModal() {
-            document.getElementById('analysis-modal').classList.add('hidden');
         }
     </script>
 
