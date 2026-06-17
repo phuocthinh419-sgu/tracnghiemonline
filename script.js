@@ -24,8 +24,9 @@ function checkIsMasterAdmin() {
 // --- 2. BIẾN TOÀN CỤC CỦA HỆ THỐNG ---
 let quizDatabase = []; 
 let historyDatabase = []; 
-let pinnedFolders = []; // [VIP] Kho chứa các thư mục học sinh đã ghim
-let isHistoryLoaded = false; // [VIP] Cờ hiệu nhận biết đã tải xong lịch sử
+let pinnedFolders = []; 
+let isHistoryLoaded = false; 
+let isQuizzesLoaded = false; // [VIP] Cờ hiệu chống kẹt màn hình Kho Môn Học
 let activeQuiz = null; 
 let currentQuestionIndex = 0;
 let studentName = "";
@@ -43,7 +44,7 @@ let currentPlan = 'basic';
 let mockGeneratedThisMonth = 0;
 let lastMockMonth = null;
 let isSharedMode = false; 
-let teacherQuizListener = null; // Tránh lặp luồng lắng nghe
+let teacherQuizListener = null;
 
 // --- 3. THEO DÕI TRẠNG THÁI & KHỞI TẠO AN TOÀN ---
 document.addEventListener("DOMContentLoaded", () => { 
@@ -72,7 +73,6 @@ document.addEventListener("DOMContentLoaded", () => {
             fetchQuizzesFromFirebase(); 
             fetchHistoryFromFirebase(); 
 
-            // [VIP] Lắng nghe hồ sơ người dùng để nạp Kho Ghim
             db.collection("users").doc(user.uid).onSnapshot(doc => {
                 if(doc.exists) {
                     currentPlan = doc.data().plan || 'basic';
@@ -88,7 +88,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                     
                     if (typeof updatePlanBadge === 'function') updatePlanBadge();
-                    if (currentRole === 'student') fetchStudentPinnedQuizzes(); 
+                    if (currentRole === 'student') {
+                        isQuizzesLoaded = false;
+                        fetchStudentPinnedQuizzes(); 
+                    }
                 } else {
                     db.collection("users").doc(user.uid).set({
                         email: user.email.toLowerCase(),
@@ -121,7 +124,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-// [VIP] PHÂN QUYỀN ĐẶC QUYỀN
 function checkFeatureAccess(feature, silent = false) {
     if (checkIsMasterAdmin()) return true; 
 
@@ -152,7 +154,6 @@ function saveProgressLocally() {
         userAnswers: userAnswers,
         timeLeft: timeLeft,
         flaggedQuestions: flaggedQuestions,
-        // [VIP] KHÓA CHẶT TRẬN PHÁP: Lưu lại đúng bản nháp đã đảo lộn
         shuffledQuestions: activeQuiz.questions 
     };
     localStorage.setItem('quizProgress_' + activeQuiz.id, JSON.stringify(progress));
@@ -173,6 +174,7 @@ function fetchQuizzesFromFirebase() {
             if (isSharedMode) return; 
             quizDatabase = [];
             snapshot.forEach((doc) => { quizDatabase.push(doc.data()); });
+            isQuizzesLoaded = true; // Báo hiệu tải xong
             if (screens.home && !screens.home.classList.contains('hidden') && currentStudentTab === 'browse') renderHomeQuizList(); 
             if (screens.subjectDetail && !screens.subjectDetail.classList.contains('hidden')) renderSubjectDetailView(currentSelectedCategory);
         }, (error) => { console.error("Lỗi tải dữ liệu: ", error); });
@@ -181,35 +183,49 @@ function fetchQuizzesFromFirebase() {
     }
 }
 
-// [VIP] HÀM MỚI: TẢI ĐỀ TỪ CÁC THƯ MỤC ĐÃ GHIM
+// [VIP] THUẬT TOÁN MỚI: LÁCH LỖI INDEX CỦA FIREBASE
 function fetchStudentPinnedQuizzes() {
     if (currentRole !== 'student' || isSharedMode) return;
     
     if (pinnedFolders.length === 0) {
         quizDatabase = [];
+        isQuizzesLoaded = true;
         if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList();
         return;
     }
     
     let promises = pinnedFolders.map(folder => {
+        // Chỉ quét theo tác giả để lách Firebase, sau đó dùng JS lọc Môn học
         return db.collection("quizzes")
             .where("authorId", "==", folder.teacherId)
-            .where("category", "==", folder.category)
-            .get();
+            .get()
+            .then(snapshot => {
+                let folderQuizzes = [];
+                snapshot.forEach(doc => {
+                    if (doc.data().category === folder.category) {
+                        folderQuizzes.push(doc.data());
+                    }
+                });
+                return folderQuizzes;
+            });
     });
     
-    Promise.all(promises).then(snapshots => {
+    Promise.all(promises).then(results => {
         quizDatabase = [];
-        snapshots.forEach(snap => {
-            snap.forEach(doc => quizDatabase.push(doc.data()));
+        results.forEach(arr => {
+            quizDatabase.push(...arr);
         });
+        isQuizzesLoaded = true; // Báo hiệu đã tải xong an toàn
         if (screens.home && !screens.home.classList.contains('hidden') && currentStudentTab === 'browse') {
             renderHomeQuizList();
         }
+    }).catch(err => {
+        console.error("Lỗi tải kho ghim: ", err);
+        isQuizzesLoaded = true;
+        if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList();
     });
 }
 
-// [VIP] HÀM MỚI: GỠ GHIM THƯ MỤC
 window.unpinFolder = function(category, teacherId) {
     if(confirm(`Xác nhận gỡ thư mục "${category}" khỏi kho của bạn?\n(Thao tác này chỉ gỡ lối tắt, không ảnh hưởng đến đề gốc)`)) {
         db.collection("users").doc(auth.currentUser.uid).update({
@@ -234,7 +250,7 @@ function fetchHistoryFromFirebase() {
               return sB - sA;
           });
           
-          isHistoryLoaded = true; // [VIP] Phất cờ giải cứu mạng kẹt
+          isHistoryLoaded = true; 
           
           if (currentRole === 'student' && currentStudentTab === 'history' && screens.home && !screens.home.classList.contains('hidden')) {
               renderHomeQuizList(); 
@@ -274,7 +290,8 @@ function loadSharedFolder(category, teacherId) {
               return;
           }
           
-          // [VIP] ĐÓNG ẤN LƯU KHO TỰ ĐỘNG
+          isQuizzesLoaded = true; // Kích hoạt hiển thị
+
           if (auth.currentUser && currentRole === 'student') {
               const exists = pinnedFolders.some(f => f.category === category && f.teacherId === teacherId);
               if (!exists) {
@@ -349,11 +366,13 @@ function setupEventListeners() {
     
     addEvt('role-student', 'click', () => { 
         isSharedMode = false; 
+        isQuizzesLoaded = false;
         setRole('student'); 
         fetchQuizzesFromFirebase(); 
     });
     addEvt('role-teacher', 'click', () => { 
         isSharedMode = false; 
+        isQuizzesLoaded = false;
         setRole('teacher'); 
         fetchQuizzesFromFirebase();
     });
@@ -361,7 +380,13 @@ function setupEventListeners() {
     addEvt('btn-theme-toggle', 'click', toggleDarkMode);
     addEvt('btn-show-admin', 'click', () => switchScreen('admin'));
     
-    const goHome = () => { window.history.pushState({}, '', window.location.pathname); switchScreen('home'); };
+    const goHome = () => { 
+        isSharedMode = false; 
+        isQuizzesLoaded = false;
+        fetchQuizzesFromFirebase(); // Tải lại bảng gốc của bản thân thay vì bảng Share
+        window.history.pushState({}, '', window.location.pathname); 
+        switchScreen('home'); 
+    };
     addEvt('btn-back-to-home', 'click', goHome);
     addEvt('btn-back-to-subject', 'click', () => switchScreen('subjectDetail'));
     addEvt('btn-home', 'click', goHome);
@@ -526,14 +551,22 @@ function switchScreen(screenName) {
     }
 }
 
+// [VIP] HIỂN THỊ KIỂM SOÁT TẢI DỮ LIỆU
 function renderHomeQuizList() {
     const container = document.getElementById('quiz-list-container');
     if(!container) return;
     container.innerHTML = '';
     
     if (currentRole === 'teacher' || currentStudentTab === 'browse') {
+        
+        if (!isQuizzesLoaded) {
+            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8 animate-pulse">Đang tải kho môn học...</p>';
+            return;
+        }
+
         if (quizDatabase.length === 0) {
-            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Chưa có dữ liệu thư mục môn học.</p>';
+            let msg = currentRole === 'teacher' ? 'Chưa có dữ liệu. Bấm vào Quản Trị để tạo bộ đề mới.' : 'Kho môn học trống. Hãy nhờ Giáo viên chia sẻ link thư mục để lưu vào đây.';
+            container.innerHTML = `<p class="col-span-full text-center text-gray-500 py-8">${msg}</p>`;
             return;
         }
 
@@ -574,7 +607,6 @@ function renderHomeQuizList() {
     else if (currentRole === 'student' && currentStudentTab === 'history') {
         if (!auth.currentUser) return;
         
-        // [VIP] Cờ hiệu chống kẹt Đang Tải
         if (!isHistoryLoaded) {
             container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8 animate-pulse">Đang tải dữ liệu lịch sử...</p>'; 
             return;
@@ -1193,6 +1225,8 @@ function submitQuiz(force) {
         const tc = document.getElementById('result-time'); 
         if(tc) tc.innerText = isPracticeMode ? "Không giới hạn" : timeUsedStr;
 
+        generateRoadmap(percent);
+
         const scorePayload = {
             quizId: activeQuiz.id, quizTitle: activeQuiz.title, category: activeQuiz.category,
             studentName: studentName, email: auth.currentUser ? auth.currentUser.email : "Ẩn danh",
@@ -1219,7 +1253,6 @@ function reviewQuiz() {
 
 // --- 9. ADMIN ZONE ---
 function switchAdminTab(tab) {
-    // [ĐÃ VÁ]: Kết giới bảo vệ nút Duyệt VIP, chỉ duy nhất Ngọc Tỷ của Bệ hạ mới mở được phòng này
     if (tab === 'users' && !checkIsMasterAdmin()) {
         showToast("Chỉ có bậc Hoàng đế tối cao mới có quyền sắc phong đặc quyền VIP.", true);
         return;
@@ -1536,37 +1569,6 @@ function showFullscreenLock() {
     lockOverlay.classList.remove('hidden');
 }
 
-function updatePlanBadge() {
-    const homeBadge = document.getElementById('home-plan-badge');
-    const quizBadge = document.getElementById('quiz-plan-badge');
-    const statsBadge = document.getElementById('dynamic-stats-badge'); 
-    
-    let badgeHTML = '';
-    let statsBadgeHTML = '';
-    
-    switch(currentPlan) {
-        case 'plus':
-            badgeHTML = `<span class="badge-pill badge-bronze" title="Gói Plus"><i class="fas fa-medal mr-1.5"></i> Plus</span>`;
-            statsBadgeHTML = `<span class="ml-1 badge-pill badge-bronze text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-medal"></i> Plus</span>`;
-            break;
-        case 'pro':
-            badgeHTML = `<span class="badge-pill badge-silver" title="Gói Pro"><i class="fas fa-shield-alt mr-1.5"></i> Pro</span>`;
-            statsBadgeHTML = `<span class="ml-1 badge-pill badge-silver text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-shield-alt"></i> Pro</span>`;
-            break;
-        case 'ultra':
-            badgeHTML = `<span class="badge-pill badge-gold" title="Gói Ultra"><i class="fas fa-crown mr-1.5"></i> Ultra</span>`;
-            statsBadgeHTML = `<span class="ml-1 badge-pill badge-gold text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-crown"></i> Ultra</span>`;
-            break;
-        default:
-            badgeHTML = `<span class="badge-pill badge-basic" title="Gói Cơ Bản"><i class="fas fa-user mr-1.5"></i> Cơ bản</span>`;
-            statsBadgeHTML = `<span class="ml-1 badge-pill badge-basic text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-lock"></i> Khóa</span>`;
-    }
-
-    if (homeBadge) homeBadge.innerHTML = badgeHTML;
-    if (quizBadge) quizBadge.innerHTML = badgeHTML;
-    if (statsBadge) statsBadge.innerHTML = statsBadgeHTML;
-}
-
 
 // =========================================================================
 // [VIP] HỆ THỐNG THỐNG KÊ & LỘ TRÌNH ĐA TẦNG (PLUS / PRO / ULTRA)
@@ -1855,8 +1857,8 @@ function renderUltraDashboard() {
 }
 
 function removeUltraDashboard() {
-    const el = document.getElementById('ultra-premium-dashboard');
-    if (el) el.remove();
+    const container = document.getElementById('ultra-premium-container');
+    if (container) container.innerHTML = '';
 }
 
 const originalRenderSubjectDetailView = renderSubjectDetailView;
