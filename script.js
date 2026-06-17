@@ -174,9 +174,19 @@ function fetchQuizzesFromFirebase() {
             if (isSharedMode) return; 
             quizDatabase = [];
             snapshot.forEach((doc) => { quizDatabase.push(doc.data()); });
-            isQuizzesLoaded = true; // Báo hiệu tải xong
-            if (screens.home && !screens.home.classList.contains('hidden') && currentStudentTab === 'browse') renderHomeQuizList(); 
-            if (screens.subjectDetail && !screens.subjectDetail.classList.contains('hidden')) renderSubjectDetailView(currentSelectedCategory);
+            
+            isQuizzesLoaded = true; // Phất cờ báo hiệu tải xong
+
+            // [VÁ LỖI KẸT LOAD]: Buộc hệ thống in giao diện Giáo Viên mà không bị chặn bởi Tab của Học Sinh
+            if (screens.home && !screens.home.classList.contains('hidden')) {
+                if (currentRole === 'teacher' || currentStudentTab === 'browse') {
+                    renderHomeQuizList(); 
+                }
+            }
+            
+            if (screens.subjectDetail && !screens.subjectDetail.classList.contains('hidden')) {
+                renderSubjectDetailView(currentSelectedCategory);
+            }
         }, (error) => { console.error("Lỗi tải dữ liệu: ", error); });
     } else {
         fetchStudentPinnedQuizzes(); 
