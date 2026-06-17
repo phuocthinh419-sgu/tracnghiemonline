@@ -6,6 +6,7 @@
     <title>Hệ Thống Trắc Nghiệm Trực Tuyến</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
     
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -300,40 +301,103 @@
         </div>
 
         <div id="subject-detail-screen" class="hidden p-4 sm:p-8 relative h-[95vh] sm:h-[85vh] overflow-y-auto custom-scrollbar">
-            <button id="btn-back-to-home" class="mb-4 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors text-sm sm:text-base"><i class="fas fa-arrow-left mr-2"></i>Quay lại</button>
-            <div class="mb-6 sm:mb-8">
-                <h2 id="subject-detail-title" class="font-academic text-2xl sm:text-3xl text-blue-900 dark:text-white font-bold mb-2">Tên Môn Học</h2>
-                <p class="text-gray-500 dark:text-gray-400 text-sm">Lựa chọn học theo từng chương hoặc thi thử trộn câu hỏi tổng hợp</p>
+            <button id="btn-back-to-home" class="mb-4 text-gray-500 hover:text-blue-900 dark:hover:text-white transition-colors text-sm sm:text-base"><i class="fas fa-arrow-left mr-2"></i>Quay lại Trang Chủ</button>
+            
+            <div class="mb-4 sm:mb-6">
+                <h2 id="subject-detail-title" class="font-academic text-3xl sm:text-4xl text-blue-900 dark:text-white font-bold mb-2">Tên Môn Học</h2>
             </div>
-            <div class="p-5 sm:p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-slate-700 rounded-2xl border border-blue-100 dark:border-gray-600 mb-6 sm:mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 shadow-sm">
-                <div class="flex items-center gap-3 sm:gap-4">
-                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center text-lg sm:text-xl shadow-md shrink-0"><i class="fas fa-shuffle"></i></div>
-                    <div>
-                        <h3 class="text-base sm:text-lg font-bold text-gray-800 dark:text-white">Thi thử tổng hợp (Mock Test)</h3>
-                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-300">Tự động gộp các chương & chọn ngẫu nhiên</p>
+
+            <div class="flex gap-6 border-b border-gray-200 dark:border-gray-700 mb-6 relative">
+                <button id="tab-btn-list" onclick="switchSubjectTab('list')" class="pb-3 text-base sm:text-lg font-bold text-blue-700 border-b-4 border-blue-700 dark:text-blue-400 dark:border-blue-400 transition-all">
+                    <i class="fas fa-list-ul mr-2"></i>Danh sách Đề
+                </button>
+                <button id="tab-btn-stats" onclick="switchSubjectTab('stats')" class="pb-3 text-base sm:text-lg font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-4 border-transparent transition-all">
+                    <i class="fas fa-chart-bar mr-2"></i>Thống Kê & Lộ Trình <span class="ml-1 badge-pill badge-silver text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-shield-alt"></i> Pro</span>
+                </button>
+            </div>
+
+            <div id="subject-tab-list" class="block">
+                <div class="p-5 sm:p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-slate-700 rounded-2xl border border-blue-100 dark:border-gray-600 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 shadow-sm">
+                    <div class="flex items-center gap-3 sm:gap-4">
+                        <div class="w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center text-lg sm:text-xl shadow-md shrink-0"><i class="fas fa-shuffle"></i></div>
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold text-gray-800 dark:text-white">Thi thử tổng hợp (Mock Test)</h3>
+                            <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-300">Tự động gộp các chương & chọn ngẫu nhiên</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
+                        <select id="mock-question-count" class="w-full sm:w-auto p-3 border rounded-xl outline-none bg-white dark:bg-gray-800 dark:text-white dark:border-gray-500 font-bold text-sm shadow-sm">
+                            <option value="40">40 câu</option>
+                            <option value="50" selected>50 câu</option>
+                        </select>
+                        <button onclick="generateCategoryErrorMock()" class="w-full sm:w-auto px-4 py-3 bg-gray-100 text-blue-900 dark:bg-gray-600 dark:text-white rounded-xl font-bold border-2 border-gray-300 hover:border-blue-500 shadow-sm transition-all flex items-center justify-center">
+                            <i class="fas fa-tools mr-2"></i>Trộn Câu Sai <span class="ml-2 badge-pill badge-silver text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-shield-alt"></i> Pro</span>
+                        </button>
+                        <button id="btn-start-mock-generate" class="w-full sm:w-auto px-6 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 shadow-md transition-all whitespace-nowrap flex items-center justify-center">
+                            <i class="fas fa-play mr-2"></i>Bắt đầu
+                        </button>
                     </div>
                 </div>
-                
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
-                    <select id="mock-question-count" class="w-full sm:w-auto p-3 border rounded-xl outline-none bg-white dark:bg-gray-800 dark:text-white dark:border-gray-500 font-bold text-sm shadow-sm">
-                        <option value="40">Số lượng: 40 câu</option>
-                        <option value="50" selected>Số lượng: 50 câu</option>
-                    </select>
-                    
-                    <button onclick="generateSubjectAnalysis()" class="w-full sm:w-auto px-4 py-3 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded-xl font-bold border-2 border-indigo-200 dark:border-indigo-800 hover:border-indigo-500 shadow-sm transition-all flex items-center justify-center">
-                        <i class="fas fa-microscope mr-2"></i>Phân Tích <span class="ml-2 badge-pill badge-silver text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-shield-alt"></i> Pro</span>
-                    </button>
+                <div id="chapter-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6"></div>
+            </div>
 
-                    <button onclick="generateCategoryErrorMock()" class="w-full sm:w-auto px-4 py-3 bg-gray-100 text-blue-900 dark:bg-gray-600 dark:text-white rounded-xl font-bold border-2 border-gray-300 hover:border-blue-500 shadow-sm transition-all flex items-center justify-center">
-                        <i class="fas fa-tools mr-2"></i>Trộn Câu Sai <span class="ml-2 badge-pill badge-silver text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-shield-alt"></i> Pro</span>
-                    </button>
-                    <button id="btn-start-mock-generate" class="w-full sm:w-auto px-6 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 shadow-md transition-all whitespace-nowrap flex items-center justify-center">
-                        <i class="fas fa-graduation-cap mr-2"></i>Bắt đầu trộn
-                    </button>
+            <div id="subject-tab-stats" class="hidden">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm text-center col-span-2 md:col-span-1 flex flex-col justify-center bg-gradient-to-b from-indigo-50 to-white dark:from-indigo-900/20 dark:to-gray-800">
+                        <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Chỉ số thành thạo</p>
+                        <p id="stat-mastery" class="text-4xl font-black text-indigo-600 dark:text-indigo-400 font-mono">0%</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm text-center">
+                        <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Hoàn thành</p>
+                        <p id="stat-completion" class="text-2xl font-bold text-gray-800 dark:text-white font-mono">0/0 <span class="text-xs font-medium text-gray-500">chương</span></p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm text-center">
+                        <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Đề đã làm</p>
+                        <p id="stat-total-quizzes" class="text-2xl font-bold text-gray-800 dark:text-white font-mono">0</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm text-center">
+                        <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Điểm Trung Bình</p>
+                        <p id="stat-avg-score" class="text-2xl font-bold text-gray-800 dark:text-white font-mono">0%</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm text-center">
+                        <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Điểm Cao Nhất</p>
+                        <p id="stat-max-score" class="text-2xl font-bold text-green-600 dark:text-green-400 font-mono">0%</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="lg:col-span-2 bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <h3 class="font-bold text-gray-800 dark:text-white mb-4 text-base"><i class="fas fa-chart-column mr-2 text-blue-500"></i>Biểu đồ năng lực theo chương</h3>
+                        <div class="relative h-[250px] w-full">
+                            <canvas id="masteryChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-800 dark:to-gray-700 p-5 rounded-2xl border border-indigo-100 dark:border-gray-600 shadow-sm flex flex-col">
+                        <h3 class="font-bold text-indigo-900 dark:text-indigo-400 mb-4 text-base border-b border-indigo-200 dark:border-gray-600 pb-2"><i class="fas fa-map-signs mr-2"></i>Gợi ý Lộ trình (AI)</h3>
+                        <div id="ai-roadmap-content" class="text-sm sm:text-base text-gray-700 dark:text-gray-300 space-y-3 flex-grow font-medium leading-relaxed">
+                            </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 font-bold text-xs sm:text-sm border-b dark:border-gray-600">
+                                    <th class="p-4">Chương / Đề tài</th>
+                                    <th class="p-4 text-center">Lượt làm</th>
+                                    <th class="p-4 text-center">Điểm TB</th>
+                                    <th class="p-4 text-center">Cao nhất</th>
+                                    <th class="p-4">Mức độ thành thạo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stat-table-body" class="divide-y dark:divide-gray-700 text-sm">
+                                </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-            <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-4 text-base sm:text-lg"><i class="fas fa-list-ul mr-2"></i>Danh sách đề lẻ / Chương học ôn tập:</h3>
-            <div id="chapter-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6"></div>
         </div>
 
         <div id="admin-zone" class="hidden p-4 sm:p-8 dark:text-white h-[95vh] sm:h-[85vh] overflow-y-auto custom-scrollbar">
@@ -616,27 +680,6 @@ D. Đáp án sai"></textarea>
                 * Nội dung chuyển khoản ghi rõ: <span class="text-blue-600 dark:text-blue-300 underline">[Email tài khoản của bạn]</span> <br>
                 * Đặc quyền sẽ được tự động kích hoạt sau khi Quản trị viên đối soát giao dịch thành công.
             </p>
-        </div>
-    </div>
-
-    <div id="analysis-modal" class="hidden fixed inset-0 bg-gray-900/80 z-[2000] flex items-center justify-center backdrop-blur-sm transition-opacity p-4">
-        <div class="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-3xl w-full max-w-2xl relative shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
-            <button onclick="closeAnalysisModal()" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-red-500 rounded-full transition-colors"><i class="fas fa-times"></i></button>
-            
-            <div class="text-center mb-6">
-                <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-full text-3xl mb-3 shadow-inner">
-                    <i class="fas fa-chart-pie"></i>
-                </div>
-                <h2 class="text-2xl font-bold text-gray-800 dark:text-white font-academic">Đài Quan Sát Năng Lực</h2>
-                <p id="analysis-subject-name" class="text-indigo-600 dark:text-indigo-400 font-bold mt-1">Tên Môn Học</p>
-            </div>
-
-            <div id="analysis-content" class="text-left">
-                </div>
-            
-            <div class="mt-8 flex justify-center">
-                <button onclick="closeAnalysisModal()" class="px-8 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">Đã Hiểu</button>
-            </div>
         </div>
     </div>
 
