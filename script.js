@@ -1631,3 +1631,201 @@ window.generateSubjectAnalysis = function() {
 
         }).catch(err => showToast("Lỗi xử lý dữ liệu: " + err.message, true));
 }
+
+// =========================================================================
+// [VIP] HỆ THỐNG THỐNG KÊ & LỘ TRÌNH HIỆN ĐẠI
+// =========================================================================
+
+let subjectChartInstance = null; // Biến lưu trữ biểu đồ để tránh lỗi đè lặp
+
+function switchSubjectTab(tab) {
+    if (tab === 'stats') {
+        if (!checkFeatureAccess('roadmap')) return; // Chặn nếu không có gói PRO
+        renderSubjectStats();
+    }
+    
+    // Đổi màu nút
+    const btnList = document.getElementById('tab-btn-list');
+    const btnStats = document.getElementById('tab-btn-stats');
+    
+    if(tab === 'list') {
+        btnList.className = "pb-3 text-base sm:text-lg font-bold text-blue-700 border-b-4 border-blue-700 dark:text-blue-400 dark:border-blue-400 transition-all";
+        btnStats.className = "pb-3 text-base sm:text-lg font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-4 border-transparent transition-all";
+        document.getElementById('subject-tab-list').classList.remove('hidden');
+        document.getElementById('subject-tab-stats').classList.add('hidden');
+    } else {
+        btnStats.className = "pb-3 text-base sm:text-lg font-bold text-indigo-600 border-b-4 border-indigo-600 dark:text-indigo-400 dark:border-indigo-400 transition-all";
+        btnList.className = "pb-3 text-base sm:text-lg font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-4 border-transparent transition-all";
+        document.getElementById('subject-tab-list').classList.add('hidden');
+        document.getElementById('subject-tab-stats').classList.remove('hidden');
+    }
+}
+
+function renderSubjectStats() {
+    if (!currentSelectedCategory) return;
+    
+    // 1. Lọc tất cả các chương gốc trong môn học này (từ kho đề)
+    const baseQuizzes = quizDatabase.filter(q => q.category === currentSelectedCategory && !q.isTestOnly);
+    const totalChapters = baseQuizzes.length;
+    
+    // 2. Lọc lịch sử làm bài của môn này (Loại bỏ đề Trộn Mock/Error)
+    const relevantHistory = historyDatabase.filter(h => 
+        h.data.category === currentSelectedCategory && 
+        h.data.quizId && 
+        !String(h.data.quizId).includes("MOCK-") && 
+        !String(h.data.quizId).includes("ERROR-")
+    );
+
+    let totalQuizzesTaken = relevantHistory.length;
+    
+    // Nếu chưa làm gì cả
+    if (totalQuizzesTaken === 0) {
+        document.getElementById('ai-roadmap-content').innerHTML = `<div class="text-center py-6 text-gray-500"><i class="fas fa-folder-open text-3xl mb-2"></i><br>Hệ thống chưa ghi nhận dữ liệu. Hãy làm ít nhất 1 bài để xem phân tích.</div>`;
+        document.getElementById('stat-table-body').innerHTML = `<tr><td colspan="5" class="text-center py-6 text-gray-500">Chưa có dữ liệu</td></tr>`;
+        ['stat-mastery', 'stat-avg-score', 'stat-max-score'].forEach(id => document.getElementById(id).innerText = '0%');
+        document.getElementById('stat-completion').innerHTML = `0/${totalChapters} <span class="text-xs text-gray-500">chương</span>`;
+        document.getElementById('stat-total-quizzes').innerText = '0';
+        if (subjectChartInstance) subjectChartInstance.destroy();
+        return;
+    }
+
+    // 3. Gom nhóm dữ liệu theo từng Chương
+    let chapterStats = {};
+    let sumAllScores = 0;
+    let absoluteMaxScore = 0;
+
+    relevantHistory.forEach(h => {
+        let title = h.data.quizTitle || "Chưa đặt tên";
+        let pct = h.data.percentage || 0;
+        
+        if(!chapterStats[title]) chapterStats[title] = { sum: 0, count: 0, max: 0 };
+        chapterStats[title].sum += pct;
+        chapterStats[title].count += 1;
+        if (pct > chapterStats[title].max) chapterStats[title].max = pct;
+        
+        sumAllScores += pct;
+        if (pct > absoluteMaxScore) absoluteMaxScore = pct;
+    });
+
+    let completedChaptersCount = Object.keys(chapterStats).length;
+    
+    // Tính toán Tổng quan
+    let globalAvgScore = Math.round(sumAllScores / totalQuizzesTaken);
+    
+    // Mastery Index: Trọng số giữa % hoàn thành môn học và % điểm trung bình
+    let completionPercentage = totalChapters === 0 ? 100 : Math.round((completedChaptersCount / totalChapters) * 100);
+    let masteryIndex = Math.round((globalAvgScore * 0.7) + (completionPercentage * 0.3));
+
+    // Cập nhật text tổng quan
+    document.getElementById('stat-mastery').innerText = `${masteryIndex}%`;
+    document.getElementById('stat-completion').innerHTML = `${completedChaptersCount}/${totalChapters} <span class="text-xs font-medium text-gray-500">chương</span>`;
+    document.getElementById('stat-total-quizzes').innerText = totalQuizzesTaken;
+    document.getElementById('stat-avg-score').innerText = `${globalAvgScore}%`;
+    document.getElementById('stat-max-score').innerText = `${absoluteMaxScore}%`;
+
+    // 4. Chuẩn bị dữ liệu cho Bảng và Biểu đồ
+    let chartLabels = [];
+    let chartData = [];
+    let chartColors = [];
+    let tableHTML = "";
+    
+    let processedChapters = [];
+
+    Object.keys(chapterStats).forEach(ch => {
+        let avg = Math.round(chapterStats[ch].sum / chapterStats[ch].count);
+        let max = chapterStats[ch].max;
+        processedChapters.push({ name: ch, avg: avg, max: max, count: chapterStats[ch].count });
+    });
+
+    // Sắp xếp chương theo thứ tự
+    processedChapters.sort((a, b) => a.name.localeCompare(b.name));
+
+    processedChapters.forEach(ch => {
+        chartLabels.push(ch.name.length > 15 ? ch.name.substring(0, 15) + '...' : ch.name);
+        chartData.push(ch.avg);
+        
+        let badge = "";
+        let color = "";
+        if (ch.avg >= 85) { badge = `<span class="px-2 py-1 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 rounded-md font-bold text-xs"><i class="fas fa-star mr-1"></i> Xuất sắc</span>`; color = '#22c55e'; }
+        else if (ch.avg >= 65) { badge = `<span class="px-2 py-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400 rounded-md font-bold text-xs"><i class="fas fa-check mr-1"></i> Khá</span>`; color = '#eab308'; }
+        else { badge = `<span class="px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 rounded-md font-bold text-xs"><i class="fas fa-exclamation-triangle mr-1"></i> Cần cải thiện</span>`; color = '#ef4444'; }
+        
+        chartColors.push(color);
+
+        tableHTML += `
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <td class="p-4 font-semibold text-gray-800 dark:text-gray-200">${ch.name}</td>
+                <td class="p-4 text-center text-gray-500 font-mono">${ch.count}</td>
+                <td class="p-4 text-center font-bold text-blue-600 dark:text-blue-400 font-mono">${ch.avg}%</td>
+                <td class="p-4 text-center font-bold text-gray-700 dark:text-gray-300 font-mono">${ch.max}%</td>
+                <td class="p-4">${badge}</td>
+            </tr>
+        `;
+    });
+
+    document.getElementById('stat-table-body').innerHTML = tableHTML;
+
+    // 5. Vẽ Biểu đồ Chart.js
+    const ctx = document.getElementById('masteryChart').getContext('2d');
+    if (subjectChartInstance) subjectChartInstance.destroy(); // Hủy biểu đồ cũ nếu có
+    
+    // Tự động nhận diện màu chữ theo Dark mode
+    const isDark = document.documentElement.classList.contains('dark');
+    const textColor = isDark ? '#9ca3af' : '#4b5563';
+
+    subjectChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: chartLabels,
+            datasets: [{
+                label: 'Điểm Trung Bình (%)',
+                data: chartData,
+                backgroundColor: chartColors,
+                borderRadius: 6,
+                borderSkipped: false,
+                barThickness: 'flex',
+                maxBarThickness: 40
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, max: 100, ticks: { color: textColor }, grid: { color: isDark ? '#374151' : '#e5e7eb' } },
+                x: { ticks: { color: textColor }, grid: { display: false } }
+            }
+        }
+    });
+
+    // 6. Xây dựng Lộ trình AI
+    let roadmapHTML = "";
+    if (completedChaptersCount < totalChapters) {
+        roadmapHTML += `<div class="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-yellow-800 dark:text-yellow-400 text-xs mb-3">
+            <i class="fas fa-info-circle mr-1"></i> Bạn đã hoàn thành ${completedChaptersCount}/${totalChapters} chương. Dữ liệu hiện tại chỉ mang tính tham khảo. Hãy học các chương tiếp theo.
+        </div>`;
+    }
+
+    processedChapters.sort((a, b) => a.avg - b.avg);
+    let weakest = processedChapters[0];
+    
+    roadmapHTML += `<p><strong class="text-indigo-700 dark:text-indigo-400"><i class="fas fa-crosshairs mr-1"></i> Mục tiêu ưu tiên:</strong> Ôn lại lý thuyết <strong>${weakest.name}</strong> (Mức độ thành thạo thấp nhất: ${weakest.avg}%).</p>`;
+    
+    if (weakest.avg < 70) {
+        roadmapHTML += `<p><strong class="text-indigo-700 dark:text-indigo-400"><i class="fas fa-tools mr-1"></i> Hành động:</strong> Ra ngoài bấm <strong>"Trộn Câu Sai"</strong> để ép bản thân đối mặt với các lỗi thuộc chương này.</p>`;
+    } else {
+        roadmapHTML += `<p><strong class="text-indigo-700 dark:text-indigo-400"><i class="fas fa-layer-group mr-1"></i> Hành động:</strong> Cơ sở tốt. Hãy làm thêm 1-2 đề <strong>"Thi thử tổng hợp"</strong> để kiểm tra khả năng liên kết kiến thức.</p>`;
+    }
+    
+    roadmapHTML += `<p><strong class="text-green-600 dark:text-green-400"><i class="fas fa-flag-checkered mr-1"></i> Đích đến:</strong> Nâng điểm trung bình chương này lên trên 85% để đạt chuẩn Xuất sắc.</p>`;
+
+    document.getElementById('ai-roadmap-content').innerHTML = roadmapHTML;
+}
+
+// Bổ sung reset tab khi Bệ hạ mở 1 môn học khác
+const originalRenderSubjectDetailView = renderSubjectDetailView;
+renderSubjectDetailView = function(category) {
+    originalRenderSubjectDetailView(category);
+    // Luôn đưa về Tab Danh Sách mặc định khi mới mở môn học
+    switchSubjectTab('list');
+}
