@@ -1551,7 +1551,7 @@ function renderSubjectStats() {
     if (!currentSelectedCategory) return;
     
     const baseQuizzes = quizDatabase.filter(q => q.category === currentSelectedCategory && !q.isTestOnly);
-    const totalChapters = baseQuizzes.length;
+    let totalChapters = baseQuizzes.length; // Đổi thành let để gỡ phong ấn
     
     const relevantHistory = historyDatabase.filter(h => 
         h.data.category === currentSelectedCategory && 
