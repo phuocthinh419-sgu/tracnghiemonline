@@ -1593,6 +1593,8 @@ function renderSubjectStats() {
 
     let completedChaptersCount = Object.keys(chapterStats).length;
     let globalAvgScore = Math.round(sumAllScores / totalQuizzesTaken);
+    // [VÁ LỖI 1/0 CHƯƠNG] Nếu tổng số chương bị đếm hụt, tự động cân bằng
+    if (totalChapters < completedChaptersCount) totalChapters = completedChaptersCount; 
     let completionPercentage = totalChapters === 0 ? 100 : Math.round((completedChaptersCount / totalChapters) * 100);
     
     // Công thức tính Chỉ số thành thạo (Trọng số 70% Điểm TB + 30% Độ phủ chương)
