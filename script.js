@@ -46,6 +46,7 @@ let mockGeneratedThisMonth = 0;
 let lastMockMonth = null;
 let isSharedMode = false; 
 let teacherQuizListener = null;
+let studentQuizListener = null; // [VIP] Luồng lắng nghe siêu tốc dành cho Học sinh
 
 // --- 3. THEO DÕI TRẠNG THÁI & KHỞI TẠO AN TOÀN ---
 document.addEventListener("DOMContentLoaded", () => { 
@@ -163,10 +164,9 @@ function saveProgressLocally() {
 function fetchQuizzesFromFirebase() {
     if (!auth.currentUser) return;
     
-    if (teacherQuizListener) {
-        teacherQuizListener(); 
-        teacherQuizListener = null;
-    }
+    // Ngắt toàn bộ luồng cũ để giải phóng bộ nhớ, chống nghẽn mạch
+    if (teacherQuizListener) { teacherQuizListener(); teacherQuizListener = null; }
+    if (studentQuizListener) { studentQuizListener(); studentQuizListener = null; }
 
     if (currentRole === 'teacher') {
         teacherQuizListener = db.collection("quizzes")
@@ -175,26 +175,21 @@ function fetchQuizzesFromFirebase() {
             if (isSharedMode) return; 
             quizDatabase = [];
             snapshot.forEach((doc) => { quizDatabase.push(doc.data()); });
+            isQuizzesLoaded = true; 
             
-            isQuizzesLoaded = true; // Phất cờ báo hiệu tải xong
-
-            // [VÁ LỖI KẸT LOAD]: Buộc hệ thống in giao diện Giáo Viên mà không bị chặn bởi Tab của Học Sinh
             if (screens.home && !screens.home.classList.contains('hidden')) {
-                if (currentRole === 'teacher' || currentStudentTab === 'browse') {
-                    renderHomeQuizList(); 
-                }
+                if (currentRole === 'teacher' || currentStudentTab === 'browse') renderHomeQuizList(); 
             }
-            
             if (screens.subjectDetail && !screens.subjectDetail.classList.contains('hidden')) {
                 renderSubjectDetailView(currentSelectedCategory);
             }
-        }, (error) => { console.error("Lỗi tải dữ liệu: ", error); });
+        }, (error) => { console.error("Lỗi tải dữ liệu Giáo viên: ", error); });
     } else {
         fetchStudentPinnedQuizzes(); 
     }
 }
 
-// [VIP] THUẬT TOÁN MỚI: LÁCH LỖI INDEX CỦA FIREBASE
+// [VIP] THUẬT TOÁN ĐƯỜNG TRUYỀN SIÊU TỐC - ĐỔ DỮ LIỆU TỨC THỜI TỪ BỘ NHỚ
 function fetchStudentPinnedQuizzes() {
     if (currentRole !== 'student' || isSharedMode) return;
     
@@ -205,46 +200,37 @@ function fetchStudentPinnedQuizzes() {
         return;
     }
     
-    let promises = pinnedFolders.map(folder => {
-        // Chỉ quét theo tác giả để lách Firebase, sau đó dùng JS lọc Môn học
-        return db.collection("quizzes")
-            .where("authorId", "==", folder.teacherId)
-            .get()
-            .then(snapshot => {
-                let folderQuizzes = [];
-                snapshot.forEach(doc => {
-                    if (doc.data().category === folder.category) {
-                        folderQuizzes.push(doc.data());
-                    }
-                });
-                return folderQuizzes;
-            });
-    });
+    // Gom tất cả ID Giáo viên lại thành một mảng duy nhất
+    const teacherIds = [...new Set(pinnedFolders.map(f => f.teacherId))];
     
-    Promise.all(promises).then(results => {
-        quizDatabase = [];
-        results.forEach(arr => {
-            quizDatabase.push(...arr);
+    if (studentQuizListener) { studentQuizListener(); studentQuizListener = null; }
+    
+    // Mở cổng kết nối thời gian thực, gom hết đề của các giáo viên này về bộ nhớ đệm đúng 1 lần
+    studentQuizListener = db.collection("quizzes")
+        .where("authorId", "in", teacherIds)
+        .onSnapshot((snapshot) => {
+            let tempQuizzes = [];
+            snapshot.forEach(doc => { tempQuizzes.push(doc.data()); });
+            
+            // Dùng thuật toán lọc trong RAM (In-Memory Filtering) đạt tốc độ tuyệt đối 0ms
+            quizDatabase = tempQuizzes.filter(quiz => 
+                pinnedFolders.some(f => f.teacherId === quiz.authorId && f.category === quiz.category)
+            );
+            
+            isQuizzesLoaded = true;
+            
+            // Đẩy dữ liệu ra màn hình ngay lập tức mà không cần F5
+            if (screens.home && !screens.home.classList.contains('hidden') && currentStudentTab === 'browse') {
+                renderHomeQuizList();
+            }
+            if (screens.subjectDetail && !screens.subjectDetail.classList.contains('hidden')) {
+                renderSubjectDetailView(currentSelectedCategory);
+            }
+        }, (error) => {
+            console.error("Lỗi dòng truyền siêu tốc Học sinh: ", error);
+            isQuizzesLoaded = true;
+            if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList();
         });
-        isQuizzesLoaded = true; // Báo hiệu đã tải xong an toàn
-        if (screens.home && !screens.home.classList.contains('hidden') && currentStudentTab === 'browse') {
-            renderHomeQuizList();
-        }
-    }).catch(err => {
-        console.error("Lỗi tải kho ghim: ", err);
-        isQuizzesLoaded = true;
-        if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList();
-    });
-}
-
-window.unpinFolder = function(category, teacherId) {
-    if(confirm(`Xác nhận gỡ thư mục "${category}" khỏi kho của bạn?\n(Thao tác này chỉ gỡ lối tắt, không ảnh hưởng đến đề gốc)`)) {
-        db.collection("users").doc(auth.currentUser.uid).update({
-            pinnedFolders: firebase.firestore.FieldValue.arrayRemove({ category, teacherId })
-        }).then(() => {
-            showToast("Đã gỡ thư mục khỏi Kho Môn Học.", false);
-        });
-    }
 }
 
 function fetchHistoryFromFirebase() {
