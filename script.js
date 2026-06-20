@@ -1916,7 +1916,7 @@ function renderUltraDashboard() {
                         </div>
                     </div>
                 </div>
-                <p class="text-[0.65rem] text-gray-500 italic mt-6 border-t border-white/5 pt-3 uppercase tracking-wider">* Số liệu được AI tổng hợp tự động từ toàn bộ lịch sử chinh chiến của Bệ hạ.</p>
+                <p class="text-[0.65rem] text-gray-500 italic mt-6 border-t border-white/5 pt-3 uppercase tracking-wider">* Số liệu được AI tổng hợp tự động từ toàn bộ lịch sử làm đề của bạn.</p>
             </div>
         </div>
     `;
