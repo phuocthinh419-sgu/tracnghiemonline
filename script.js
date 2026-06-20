@@ -33,6 +33,7 @@ let studentName = "";
 let isPracticeMode = false, isReviewMode = false;
 let tabSwitchCount = 0, timerInterval, timeLeft = 0;
 let userAnswers = [], flaggedQuestions = [];
+let editingQuizId = null; // [VIP] Cờ hiệu nhận biết Giáo viên đang tạo mới hay sửa đề cũ
 let currentRole = 'student';
 let currentFilter = 'all'; 
 let isLoginMode = true; 
@@ -388,7 +389,7 @@ function setupEventListeners() {
     });
     
     addEvt('btn-theme-toggle', 'click', toggleDarkMode);
-    addEvt('btn-show-admin', 'click', () => switchScreen('admin'));
+    addEvt('btn-show-admin', 'click', () => { editingQuizId = null; switchScreen('admin'); });
     
     const goHome = () => { 
         isSharedMode = false; 
@@ -758,11 +759,16 @@ function renderSubjectDetailView(category) {
         if (checkIsMasterAdmin() || currentRole === 'teacher') {
             const shareLink = `${window.location.origin}${window.location.pathname}?quiz=${quiz.id}`;
             actionBtnsHTML = `
-                <button onclick="event.stopPropagation(); copyLink('${shareLink}')" class="absolute top-4 right-14 text-gray-400 hover:text-blue-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Sao chép liên kết bài thi"><i class="fas fa-link"></i></button>
+                <button onclick="event.stopPropagation(); copyLink('${shareLink}')" class="absolute top-4 right-24 text-gray-400 hover:text-blue-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Sao chép liên kết"><i class="fas fa-link"></i></button>
+                <button onclick="event.stopPropagation(); editQuiz('${quiz.id}')" class="absolute top-4 right-14 text-gray-400 hover:text-green-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Chỉnh sửa đề"><i class="fas fa-edit"></i></button>
                 <button onclick="event.stopPropagation(); deleteQuiz('${quiz.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Xóa đề"><i class="fas fa-trash-alt"></i></button>
             `;
+        } else if (currentRole === 'student') {
+            const catQuiz = quizDatabase.find(q => q.category === category);
+            const tId = catQuiz ? catQuiz.authorId : '';
+            actionBtnsHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${tId}')" class="absolute top-4 right-4 text-blue-500 hover:text-red-500 bg-blue-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Bỏ ghim thư mục"><i class="fas fa-bookmark"></i></button>`;
         }
-
+        
         card.innerHTML = `
             ${actionBtnsHTML}
             ${badgeHTML}
@@ -1410,28 +1416,44 @@ function saveSmartQuiz() {
     }).catch(err => { statusDiv.innerText = "Lỗi đường truyền: " + err; statusDiv.className = "mt-4 text-center font-bold text-red-600 text-sm"; });
 }
 
-function addManualQuestionForm() {
+function addManualQuestionForm(existingData = null) {
     const container = document.getElementById('manual-questions-container'); if(!container) return;
     const qDiv = document.createElement('div'); qDiv.className = 'manual-q-block p-4 sm:p-6 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl relative';
+    
+    // Lấy dữ liệu cũ nếu đang trong chế độ Sửa, nếu không thì để trống
+    let pass = existingData && existingData.passage ? existingData.passage : "";
+    let cont = existingData && existingData.content ? existingData.content : "";
+    let opt0 = existingData && existingData.options && existingData.options[0] ? existingData.options[0].replace(/"/g, '&quot;') : "";
+    let opt1 = existingData && existingData.options && existingData.options[1] ? existingData.options[1].replace(/"/g, '&quot;') : "";
+    let opt2 = existingData && existingData.options && existingData.options[2] ? existingData.options[2].replace(/"/g, '&quot;') : "";
+    let opt3 = existingData && existingData.options && existingData.options[3] ? existingData.options[3].replace(/"/g, '&quot;') : "";
+    let corr = existingData && existingData.correctAnswer !== undefined ? existingData.correctAnswer : 0;
+    let expl = existingData && existingData.explanation ? existingData.explanation.replace(/"/g, '&quot;') : "";
+
     qDiv.innerHTML = `
         <button onclick="this.parentElement.remove()" class="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-red-500 transition-colors"><i class="fas fa-times text-lg sm:text-xl"></i></button>
         <h4 class="font-bold mb-3 sm:mb-4 dark:text-white text-blue-600 text-sm sm:text-base">Nội dung câu hỏi</h4>
         <div class="mb-3 sm:mb-4">
             <label class="text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-400">Đoạn văn (Bỏ trống nếu không có):</label>
-            <textarea placeholder="Nội dung bài đọc..." class="q-passage w-full p-2 sm:p-3 mt-1 border rounded outline-none focus:border-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 text-sm sm:text-base" rows="3"></textarea>
+            <textarea placeholder="Nội dung bài đọc..." class="q-passage w-full p-2 sm:p-3 mt-1 border rounded outline-none focus:border-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 text-sm sm:text-base" rows="3">${pass}</textarea>
         </div>
-        <textarea placeholder="Nội dung câu hỏi chính..." class="q-content w-full p-2 sm:p-3 mb-3 sm:mb-4 border rounded outline-none focus:border-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 text-sm sm:text-base" rows="2"></textarea>
+        <textarea placeholder="Nội dung câu hỏi chính..." class="q-content w-full p-2 sm:p-3 mb-3 sm:mb-4 border rounded outline-none focus:border-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 text-sm sm:text-base" rows="2">${cont}</textarea>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
-            <input type="text" placeholder="Lựa chọn A" class="q-opt-0 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none text-sm sm:text-base">
-            <input type="text" placeholder="Lựa chọn B" class="q-opt-1 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none text-sm sm:text-base">
-            <input type="text" placeholder="Lựa chọn C" class="q-opt-2 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none text-sm sm:text-base">
-            <input type="text" placeholder="Lựa chọn D" class="q-opt-3 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none text-sm sm:text-base">
+            <input type="text" placeholder="Lựa chọn A" class="q-opt-0 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none text-sm sm:text-base" value="${opt0}">
+            <input type="text" placeholder="Lựa chọn B" class="q-opt-1 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none text-sm sm:text-base" value="${opt1}">
+            <input type="text" placeholder="Lựa chọn C" class="q-opt-2 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none text-sm sm:text-base" value="${opt2}">
+            <input type="text" placeholder="Lựa chọn D" class="q-opt-3 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none text-sm sm:text-base" value="${opt3}">
         </div>
         <div class="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center">
             <label class="font-bold dark:text-gray-300 text-sm sm:text-base">Đáp án đúng:</label>
-            <select class="q-correct p-2 border rounded outline-none dark:bg-gray-800 dark:text-white dark:border-gray-600 w-full sm:w-auto text-sm sm:text-base"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select>
+            <select class="q-correct p-2 border rounded outline-none dark:bg-gray-800 dark:text-white dark:border-gray-600 w-full sm:w-auto text-sm sm:text-base">
+                <option value="0" ${corr === 0 ? 'selected' : ''}>A</option>
+                <option value="1" ${corr === 1 ? 'selected' : ''}>B</option>
+                <option value="2" ${corr === 2 ? 'selected' : ''}>C</option>
+                <option value="3" ${corr === 3 ? 'selected' : ''}>D</option>
+            </select>
         </div>
-        <input type="text" placeholder="Giải thích chi tiết (Tùy chọn)..." class="q-expl w-full p-2 mt-3 sm:mt-4 border rounded outline-none dark:bg-gray-800 dark:text-white dark:border-gray-600 text-sm sm:text-base">
+        <input type="text" placeholder="Giải thích chi tiết (Tùy chọn)..." class="q-expl w-full p-2 mt-3 sm:mt-4 border rounded outline-none dark:bg-gray-800 dark:text-white dark:border-gray-600 text-sm sm:text-base" value="${expl}">
     `;
     container.appendChild(qDiv);
 }
@@ -1453,11 +1475,17 @@ function saveManualQuiz() {
     });
 
     if (!isValid) return alert("Vui lòng hoàn thiện nội dung câu hỏi và 4 lựa chọn.");
-    const newQuiz = { id: "QZ-MANUAL-" + Date.now(), title: title, category: category, timeLimit: timeLimit, questions: questions, isTestOnly: isTestOnly, authorId: auth.currentUser ? auth.currentUser.uid : "GUEST" };
+    
+    // [VIP] Nếu có cờ editingQuizId thì giữ ID cũ để cập nhật đè, nếu không thì tạo ID mới
+    const targetQuizId = editingQuizId ? editingQuizId : "QZ-MANUAL-" + Date.now();
+    
+    const newQuiz = { id: targetQuizId, title: title, category: category, timeLimit: timeLimit, questions: questions, isTestOnly: isTestOnly, authorId: auth.currentUser ? auth.currentUser.uid : "GUEST" };
 
     db.collection("quizzes").doc(newQuiz.id).set(newQuiz).then(() => {
-        alert("Lưu thông tin thành công."); if(titleEl) titleEl.value = ''; if(catEl) catEl.value = ''; if(timeEl) timeEl.value = ''; if(testEl) testEl.checked = false;
+        alert(editingQuizId ? "Cập nhật đề thi thành công!" : "Lưu đề thi mới thành công."); 
+        if(titleEl) titleEl.value = ''; if(catEl) catEl.value = ''; if(timeEl) timeEl.value = ''; if(testEl) testEl.checked = false;
         const mc = document.getElementById('manual-questions-container'); if(mc) mc.innerHTML = '';
+        editingQuizId = null; // Tắt cờ hiệu
         window.history.pushState({}, '', window.location.pathname); switchScreen('home'); 
     }).catch(err => alert("Lỗi hệ thống: " + err.message));
 }
@@ -1925,3 +1953,31 @@ function updatePlanBadge() {
 
 // Kích hoạt cưỡng chế hiển thị ngay lập tức để chống kẹt
 setTimeout(updatePlanBadge, 500);
+
+// [VIP] THUẬT TOÁN CHỈNH SỬA ĐỀ THI
+window.editQuiz = function(quizId) {
+    const quiz = quizDatabase.find(q => q.id === quizId);
+    if (!quiz) return showToast("Không tìm thấy đề thi.", true);
+    
+    editingQuizId = quizId; // Bật cờ hiệu Đang Sửa
+    
+    switchScreen('admin');
+    switchAdminTab('manual');
+    
+    // Nạp dữ liệu cơ bản
+    document.getElementById('manual-title').value = quiz.title || "";
+    document.getElementById('manual-category').value = quiz.category || "";
+    document.getElementById('manual-time').value = Math.floor((quiz.timeLimit || 900) / 60);
+    const testEl = document.getElementById('manual-test-only');
+    if (testEl) testEl.checked = quiz.isTestOnly || false;
+    
+    // Dọn dẹp khung chứa và nạp từng câu hỏi
+    const container = document.getElementById('manual-questions-container');
+    if(container) container.innerHTML = '';
+    
+    if (quiz.questions && Array.isArray(quiz.questions)) {
+        quiz.questions.forEach(q => { addManualQuestionForm(q); });
+    }
+    
+    showToast("Đã nạp dữ liệu đề thi. Bệ hạ có thể bắt đầu chỉnh sửa.", false);
+};
