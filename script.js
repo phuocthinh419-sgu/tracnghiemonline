@@ -1444,13 +1444,25 @@ function addManualQuestionForm(existingData = null) {
     const container = document.getElementById('manual-questions-container'); if(!container) return;
     const qDiv = document.createElement('div'); qDiv.className = 'manual-q-block p-4 sm:p-6 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl relative';
     
-    // Lấy dữ liệu cũ nếu đang trong chế độ Sửa, nếu không thì để trống
+    // [VIP VÁ LỖI]: Trích xuất lại giải thích riêng từng câu để tự động nối lại đuôi :: vào ô nhập
+    let exp0 = existingData && existingData.optionExplanations && existingData.optionExplanations[0] ? " :: " + existingData.optionExplanations[0] : "";
+    let exp1 = existingData && existingData.optionExplanations && existingData.optionExplanations[1] ? " :: " + existingData.optionExplanations[1] : "";
+    let exp2 = existingData && existingData.optionExplanations && existingData.optionExplanations[2] ? " :: " + existingData.optionExplanations[2] : "";
+    let exp3 = existingData && existingData.optionExplanations && existingData.optionExplanations[3] ? " :: " + existingData.optionExplanations[3] : "";
+
     let pass = existingData && existingData.passage ? existingData.passage : "";
     let cont = existingData && existingData.content ? existingData.content : "";
-    let opt0 = existingData && existingData.options && existingData.options[0] ? existingData.options[0].replace(/"/g, '&quot;') : "";
-    let opt1 = existingData && existingData.options && existingData.options[1] ? existingData.options[1].replace(/"/g, '&quot;') : "";
-    let opt2 = existingData && existingData.options && existingData.options[2] ? existingData.options[2].replace(/"/g, '&quot;') : "";
-    let opt3 = existingData && existingData.options && existingData.options[3] ? existingData.options[3].replace(/"/g, '&quot;') : "";
+    
+    let opt0 = ((existingData && existingData.options && existingData.options[0]) ? existingData.options[0] : "") + exp0;
+    let opt1 = ((existingData && existingData.options && existingData.options[1]) ? existingData.options[1] : "") + exp1;
+    let opt2 = ((existingData && existingData.options && existingData.options[2]) ? existingData.options[2] : "") + exp2;
+    let opt3 = ((existingData && existingData.options && existingData.options[3]) ? existingData.options[3] : "") + exp3;
+    
+    opt0 = opt0.replace(/"/g, '&quot;');
+    opt1 = opt1.replace(/"/g, '&quot;');
+    opt2 = opt2.replace(/"/g, '&quot;');
+    opt3 = opt3.replace(/"/g, '&quot;');
+
     let corr = existingData && existingData.correctAnswer !== undefined ? existingData.correctAnswer : 0;
     let expl = existingData && existingData.explanation ? existingData.explanation.replace(/"/g, '&quot;') : "";
 
@@ -1492,24 +1504,42 @@ function saveManualQuiz() {
     let questions = []; let isValid = true;
     qBlocks.forEach(block => {
         const passage = block.querySelector('.q-passage').value.trim(); const content = block.querySelector('.q-content').value.trim();
-        const opts = [block.querySelector('.q-opt-0').value.trim(), block.querySelector('.q-opt-1').value.trim(), block.querySelector('.q-opt-2').value.trim(), block.querySelector('.q-opt-3').value.trim()];
+        
+        // [VIP VÁ LỖI]: Đọc và tách chuỗi kí tự :: từ ô nhập liệu thủ công để đóng gói thành mảng giải thích riêng
+        let rawA = block.querySelector('.q-opt-0').value.trim();
+        let rawB = block.querySelector('.q-opt-1').value.trim();
+        let rawC = block.querySelector('.q-opt-2').value.trim();
+        let rawD = block.querySelector('.q-opt-3').value.trim();
+        
+        if (!content || rawA === "" || rawB === "" || rawC === "" || rawD === "") isValid = false;
+        
+        let splitA = rawA.split('::'); let optA = splitA[0].trim(); let expA = splitA[1] ? splitA[1].trim() : "";
+        let splitB = rawB.split('::'); let optB = splitB[0].trim(); let expB = splitB[1] ? splitB[1].trim() : "";
+        let splitC = rawC.split('::'); let optC = splitC[0].trim(); let expC = splitC[1] ? splitC[1].trim() : "";
+        let splitD = rawD.split('::'); let optD = splitD[0].trim(); let expD = splitD[1] ? splitD[1].trim() : "";
+        
         const correct = parseInt(block.querySelector('.q-correct').value); const expl = block.querySelector('.q-expl').value.trim() || "Chưa có giải thích.";
-        if (!content || opts.some(o => o === "")) isValid = false;
-        questions.push({ passage: passage, content: content, options: opts, correctAnswer: correct, explanation: expl });
+        
+        questions.push({ 
+            passage: passage, 
+            content: content, 
+            options: [optA, optB, optC, optD], 
+            optionExplanations: [expA, expB, expC, expD], 
+            correctAnswer: correct, 
+            explanation: expl 
+        });
     });
 
     if (!isValid) return alert("Vui lòng hoàn thiện nội dung câu hỏi và 4 lựa chọn.");
     
-    // [VIP] Nếu có cờ editingQuizId thì giữ ID cũ để cập nhật đè, nếu không thì tạo ID mới
     const targetQuizId = editingQuizId ? editingQuizId : "QZ-MANUAL-" + Date.now();
-    
     const newQuiz = { id: targetQuizId, title: title, category: category, timeLimit: timeLimit, questions: questions, isTestOnly: isTestOnly, authorId: auth.currentUser ? auth.currentUser.uid : "GUEST" };
 
     db.collection("quizzes").doc(newQuiz.id).set(newQuiz).then(() => {
         alert(editingQuizId ? "Cập nhật đề thi thành công!" : "Lưu đề thi mới thành công."); 
         if(titleEl) titleEl.value = ''; if(catEl) catEl.value = ''; if(timeEl) timeEl.value = ''; if(testEl) testEl.checked = false;
         const mc = document.getElementById('manual-questions-container'); if(mc) mc.innerHTML = '';
-        editingQuizId = null; // Tắt cờ hiệu
+        editingQuizId = null; 
         window.history.pushState({}, '', window.location.pathname); switchScreen('home'); 
     }).catch(err => alert("Lỗi hệ thống: " + err.message));
 }
