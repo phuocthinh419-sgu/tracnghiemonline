@@ -45,6 +45,7 @@ let currentPlan = 'basic';
 let mockGeneratedThisMonth = 0;
 let lastMockMonth = null;
 let isSharedMode = false; 
+let lastPinnedStr = ""; // [VIP] Kim bài khóa chặt vòng lặp dữ liệu trùng lặp
 let teacherQuizListener = null;
 let studentQuizListener = null; // [VIP] Luồng lắng nghe siêu tốc dành cho Học sinh
 
@@ -75,12 +76,14 @@ document.addEventListener("DOMContentLoaded", () => {
             fetchQuizzesFromFirebase(); 
             fetchHistoryFromFirebase(); 
 
+           // [VIP] Lắng nghe hồ sơ học sinh - Đã khử hoàn toàn vòng lặp vô hạn
             db.collection("users").doc(user.uid).onSnapshot(doc => {
                 if(doc.exists) {
                     currentPlan = doc.data().plan || 'basic';
+                    if (checkIsMasterAdmin()) currentPlan = 'ultra';
+                    
                     mockGeneratedThisMonth = doc.data().mockGeneratedThisMonth || 0;
                     lastMockMonth = doc.data().lastMockMonth || null;
-                    pinnedFolders = doc.data().pinnedFolders || []; 
                     
                     let currentMonth = new Date().getMonth();
                     if(lastMockMonth !== currentMonth) {
@@ -90,19 +93,26 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                     
                     if (typeof updatePlanBadge === 'function') updatePlanBadge();
-                    if (currentRole === 'student') {
-                        isQuizzesLoaded = false;
-                        fetchStudentPinnedQuizzes(); 
+                    
+                    // KIỂM TRA CHẶN VÒNG LẶP: Chỉ khi danh sách ghim thực sự thay đổi mới tải lại đề
+                    let currentPinnedStr = JSON.stringify(doc.data().pinnedFolders || []);
+                    if (lastPinnedStr !== currentPinnedStr) {
+                        lastPinnedStr = currentPinnedStr;
+                        pinnedFolders = doc.data().pinnedFolders || []; 
+                        
+                        if (currentRole === 'student') {
+                            fetchStudentPinnedQuizzes(); 
+                        }
                     }
                 } else {
+                    currentPlan = checkIsMasterAdmin() ? 'ultra' : 'basic';
                     db.collection("users").doc(user.uid).set({
                         email: user.email.toLowerCase(),
-                        plan: 'basic',
+                        plan: currentPlan,
                         mockGeneratedThisMonth: 0,
                         lastMockMonth: new Date().getMonth(),
                         pinnedFolders: []
-                    });
-                    currentPlan = 'basic';
+                    }, {merge: true});
                     if (typeof updatePlanBadge === 'function') updatePlanBadge();
                 }
             });
