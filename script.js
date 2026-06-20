@@ -543,6 +543,7 @@ function switchScreen(screenName) {
         if (screenName === 'quiz') screens[screenName].classList.add('flex');
     }
     if(screenName === 'home') renderHomeQuizList();
+    const fInput = document.getElementById('search-folder-input'); if(fInput) fInput.value = "";
     if(screenName === 'subjectDetail') renderSubjectDetailView(currentSelectedCategory);
     if(screenName === 'admin') {
         switchAdminTab('smart');
@@ -568,20 +569,28 @@ function renderHomeQuizList() {
     if(!container) return;
     container.innerHTML = '';
     
+    // [VIP] ĐỌC LIVE TỪ KHÓA TÌM KIẾM
+    const searchEl = document.getElementById('search-folder-input');
+    const keyword = searchEl ? searchEl.value.trim().toLowerCase() : "";
+    
     if (currentRole === 'teacher' || currentStudentTab === 'browse') {
-        
         if (!isQuizzesLoaded) {
             container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8 animate-pulse">Đang tải kho môn học...</p>';
             return;
         }
 
-        if (quizDatabase.length === 0) {
-            let msg = currentRole === 'teacher' ? 'Chưa có dữ liệu. Bấm vào Quản Trị để tạo bộ đề mới.' : 'Kho môn học trống. Hãy nhờ Giáo viên chia sẻ link thư mục để lưu vào đây.';
-            container.innerHTML = `<p class="col-span-full text-center text-gray-500 py-8">${msg}</p>`;
+        let categories = [...new Set(quizDatabase.map(q => q.category))];
+        
+        // [VIP] LỌC THƯ MỤC THEO TỪ KHÓA
+        if (keyword) {
+            categories = categories.filter(cat => cat.toLowerCase().includes(keyword));
+        }
+
+        if (categories.length === 0) {
+            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Không tìm thấy môn học nào khớp.</p>';
             return;
         }
 
-        const categories = [...new Set(quizDatabase.map(q => q.category))];
         categories.forEach(category => {
             const totalQuizzes = quizDatabase.filter(q => q.category === category).length;
             const card = document.createElement('div');
@@ -623,11 +632,20 @@ function renderHomeQuizList() {
             return;
         }
 
-        if (historyDatabase.length === 0) {
-            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Bạn chưa thực hiện bài thi nào.</p>'; return;
+        // [VIP] LỌC LỊCH SỬ THEO TỪ KHÓA ĐỀ THI HOẶC MÔN HỌC
+        let filteredHistory = historyDatabase;
+        if (keyword) {
+            filteredHistory = historyDatabase.filter(item => 
+                (item.data.quizTitle && item.data.quizTitle.toLowerCase().includes(keyword)) ||
+                (item.data.category && item.data.category.toLowerCase().includes(keyword))
+            );
         }
 
-        historyDatabase.forEach(item => {
+        if (filteredHistory.length === 0) {
+            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Không tìm thấy lịch sử bài thi nào khớp.</p>'; return;
+        }
+
+        filteredHistory.forEach(item => {
             const res = item.data;
             const formatStr = res.timestamp ? new Date(res.timestamp.seconds * 1000).toLocaleString('vi-VN') : "Vừa xong";
             
@@ -742,9 +760,19 @@ function renderSubjectDetailView(category) {
     const container = document.getElementById('chapter-list-container'); if(!container) return;
     container.innerHTML = '';
 
-    const quizzesInFolder = quizDatabase.filter(q => q.category === category);
+    // [VIP] ĐỌC LIVE TỪ KHÓA TÌM KIẾM CHƯƠNG / BỘ ĐỀ
+    const searchEl = document.getElementById('search-chapter-input');
+    const keyword = searchEl ? searchEl.value.trim().toLowerCase() : "";
+
+    let quizzesInFolder = quizDatabase.filter(q => q.category === category);
+    
+    // [VIP] LỌC CHƯƠNG THEO TỪ KHÓA
+    if (keyword) {
+        quizzesInFolder = quizzesInFolder.filter(quiz => quiz.title.toLowerCase().includes(keyword));
+    }
+
     if(quizzesInFolder.length === 0) {
-        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-4">Thư mục hiện tại chưa có đề thi.</p>'; return;
+        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-4">Không tìm thấy đề thi nào khớp với từ khóa.</p>'; return;
     }
 
     quizzesInFolder.forEach(quiz => {
@@ -768,7 +796,7 @@ function renderSubjectDetailView(category) {
             const tId = catQuiz ? catQuiz.authorId : '';
             actionBtnsHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${tId}')" class="absolute top-4 right-4 text-blue-500 hover:text-red-500 bg-blue-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Bỏ ghim thư mục"><i class="fas fa-bookmark"></i></button>`;
         }
-        
+
         card.innerHTML = `
             ${actionBtnsHTML}
             ${badgeHTML}
@@ -1901,6 +1929,10 @@ function removeUltraDashboard() {
 
 const originalRenderSubjectDetailView = renderSubjectDetailView;
 renderSubjectDetailView = function(category) {
+    // [VIP] Xóa trắng chữ trong ô tìm kiếm chương khi mở môn học mới
+    const cInput = document.getElementById('search-chapter-input');
+    if (cInput) cInput.value = "";
+    
     originalRenderSubjectDetailView(category);
     switchSubjectTab('list');
 }
