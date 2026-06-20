@@ -1927,14 +1927,20 @@ function removeUltraDashboard() {
     if (container) container.innerHTML = '';
 }
 
+// [VÁ LỖI VÒNG LẶP XÓA CHỮ CHƯƠNG]
 const originalRenderSubjectDetailView = renderSubjectDetailView;
 renderSubjectDetailView = function(category) {
-    // [VIP] Xóa trắng chữ trong ô tìm kiếm chương khi mở môn học mới
     const cInput = document.getElementById('search-chapter-input');
-    if (cInput) cInput.value = "";
     
-    originalRenderSubjectDetailView(category);
-    switchSubjectTab('list');
+    // Chỉ xóa trắng chữ và nhảy tab khi mở môn mới (khi ô tìm kiếm KHÔNG được chọn)
+    if (cInput && document.activeElement !== cInput) {
+        cInput.value = "";
+        originalRenderSubjectDetailView(category);
+        switchSubjectTab('list');
+    } else {
+        // Nếu Bệ hạ đang chủ động gõ chữ, chỉ chạy lệnh lọc đề, tuyệt đối không xóa chữ hay đổi tab
+        originalRenderSubjectDetailView(category);
+    }
 }
 
 function updatePlanBadge() {
