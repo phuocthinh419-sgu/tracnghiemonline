@@ -941,22 +941,26 @@ function startQuiz(practice) {
         }
     }
 
-    if (!shouldLoadSaved) {
-        let groupedQuestions = []; let currentPassage = null; let currentGroup = [];
+  if (!shouldLoadSaved) {
+        // [VIP VÁ LỖI]: THUẬT TOÁN GOM NHÓM BÀI ĐỌC BẰNG BẢN ĐỒ (MAP)
+        // Đảm bảo các câu cùng bài đọc dính chặt lấy nhau, không bao giờ bị xé lẻ
+        let passageMap = new Map();
         activeQuiz.questions.forEach(q => {
-            if (q.passage !== currentPassage) {
-                if (currentGroup.length > 0) groupedQuestions.push(currentGroup);
-                currentGroup = [q]; currentPassage = q.passage;
-            } else { currentGroup.push(q); }
+            let p = q.passage || "";
+            if (!passageMap.has(p)) passageMap.set(p, []);
+            passageMap.get(p).push(q);
         });
-        if (currentGroup.length > 0) groupedQuestions.push(currentGroup);
+        
+        let groupedQuestions = Array.from(passageMap.values());
 
+        // 1. Trộn vị trí các nhóm (Đảo vị trí Bài đọc A, Bài đọc B và Nhóm câu lẻ)
         for (let i = groupedQuestions.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [groupedQuestions[i], groupedQuestions[j]] = [groupedQuestions[j], groupedQuestions[i]];
         }
 
         groupedQuestions.forEach(group => {
+            // 2. Nếu là nhóm câu hỏi lẻ (KHÔNG có bài đọc) -> Trộn thứ tự các câu hỏi bên trong
             if (!group[0].passage || group[0].passage.trim() === "") {
                 for (let i = group.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
@@ -964,6 +968,7 @@ function startQuiz(practice) {
                 }
             }
 
+            // 3. Trộn ngẫu nhiên 4 đáp án A B C D cho TẤT CẢ các câu
             group.forEach(q => {
                 let opts = q.options.map((text, idx) => ({ 
                     text: text, isCorrect: idx === q.correctAnswer,
@@ -979,6 +984,7 @@ function startQuiz(practice) {
             });
         });
 
+        // 4. Lắp ráp lại thành đề hoàn chỉnh
         activeQuiz.questions = groupedQuestions.flat();
         userAnswers = new Array(activeQuiz.questions.length).fill(null);
         flaggedQuestions = new Array(activeQuiz.questions.length).fill(false);
