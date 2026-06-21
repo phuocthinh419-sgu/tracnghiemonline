@@ -1277,10 +1277,8 @@ function submitQuiz(force) {
         const cleanPayload = JSON.parse(JSON.stringify(rawPayload));
         cleanPayload.timestamp = firebase.firestore.FieldValue.serverTimestamp();
 
-        db.collection("results").add(cleanPayload).then(() => {
-            // Khi đám mây gật đầu, lập tức cho tải lại lịch sử!
-            fetchHistoryFromFirebase();
-        }).catch(err => {
+        // [ĐÃ VÁ] Đẩy thẳng lên đám mây, đám mây sẽ tự động gọi hệ thống nạp lại Lịch sử
+        db.collection("results").add(cleanPayload).catch(err => {
             console.error("Lỗi cập nhật điểm: ", err);
             showToast("Lỗi hệ thống: Không thể kết nối với máy chủ đám mây", true);
         });
