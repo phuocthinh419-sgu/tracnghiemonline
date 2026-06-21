@@ -2058,3 +2058,49 @@ window.editQuiz = function(quizId) {
     
     showToast("Đã nạp dữ liệu đề thi. Bệ hạ có thể bắt đầu chỉnh sửa.", false);
 };
+
+// [VIP] TRẬN PHÁP MẮT THẦN: CƯỠNG CHẾ LƯU LỊCH SỬ KHI NỘP BÀI
+setTimeout(() => {
+    const resScreen = document.getElementById('result-screen');
+    if (resScreen) {
+        const resultObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                // Khi màn hình điểm số bật lên (mất class hidden)
+                if (mutation.attributeName === 'class' && !resScreen.classList.contains('hidden')) {
+                    
+                    if (!auth.currentUser || !currentQuiz || isSharedMode) return; // Khách thì tha không lưu
+                    
+                    const scoreStr = document.getElementById('result-score').innerText;
+                    
+                    // Chống lưu đúp phòng trường hợp hàm gốc vẫn chạy được
+                    if (window.lastForceSavedQuiz === currentQuiz.id && window.lastForceSavedScore === scoreStr) return;
+                    window.lastForceSavedQuiz = currentQuiz.id;
+                    window.lastForceSavedScore = scoreStr;
+
+                    const percentStr = document.getElementById('result-percent').innerText.replace('%', '');
+                    const timeStr = document.getElementById('result-time').innerText;
+
+                    // Đóng gói thành tích
+                    const historyData = {
+                        userId: auth.currentUser.uid,
+                        quizId: currentQuiz.id,
+                        quizTitle: currentQuiz.title || "Bài thi không tên",
+                        category: currentQuiz.category || "Chưa phân loại",
+                        score: scoreStr,
+                        percentage: parseInt(percentStr) || 0,
+                        timeUsed: timeStr,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+
+                    // Phóng thẳng lên đám mây
+                    db.collection("history").add(historyData).then(() => {
+                        console.log("Cưỡng chế ghi lịch sử thành công!");
+                    }).catch(err => console.error("Lỗi ghi lịch sử: ", err));
+                }
+            });
+        });
+        
+        // Kích hoạt mắt thần
+        resultObserver.observe(resScreen, { attributes: true, attributeFilter: ['class'] });
+    }
+}, 1000);
