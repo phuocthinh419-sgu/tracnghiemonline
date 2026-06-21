@@ -1696,15 +1696,28 @@ function switchSubjectTab(tab) {
 function renderSubjectStats() {
     if (!currentSelectedCategory) return;
     
-    const baseQuizzes = quizDatabase.filter(q => q.category === currentSelectedCategory && !q.isTestOnly);
+    const safeCategory = (currentSelectedCategory || "").trim().toLowerCase();
+    
+    const baseQuizzes = quizDatabase.filter(q => 
+        (q.category || "").trim().toLowerCase() === safeCategory && !q.isTestOnly
+    );
     let totalChapters = baseQuizzes.length; 
     
-    const relevantHistory = historyDatabase.filter(h => 
-        h.data.category === currentSelectedCategory && 
-        h.data.quizId && 
-        !String(h.data.quizId).includes("MOCK-") && 
-        !String(h.data.quizId).includes("ERROR-")
-    );
+    // [VIP] Lấy danh sách toàn bộ mã ID đề thi gốc đang tồn tại trong thư mục này
+    const folderQuizIds = quizDatabase.filter(q => 
+        (q.category || "").trim().toLowerCase() === safeCategory
+    ).map(q => q.id);
+
+    // [VIP] THUẬT TOÁN BỌC THÉP: Bắt trọn lịch sử cũ bị khuyết tên môn
+    const relevantHistory = historyDatabase.filter(h => {
+        if (!h.data.quizId) return false;
+        // 1. Nhận diện chuẩn xác 100% đề gốc qua ID (Bất chấp lịch sử thiếu tên môn)
+        if (folderQuizIds.includes(h.data.quizId)) return true;
+        // 2. Nhận diện đề Thi thử/Vá lỗi qua Tên Môn
+        if ((h.data.category || "").trim().toLowerCase() === safeCategory) return true;
+        
+        return false;
+    });
 
     let totalQuizzesTaken = relevantHistory.length;
     
