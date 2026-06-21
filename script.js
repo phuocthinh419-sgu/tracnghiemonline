@@ -26,14 +26,14 @@ let quizDatabase = [];
 let historyDatabase = []; 
 let pinnedFolders = []; 
 let isHistoryLoaded = false; 
-let isQuizzesLoaded = false; // [VIP] Cờ hiệu chống kẹt màn hình Kho Môn Học
+let isQuizzesLoaded = false;
 let activeQuiz = null; 
 let currentQuestionIndex = 0;
 let studentName = "";
 let isPracticeMode = false, isReviewMode = false;
 let tabSwitchCount = 0, timerInterval, timeLeft = 0;
 let userAnswers = [], flaggedQuestions = [];
-let editingQuizId = null; // [VIP] Cờ hiệu nhận biết Giáo viên đang tạo mới hay sửa đề cũ
+let editingQuizId = null; 
 let currentRole = 'student';
 let currentFilter = 'all'; 
 let isLoginMode = true; 
@@ -45,9 +45,9 @@ let currentPlan = 'basic';
 let mockGeneratedThisMonth = 0;
 let lastMockMonth = null;
 let isSharedMode = false; 
-let lastPinnedStr = ""; // [VIP] Kim bài khóa chặt vòng lặp dữ liệu trùng lặp
+let lastPinnedStr = ""; 
 let teacherQuizListener = null;
-let studentQuizListener = null; // [VIP] Luồng lắng nghe siêu tốc dành cho Học sinh
+let studentQuizListener = null; 
 
 // --- 3. THEO DÕI TRẠNG THÁI & KHỞI TẠO AN TOÀN ---
 document.addEventListener("DOMContentLoaded", () => { 
@@ -76,7 +76,6 @@ document.addEventListener("DOMContentLoaded", () => {
             fetchQuizzesFromFirebase(); 
             fetchHistoryFromFirebase(); 
 
-           // [VIP] Lắng nghe hồ sơ học sinh - Đã khử hoàn toàn vòng lặp vô hạn
             db.collection("users").doc(user.uid).onSnapshot(doc => {
                 if(doc.exists) {
                     currentPlan = doc.data().plan || 'basic';
@@ -94,7 +93,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     
                     if (typeof updatePlanBadge === 'function') updatePlanBadge();
                     
-                    // KIỂM TRA CHẶN VÒNG LẶP: Chỉ khi danh sách ghim thực sự thay đổi mới tải lại đề
                     let currentPinnedStr = JSON.stringify(doc.data().pinnedFolders || []);
                     if (lastPinnedStr !== currentPinnedStr) {
                         lastPinnedStr = currentPinnedStr;
@@ -174,7 +172,6 @@ function saveProgressLocally() {
 function fetchQuizzesFromFirebase() {
     if (!auth.currentUser) return;
     
-    // Ngắt toàn bộ luồng cũ để giải phóng bộ nhớ, chống nghẽn mạch
     if (teacherQuizListener) { teacherQuizListener(); teacherQuizListener = null; }
     if (studentQuizListener) { studentQuizListener(); studentQuizListener = null; }
 
@@ -199,7 +196,6 @@ function fetchQuizzesFromFirebase() {
     }
 }
 
-// [VIP] THUẬT TOÁN ĐƯỜNG TRUYỀN SIÊU TỐC - ĐỔ DỮ LIỆU TỨC THỜI TỪ BỘ NHỚ
 function fetchStudentPinnedQuizzes() {
     if (currentRole !== 'student' || isSharedMode) return;
     
@@ -210,26 +206,22 @@ function fetchStudentPinnedQuizzes() {
         return;
     }
     
-    // Gom tất cả ID Giáo viên lại thành một mảng duy nhất
     const teacherIds = [...new Set(pinnedFolders.map(f => f.teacherId))];
     
     if (studentQuizListener) { studentQuizListener(); studentQuizListener = null; }
     
-    // Mở cổng kết nối thời gian thực, gom hết đề của các giáo viên này về bộ nhớ đệm đúng 1 lần
     studentQuizListener = db.collection("quizzes")
         .where("authorId", "in", teacherIds)
         .onSnapshot((snapshot) => {
             let tempQuizzes = [];
             snapshot.forEach(doc => { tempQuizzes.push(doc.data()); });
             
-            // Dùng thuật toán lọc trong RAM (In-Memory Filtering) đạt tốc độ tuyệt đối 0ms
             quizDatabase = tempQuizzes.filter(quiz => 
                 pinnedFolders.some(f => f.teacherId === quiz.authorId && f.category === quiz.category)
             );
             
             isQuizzesLoaded = true;
             
-            // Đẩy dữ liệu ra màn hình ngay lập tức mà không cần F5
             if (screens.home && !screens.home.classList.contains('hidden') && currentStudentTab === 'browse') {
                 renderHomeQuizList();
             }
@@ -297,7 +289,7 @@ function loadSharedFolder(category, teacherId) {
               return;
           }
           
-          isQuizzesLoaded = true; // Kích hoạt hiển thị
+          isQuizzesLoaded = true; 
 
           if (auth.currentUser && currentRole === 'student') {
               const exists = pinnedFolders.some(f => f.category === category && f.teacherId === teacherId);
@@ -390,7 +382,7 @@ function setupEventListeners() {
     const goHome = () => { 
         isSharedMode = false; 
         isQuizzesLoaded = false;
-        fetchQuizzesFromFirebase(); // Tải lại bảng gốc của bản thân thay vì bảng Share
+        fetchQuizzesFromFirebase(); 
         window.history.pushState({}, '', window.location.pathname); 
         switchScreen('home'); 
     };
@@ -559,13 +551,11 @@ function switchScreen(screenName) {
     }
 }
 
-// [VIP] HIỂN THỊ KIỂM SOÁT TẢI DỮ LIỆU
 function renderHomeQuizList() {
     const container = document.getElementById('quiz-list-container');
     if(!container) return;
     container.innerHTML = '';
     
-    // [VIP] ĐỌC LIVE TỪ KHÓA TÌM KIẾM
     const searchEl = document.getElementById('search-folder-input');
     const keyword = searchEl ? searchEl.value.trim().toLowerCase() : "";
     
@@ -577,7 +567,6 @@ function renderHomeQuizList() {
 
         let categories = [...new Set(quizDatabase.map(q => q.category))];
         
-        // [VIP] LỌC THƯ MỤC THEO TỪ KHÓA
         if (keyword) {
             categories = categories.filter(cat => cat.toLowerCase().includes(keyword));
         }
@@ -628,7 +617,6 @@ function renderHomeQuizList() {
             return;
         }
 
-        // [VIP] LỌC LỊCH SỬ THEO TỪ KHÓA ĐỀ THI HOẶC MÔN HỌC
         let filteredHistory = historyDatabase;
         if (keyword) {
             filteredHistory = historyDatabase.filter(item => 
@@ -756,13 +744,11 @@ function renderSubjectDetailView(category) {
     const container = document.getElementById('chapter-list-container'); if(!container) return;
     container.innerHTML = '';
 
-    // [VIP] ĐỌC LIVE TỪ KHÓA TÌM KIẾM CHƯƠNG / BỘ ĐỀ
     const searchEl = document.getElementById('search-chapter-input');
     const keyword = searchEl ? searchEl.value.trim().toLowerCase() : "";
 
     let quizzesInFolder = quizDatabase.filter(q => q.category === category);
     
-    // [VIP] LỌC CHƯƠNG THEO TỪ KHÓA
     if (keyword) {
         quizzesInFolder = quizzesInFolder.filter(quiz => quiz.title.toLowerCase().includes(keyword));
     }
@@ -944,7 +930,6 @@ function startQuiz(practice) {
                 flaggedQuestions = parsed.flaggedQuestions;
                 timeLeft = parsed.timeLeft;
                 
-                // [VIP] PHỤC HỒI NGUYÊN TRẠNG BẢN SAO ĐÃ ĐẢO VỊ TRÍ
                 if (parsed.shuffledQuestions) {
                     activeQuiz.questions = parsed.shuffledQuestions;
                 }
@@ -1240,6 +1225,7 @@ function handleVisibilityChange() {
     }
 }
 
+// [VIP CẤP CỨU] Hàm Nộp Bài bọc thép - Loại bỏ hoàn toàn mảng độc 'undefined' để Firebase không đá văng bài thi
 function submitQuiz(force) {
     const timeUsed = activeQuiz.timeLimit - (timeLeft > 0 ? timeLeft : 0);
     const minimumTime = Math.floor(activeQuiz.timeLimit / 2);
@@ -1257,7 +1243,11 @@ function submitQuiz(force) {
         let correctCount = userAnswers.filter((ans, i) => ans === activeQuiz.questions[i].correctAnswer).length;
         const finalTimeUsed = activeQuiz.timeLimit - (timeLeft > 0 ? timeLeft : 0);
         const timeUsedStr = `${Math.floor(finalTimeUsed / 60).toString().padStart(2, '0')}:${(finalTimeUsed % 60).toString().padStart(2, '0')}`;
-        const percent = Math.round((correctCount / activeQuiz.questions.length) * 100);
+        
+        let percent = 0;
+        if (activeQuiz.questions && activeQuiz.questions.length > 0) {
+            percent = Math.round((correctCount / activeQuiz.questions.length) * 100);
+        }
 
         switchScreen('result');
         const sc = document.getElementById('result-score'); if(sc) sc.innerText = `${correctCount}/${activeQuiz.questions.length}`;
@@ -1267,17 +1257,33 @@ function submitQuiz(force) {
 
         generateRoadmap(percent);
 
-        const scorePayload = {
-            quizId: activeQuiz.id, quizTitle: activeQuiz.title, category: activeQuiz.category,
-            studentName: studentName, email: auth.currentUser ? auth.currentUser.email : "Ẩn danh",
-            uid: auth.currentUser ? auth.currentUser.uid : null,
-            score: `${correctCount}/${activeQuiz.questions.length}`, percentage: percent, timeUsed: isPracticeMode ? "Luyện tập" : timeUsedStr,
-            teacherId: activeQuiz.authorId || null, 
-            userAnswers: userAnswers, quizQuestionsSnapshot: activeQuiz.questions,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        // THUẬT TOÁN ĐÓNG GÓI - Chặn tuyệt đối giá trị "undefined" làm kẹt Firebase
+        const rawPayload = {
+            quizId: activeQuiz.id || "UNKNOWN", 
+            quizTitle: activeQuiz.title || "Chưa đặt tên", 
+            category: activeQuiz.category || "Chưa phân loại",
+            studentName: studentName || "Ẩn danh", 
+            email: auth.currentUser ? auth.currentUser.email : "Ẩn danh",
+            uid: auth.currentUser ? auth.currentUser.uid : "UNKNOWN",
+            score: `${correctCount}/${activeQuiz.questions.length}`, 
+            percentage: percent, 
+            timeUsed: isPracticeMode ? "Luyện tập" : timeUsedStr,
+            teacherId: activeQuiz.authorId || "GUEST", 
+            userAnswers: userAnswers || [], 
+            quizQuestionsSnapshot: activeQuiz.questions || []
         };
 
-        db.collection("results").add(scorePayload).catch(err => console.error("Lỗi cập nhật điểm: ", err));
+        // Ép sang chuẩn JSON để tự động bốc hơi mọi trường 'undefined' lỗi
+        const cleanPayload = JSON.parse(JSON.stringify(rawPayload));
+        cleanPayload.timestamp = firebase.firestore.FieldValue.serverTimestamp();
+
+        db.collection("results").add(cleanPayload).then(() => {
+            // Khi đám mây gật đầu, lập tức cho tải lại lịch sử!
+            fetchHistoryFromFirebase();
+        }).catch(err => {
+            console.error("Lỗi cập nhật điểm: ", err);
+            showToast("Lỗi hệ thống: Không thể kết nối với máy chủ đám mây", true);
+        });
     }
 }
 
@@ -1366,25 +1372,53 @@ function processSmartText() {
 
             if (match) {
                 let content = match[1].replace(/^Câu \d+[:.]/i, '').trim();
-                let optA = match[3].trim(); let optB = match[5].trim(); let optC = match[7].trim(); let optD = match[9].trim();
+                let optA = match[3].trim(); let optB = match[5].trim(); let optC = match[7].trim(); 
+                let rawOptD = match[9].trim();
+                
                 let correctIndex = 0; 
                 if (match[2].includes('*') || match[2].includes('#')) correctIndex = 0;
                 if (match[4].includes('*') || match[4].includes('#')) correctIndex = 1;
                 if (match[6].includes('*') || match[6].includes('#')) correctIndex = 2;
                 if (match[8].includes('*') || match[8].includes('#')) correctIndex = 3;
-                if(optD.toLowerCase().includes("đáp án")) optD = optD.split(/đáp án/i)[0].trim();
+
+                let globalExpl = "Tạo tự động từ dữ liệu văn bản.";
+                
+                let explRegex = /(?:\n|\s|^)(?:giải thích|lời giải|hd|hướng dẫn)[\s]*:(.*)/is;
+                let explMatch = rawOptD.match(explRegex);
+                if (explMatch) {
+                    globalExpl = explMatch[1].trim(); 
+                    rawOptD = rawOptD.replace(explMatch[0], '').trim(); 
+                }
+
+                let ansRegex = /(?:\n|\s|^)(?:đáp án)[\s]*:(.*)/is;
+                let ansMatch = rawOptD.match(ansRegex);
+                if (ansMatch) {
+                    let ansChar = ansMatch[1].trim().charAt(0).toUpperCase();
+                    if (ansChar === 'A') correctIndex = 0;
+                    else if (ansChar === 'B') correctIndex = 1;
+                    else if (ansChar === 'C') correctIndex = 2;
+                    else if (ansChar === 'D') correctIndex = 3;
+                    
+                    rawOptD = rawOptD.replace(ansMatch[0], '').trim();
+                } else if (rawOptD.toLowerCase().includes("đáp án")) {
+                    rawOptD = rawOptD.split(/đáp án/i)[0].trim();
+                }
 
                 let splitA = optA.split('::'); optA = splitA[0].trim(); let expA = splitA[1] ? splitA[1].trim() : "";
                 let splitB = optB.split('::'); optB = splitB[0].trim(); let expB = splitB[1] ? splitB[1].trim() : "";
                 let splitC = optC.split('::'); optC = splitC[0].trim(); let expC = splitC[1] ? splitC[1].trim() : "";
-                let splitD = optD.split('::'); optD = splitD[0].trim(); let expD = splitD[1] ? splitD[1].trim() : "";
+                let splitD = rawOptD.split('::'); let optD = splitD[0].trim(); let expD = splitD[1] ? splitD[1].trim() : "";
 
                 currentSmartQuestions.push({
                     content: content, options: [optA, optB, optC, optD], optionExplanations: [expA, expB, expC, expD],
-                    correctAnswer: correctIndex, explanation: "Tạo tự động từ dữ liệu văn bản.", passage: currentPassage 
+                    correctAnswer: correctIndex, explanation: globalExpl, passage: currentPassage 
                 });
                 
                 const labels = ['A', 'B', 'C', 'D'];
+                
+                let previewExplHTML = (globalExpl !== "Tạo tự động từ dữ liệu văn bản.") ? 
+                    `<div class="mt-2 text-[0.7rem] text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-gray-800 p-2 rounded"><i class="fas fa-info-circle"></i> <b>Giải thích chung:</b> ${globalExpl}</div>` : '';
+
                 previewHTML += `
                     <div class="p-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm">
                         <p class="font-bold text-sm text-gray-800 dark:text-white mb-2">Câu ${currentSmartQuestions.length}: ${content}</p>
@@ -1394,11 +1428,12 @@ function processSmartText() {
                                     <span class="font-bold w-4">${labels[i]}.</span> 
                                     <div class="flex flex-col">
                                         <span>${opt}</span>
-                                        ${[expA, expB, expC, expD][i] ? `<span class="text-[0.65rem] italic mt-0.5 text-gray-500 dark:text-gray-400">Giải thích: ${[expA, expB, expC, expD][i]}</span>` : ''}
+                                        ${[expA, expB, expC, expD][i] ? `<span class="text-[0.65rem] italic mt-0.5 text-gray-500 dark:text-gray-400">Giải thích riêng: ${[expA, expB, expC, expD][i]}</span>` : ''}
                                     </div>
                                 </div>
                             `).join('')}
                         </div>
+                        ${previewExplHTML}
                     </div>`;
             } else {
                 let c = trimmed.substring(0, 40).replace(/\n/g, ' ') + "...";
@@ -1444,7 +1479,6 @@ function addManualQuestionForm(existingData = null) {
     const container = document.getElementById('manual-questions-container'); if(!container) return;
     const qDiv = document.createElement('div'); qDiv.className = 'manual-q-block p-4 sm:p-6 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl relative';
     
-    // [VIP VÁ LỖI]: Trích xuất lại giải thích riêng từng câu để tự động nối lại đuôi :: vào ô nhập
     let exp0 = existingData && existingData.optionExplanations && existingData.optionExplanations[0] ? " :: " + existingData.optionExplanations[0] : "";
     let exp1 = existingData && existingData.optionExplanations && existingData.optionExplanations[1] ? " :: " + existingData.optionExplanations[1] : "";
     let exp2 = existingData && existingData.optionExplanations && existingData.optionExplanations[2] ? " :: " + existingData.optionExplanations[2] : "";
@@ -1505,7 +1539,6 @@ function saveManualQuiz() {
     qBlocks.forEach(block => {
         const passage = block.querySelector('.q-passage').value.trim(); const content = block.querySelector('.q-content').value.trim();
         
-        // [VIP VÁ LỖI]: Đọc và tách chuỗi kí tự :: từ ô nhập liệu thủ công để đóng gói thành mảng giải thích riêng
         let rawA = block.querySelector('.q-opt-0').value.trim();
         let rawB = block.querySelector('.q-opt-1').value.trim();
         let rawC = block.querySelector('.q-opt-2').value.trim();
@@ -1661,11 +1694,6 @@ function showFullscreenLock() {
     lockOverlay.classList.remove('hidden');
 }
 
-
-// =========================================================================
-// [VIP] HỆ THỐNG THỐNG KÊ & LỘ TRÌNH ĐA TẦNG (PLUS / PRO / ULTRA)
-// =========================================================================
-
 let subjectChartInstance = null; 
 
 function switchSubjectTab(tab) {
@@ -1703,17 +1731,13 @@ function renderSubjectStats() {
     );
     let totalChapters = baseQuizzes.length; 
     
-    // [VIP] Lấy danh sách toàn bộ mã ID đề thi gốc đang tồn tại trong thư mục này
     const folderQuizIds = quizDatabase.filter(q => 
         (q.category || "").trim().toLowerCase() === safeCategory
     ).map(q => q.id);
 
-    // [VIP] THUẬT TOÁN BỌC THÉP: Bắt trọn lịch sử cũ bị khuyết tên môn
     const relevantHistory = historyDatabase.filter(h => {
         if (!h.data.quizId) return false;
-        // 1. Nhận diện chuẩn xác 100% đề gốc qua ID (Bất chấp lịch sử thiếu tên môn)
         if (folderQuizIds.includes(h.data.quizId)) return true;
-        // 2. Nhận diện đề Thi thử/Vá lỗi qua Tên Môn
         if ((h.data.category || "").trim().toLowerCase() === safeCategory) return true;
         
         return false;
@@ -1966,18 +1990,15 @@ function removeUltraDashboard() {
     if (container) container.innerHTML = '';
 }
 
-// [VÁ LỖI VÒNG LẶP XÓA CHỮ CHƯƠNG]
 const originalRenderSubjectDetailView = renderSubjectDetailView;
 renderSubjectDetailView = function(category) {
     const cInput = document.getElementById('search-chapter-input');
     
-    // Chỉ xóa trắng chữ và nhảy tab khi mở môn mới (khi ô tìm kiếm KHÔNG được chọn)
     if (cInput && document.activeElement !== cInput) {
         cInput.value = "";
         originalRenderSubjectDetailView(category);
         switchSubjectTab('list');
     } else {
-        // Nếu Bệ hạ đang chủ động gõ chữ, chỉ chạy lệnh lọc đề, tuyệt đối không xóa chữ hay đổi tab
         originalRenderSubjectDetailView(category);
     }
 }
@@ -1990,7 +2011,6 @@ function updatePlanBadge() {
     let badgeHTML = '';
     let statsBadgeHTML = '';
     
-    // Lấy đúng gói cước, ép về chữ thường để chống lỗi tàng hình (Ví dụ: ULTRA -> ultra)
     const planToUse = (currentPlan || 'basic').toLowerCase();
     
     switch(planToUse) {
@@ -2011,7 +2031,6 @@ function updatePlanBadge() {
             statsBadgeHTML = `<span class="ml-1 badge-pill badge-basic text-[0.6rem] px-1.5 py-0.5"><i class="fas fa-lock"></i> Khóa</span>`;
     }
 
-    // [VIP] Khôi phục tự động nếu thẻ HTML chứa huy hiệu bị Bệ hạ lỡ tay xóa mất
     if (!homeBadge) {
         const logoutBtn = document.getElementById('btn-logout');
         if (logoutBtn && logoutBtn.parentElement) {
@@ -2022,33 +2041,28 @@ function updatePlanBadge() {
         }
     }
 
-    // Xuất huy hiệu ra màn hình
     if (homeBadge) homeBadge.innerHTML = badgeHTML;
     if (quizBadge) quizBadge.innerHTML = badgeHTML;
     if (statsBadge) statsBadge.innerHTML = statsBadgeHTML;
 }
 
-// Kích hoạt cưỡng chế hiển thị ngay lập tức để chống kẹt
 setTimeout(updatePlanBadge, 500);
 
-// [VIP] THUẬT TOÁN CHỈNH SỬA ĐỀ THI
 window.editQuiz = function(quizId) {
     const quiz = quizDatabase.find(q => q.id === quizId);
     if (!quiz) return showToast("Không tìm thấy đề thi.", true);
     
-    editingQuizId = quizId; // Bật cờ hiệu Đang Sửa
+    editingQuizId = quizId; 
     
     switchScreen('admin');
     switchAdminTab('manual');
     
-    // Nạp dữ liệu cơ bản
     document.getElementById('manual-title').value = quiz.title || "";
     document.getElementById('manual-category').value = quiz.category || "";
     document.getElementById('manual-time').value = Math.floor((quiz.timeLimit || 900) / 60);
     const testEl = document.getElementById('manual-test-only');
     if (testEl) testEl.checked = quiz.isTestOnly || false;
     
-    // Dọn dẹp khung chứa và nạp từng câu hỏi
     const container = document.getElementById('manual-questions-container');
     if(container) container.innerHTML = '';
     
@@ -2058,49 +2072,3 @@ window.editQuiz = function(quizId) {
     
     showToast("Đã nạp dữ liệu đề thi. Bệ hạ có thể bắt đầu chỉnh sửa.", false);
 };
-
-// [VIP] TRẬN PHÁP MẮT THẦN: CƯỠNG CHẾ LƯU LỊCH SỬ KHI NỘP BÀI
-setTimeout(() => {
-    const resScreen = document.getElementById('result-screen');
-    if (resScreen) {
-        const resultObserver = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                // Khi màn hình điểm số bật lên (mất class hidden)
-                if (mutation.attributeName === 'class' && !resScreen.classList.contains('hidden')) {
-                    
-                    if (!auth.currentUser || !currentQuiz || isSharedMode) return; // Khách thì tha không lưu
-                    
-                    const scoreStr = document.getElementById('result-score').innerText;
-                    
-                    // Chống lưu đúp phòng trường hợp hàm gốc vẫn chạy được
-                    if (window.lastForceSavedQuiz === currentQuiz.id && window.lastForceSavedScore === scoreStr) return;
-                    window.lastForceSavedQuiz = currentQuiz.id;
-                    window.lastForceSavedScore = scoreStr;
-
-                    const percentStr = document.getElementById('result-percent').innerText.replace('%', '');
-                    const timeStr = document.getElementById('result-time').innerText;
-
-                    // Đóng gói thành tích
-                    const historyData = {
-                        userId: auth.currentUser.uid,
-                        quizId: currentQuiz.id,
-                        quizTitle: currentQuiz.title || "Bài thi không tên",
-                        category: currentQuiz.category || "Chưa phân loại",
-                        score: scoreStr,
-                        percentage: parseInt(percentStr) || 0,
-                        timeUsed: timeStr,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    };
-
-                    // Phóng thẳng lên đám mây
-                    db.collection("history").add(historyData).then(() => {
-                        console.log("Cưỡng chế ghi lịch sử thành công!");
-                    }).catch(err => console.error("Lỗi ghi lịch sử: ", err));
-                }
-            });
-        });
-        
-        // Kích hoạt mắt thần
-        resultObserver.observe(resScreen, { attributes: true, attributeFilter: ['class'] });
-    }
-}, 1000);
