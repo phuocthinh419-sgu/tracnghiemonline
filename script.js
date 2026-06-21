@@ -725,7 +725,7 @@ function reviewPastQuiz(quizId, resultDocId) {
                 const sc = document.getElementById('result-score'); if(sc) sc.innerText = pastData.score;
                 const pc = document.getElementById('result-percent'); if(pc) pc.innerText = `${pastData.percentage}%`;
                 const tc = document.getElementById('result-time'); if(tc) tc.innerText = pastData.timeUsed;
-                generateRoadmap(pastData.percentage);
+                
 
                 switchScreen('result');
             }
@@ -1255,8 +1255,7 @@ function submitQuiz(force) {
         const tc = document.getElementById('result-time'); 
         if(tc) tc.innerText = isPracticeMode ? "Không giới hạn" : timeUsedStr;
 
-        generateRoadmap(percent);
-
+       
         // THUẬT TOÁN ĐÓNG GÓI - Chặn tuyệt đối giá trị "undefined" làm kẹt Firebase
         const rawPayload = {
             quizId: activeQuiz.id || "UNKNOWN", 
