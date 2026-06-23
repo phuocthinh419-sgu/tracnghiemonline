@@ -664,7 +664,6 @@ function renderHomeQuizList() {
             container.appendChild(card);
         });
     } 
-    // [Phần Lịch Sử giữ nguyên không đổi]
     else if (currentRole === 'student' && currentStudentTab === 'history') {
         if (!auth.currentUser) return;
         
