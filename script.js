@@ -41,7 +41,7 @@ let currentSelectedCategory = "";
 let currentStudentTab = "browse"; 
 let screens = {}; 
 
-let currentPlan = 'basic';
+let currentPlan = localStorage.getItem('cachedPlan') || 'basic'; // [VIP] Kim bài ghi nhớ gói cước tức thì
 let mockGeneratedThisMonth = 0;
 let lastMockMonth = null;
 let isSharedMode = false; 
@@ -78,10 +78,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
             db.collection("users").doc(user.uid).onSnapshot(doc => {
                 if(doc.exists) {
-                    currentPlan = doc.data().plan || 'basic';
-                    if (checkIsMasterAdmin()) currentPlan = 'ultra';
-                    
-                    mockGeneratedThisMonth = doc.data().mockGeneratedThisMonth || 0;
+                   currentPlan = doc.data().plan || 'basic';
+                if (checkIsMasterAdmin()) currentPlan = 'ultra';
+
+                localStorage.setItem('cachedPlan', currentPlan); // <--- [VIP] Kim bài chống giật lùi gói cước
+
+                mockGeneratedThisMonth = doc.data().mockGeneratedThisMonth || 0;
                     lastMockMonth = doc.data().lastMockMonth || null;
                     
                     let currentMonth = new Date().getMonth();
@@ -196,6 +198,7 @@ function fetchQuizzesFromFirebase() {
     }
 }
 
+// [VIP] THUẬT TOÁN ĐƯỜNG TRUYỀN SIÊU TỐC - TẢI ĐÚNG TRỌNG TÂM, KHÔNG TẢI THỪA
 function fetchStudentPinnedQuizzes() {
     if (currentRole !== 'student' || isSharedMode) return;
     
@@ -206,33 +209,47 @@ function fetchStudentPinnedQuizzes() {
         return;
     }
     
-    const teacherIds = [...new Set(pinnedFolders.map(f => f.teacherId))];
+    // Dọn dẹp các luồng lắng nghe cũ để giải phóng bộ nhớ
+    if (window.studentQuizListeners && window.studentQuizListeners.length > 0) {
+        window.studentQuizListeners.forEach(unsub => unsub());
+    }
+    window.studentQuizListeners = [];
     
-    if (studentQuizListener) { studentQuizListener(); studentQuizListener = null; }
+    quizDatabase = []; // Reset kho
+    let loadedCount = 0;
     
-    studentQuizListener = db.collection("quizzes")
-        .where("authorId", "in", teacherIds)
-        .onSnapshot((snapshot) => {
-            let tempQuizzes = [];
-            snapshot.forEach(doc => { tempQuizzes.push(doc.data()); });
-            
-            quizDatabase = tempQuizzes.filter(quiz => 
-                pinnedFolders.some(f => f.teacherId === quiz.authorId && f.category === quiz.category)
-            );
-            
-            isQuizzesLoaded = true;
-            
-            if (screens.home && !screens.home.classList.contains('hidden') && currentStudentTab === 'browse') {
-                renderHomeQuizList();
-            }
-            if (screens.subjectDetail && !screens.subjectDetail.classList.contains('hidden')) {
-                renderSubjectDetailView(currentSelectedCategory);
-            }
-        }, (error) => {
-            console.error("Lỗi dòng truyền siêu tốc Học sinh: ", error);
-            isQuizzesLoaded = true;
-            if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList();
-        });
+    // Cử từng trinh sát đi lấy ĐÚNG thư mục đã ghim của ĐÚNG giáo viên đó
+    pinnedFolders.forEach(folder => {
+        let unsub = db.collection("quizzes")
+            .where("authorId", "==", folder.teacherId)
+            .where("category", "==", folder.category)
+            .onSnapshot((snapshot) => {
+                // Xóa các đề cũ của thư mục này trong RAM để cập nhật bản mới
+                quizDatabase = quizDatabase.filter(q => !(q.authorId === folder.teacherId && q.category === folder.category));
+                
+                snapshot.forEach(doc => { quizDatabase.push(doc.data()); });
+                
+                loadedCount++;
+                // Báo cáo hoàn thành khi tất cả các thư mục đã được nạp
+                if (loadedCount >= pinnedFolders.length) {
+                    isQuizzesLoaded = true;
+                    if (screens.home && !screens.home.classList.contains('hidden') && currentStudentTab === 'browse') {
+                        renderHomeQuizList();
+                    }
+                    if (screens.subjectDetail && !screens.subjectDetail.classList.contains('hidden')) {
+                        renderSubjectDetailView(currentSelectedCategory);
+                    }
+                }
+            }, (error) => {
+                console.error("Lỗi dòng truyền: ", error);
+                loadedCount++; // Gặp lỗi vẫn cho qua để tải các thư mục khác
+                if (loadedCount >= pinnedFolders.length) {
+                    isQuizzesLoaded = true;
+                    if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList();
+                }
+            });
+        window.studentQuizListeners.push(unsub);
+    });
 }
 
 function fetchHistoryFromFirebase() {
@@ -551,6 +568,7 @@ function switchScreen(screenName) {
     }
 }
 
+// [VIP] HIỂN THỊ KIỂM SOÁT TẢI DỮ LIỆU
 function renderHomeQuizList() {
     const container = document.getElementById('quiz-list-container');
     if(!container) return;
@@ -561,25 +579,42 @@ function renderHomeQuizList() {
     
     if (currentRole === 'teacher' || currentStudentTab === 'browse') {
         if (!isQuizzesLoaded) {
-            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8 animate-pulse">Đang tải kho môn học...</p>';
+            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8 animate-pulse"><i class="fas fa-spinner fa-spin mr-2"></i> Đang tải kho môn học...</p>';
             return;
         }
 
-        let categories = [...new Set(quizDatabase.map(q => q.category))];
+        let categoriesToRender = [];
+
+        // [VIP] LOGIC TÁCH BẠCH: GIÁO VIÊN NHÌN VÀO KHO, HỌC SINH NHÌN VÀO DANH SÁCH GHIM
+        if (currentRole === 'teacher') {
+            categoriesToRender = [...new Set(quizDatabase.map(q => q.category))].map(cat => ({ category: cat }));
+        } else {
+            if (pinnedFolders.length === 0) {
+                container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Kho môn học trống. Hãy dán link chia sẻ từ Giáo viên để lưu thư mục.</p>';
+                return;
+            }
+            // Học sinh thì vẽ thẳng từ danh sách ghim (Folder luôn hiện dù có bị rỗng đề đi chăng nữa)
+            categoriesToRender = pinnedFolders;
+        }
         
         if (keyword) {
-            categories = categories.filter(cat => cat.toLowerCase().includes(keyword));
+            categoriesToRender = categoriesToRender.filter(f => f.category.toLowerCase().includes(keyword));
         }
 
-        if (categories.length === 0) {
+        if (categoriesToRender.length === 0) {
             container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Không tìm thấy môn học nào khớp.</p>';
             return;
         }
 
-        categories.forEach(category => {
-            const totalQuizzes = quizDatabase.filter(q => q.category === category).length;
-            const card = document.createElement('div');
+        categoriesToRender.forEach(folderObj => {
+            const category = folderObj.category;
             
+            // Giáo viên đếm toàn bộ, Học sinh đếm đúng của giáo viên đó
+            const totalQuizzes = currentRole === 'teacher' 
+                ? quizDatabase.filter(q => q.category === category).length
+                : quizDatabase.filter(q => q.category === category && q.authorId === folderObj.teacherId).length;
+
+            const card = document.createElement('div');
             card.className = 'relative p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-xl transition-all cursor-pointer flex items-center justify-between group';
             
             let shareBtnHTML = '';
@@ -587,9 +622,7 @@ function renderHomeQuizList() {
                 const folderLink = `${window.location.origin}${window.location.pathname}?folder=${encodeURIComponent(category)}&t=${auth.currentUser.uid}`;
                 shareBtnHTML = `<button onclick="event.stopPropagation(); copyLink('${folderLink}')" class="absolute top-4 right-4 text-gray-400 hover:text-blue-500 bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Chia sẻ toàn bộ môn này"><i class="fas fa-share-alt"></i></button>`;
             } else if (currentRole === 'student') {
-                const catQuiz = quizDatabase.find(q => q.category === category);
-                const tId = catQuiz ? catQuiz.authorId : '';
-                shareBtnHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${tId}')" class="absolute top-4 right-4 text-blue-500 hover:text-red-500 bg-blue-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Bỏ ghim thư mục"><i class="fas fa-bookmark"></i></button>`;
+                shareBtnHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${folderObj.teacherId}')" class="absolute top-4 right-4 text-blue-500 hover:text-red-500 bg-blue-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Bỏ ghim thư mục"><i class="fas fa-bookmark"></i></button>`;
             }
 
             card.innerHTML = `
