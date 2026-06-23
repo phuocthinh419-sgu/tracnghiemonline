@@ -579,23 +579,6 @@ function renderHomeQuizList() {
     const keyword = searchEl ? searchEl.value.trim().toLowerCase() : "";
     
     if (currentRole === 'teacher' || currentStudentTab === 'browse') {
-        if (!isQuizzesLoaded) {
-            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8 animate-pulse"><i class="fas fa-spinner fa-spin mr-2"></i> Đang tải kho môn học...</p>';
-            return;
-        }
-
-        let categoriesToRender = [];
-
-        // [VIP] HIỂN THỊ KIỂM SOÁT TẢI DỮ LIỆU & TÌM KIẾM
-function renderHomeQuizList() {
-    const container = document.getElementById('quiz-list-container');
-    if(!container) return;
-    container.innerHTML = '';
-    
-    const searchEl = document.getElementById('search-folder-input');
-    const keyword = searchEl ? searchEl.value.trim().toLowerCase() : "";
-    
-    if (currentRole === 'teacher' || currentStudentTab === 'browse') {
         
         // GIÁO VIÊN thì phải đợi load kho. HỌC SINH thì không bị chặn, cho hiện thư mục ngay!
         if (!isQuizzesLoaded && currentRole === 'teacher') {
@@ -605,6 +588,7 @@ function renderHomeQuizList() {
 
         let categoriesToRender = [];
 
+        // [VIP] LOGIC TÁCH BẠCH: GIÁO VIÊN NHÌN VÀO KHO, HỌC SINH NHÌN VÀO DANH SÁCH GHIM
         if (currentRole === 'teacher') {
             categoriesToRender = [...new Set(quizDatabase.map(q => q.category))].map(cat => ({ category: cat }));
         } else {
@@ -642,7 +626,7 @@ function renderHomeQuizList() {
             let shareBtnHTML = '';
             if (checkIsMasterAdmin() || currentRole === 'teacher') {
                 const folderLink = `${window.location.origin}${window.location.pathname}?folder=${encodeURIComponent(category)}&t=${auth.currentUser.uid}`;
-                shareBtnHTML = `<button onclick="event.stopPropagation(); copyLink('${folderLink}')" class="absolute top-4 right-4 text-gray-400 hover:text-blue-500 bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Chia sẻ toàn bộ môn này"><i class="fas fa-share-alt"></i></button>`;
+                shareBtnHTML = `<button onclick="event.stopPropagation(); copyLink('${folderLink}')" class="absolute top-4 right-24 text-gray-400 hover:text-blue-500 bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Chia sẻ toàn bộ môn này"><i class="fas fa-share-alt"></i></button>`;
             } else if (currentRole === 'student') {
                 shareBtnHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${folderObj.teacherId}')" class="absolute top-4 right-4 text-blue-500 hover:text-red-500 bg-blue-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Bỏ ghim thư mục"><i class="fas fa-bookmark"></i></button>`;
             }
