@@ -198,7 +198,7 @@ function fetchQuizzesFromFirebase() {
     }
 }
 
-// [VIP] THUẬT TOÁN ĐƯỜNG TRUYỀN SIÊU TỐC - TẢI ĐÚNG TRỌNG TÂM, KHÔNG TẢI THỪA
+// [VIP] THUẬT TOÁN ĐƯỜNG TRUYỀN SIÊU TỐC - TẢI NGẦM KHÔNG GÂY LAG MÀN HÌNH
 function fetchStudentPinnedQuizzes() {
     if (currentRole !== 'student' || isSharedMode) return;
     
@@ -208,48 +208,49 @@ function fetchStudentPinnedQuizzes() {
         if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList();
         return;
     }
+
+    // 1. VẼ GIAO DIỆN NGAY LẬP TỨC TRONG 0 GIÂY (Không bắt khách hàng đợi mạng)
+    if (screens.home && !screens.home.classList.contains('hidden') && currentStudentTab === 'browse') {
+        renderHomeQuizList(); 
+    }
     
-    // Dọn dẹp các luồng lắng nghe cũ để giải phóng bộ nhớ
+    // Dọn dẹp đường ống cũ tránh rò rỉ bộ nhớ
     if (window.studentQuizListeners && window.studentQuizListeners.length > 0) {
         window.studentQuizListeners.forEach(unsub => unsub());
     }
     window.studentQuizListeners = [];
     
-    quizDatabase = []; // Reset kho
-    let loadedCount = 0;
+    // 2. TẠO 1 ĐƯỜNG ỐNG ĐẠI BÁC DUY NHẤT thay vì mở hàng chục ống nhỏ gây nghẽn Firebase
+    const teacherIds = [...new Set(pinnedFolders.map(f => f.teacherId))];
     
-    // Cử từng trinh sát đi lấy ĐÚNG thư mục đã ghim của ĐÚNG giáo viên đó
-    pinnedFolders.forEach(folder => {
+    // Firebase chỉ cho phép gọi mẻ 10 ID một lúc
+    for (let i = 0; i < teacherIds.length; i += 10) {
+        const chunk = teacherIds.slice(i, i + 10);
         let unsub = db.collection("quizzes")
-            .where("authorId", "==", folder.teacherId)
-            .where("category", "==", folder.category)
+            .where("authorId", "in", chunk)
             .onSnapshot((snapshot) => {
-                // Xóa các đề cũ của thư mục này trong RAM để cập nhật bản mới
-                quizDatabase = quizDatabase.filter(q => !(q.authorId === folder.teacherId && q.category === folder.category));
+                let incomingData = [];
+                snapshot.forEach(doc => { incomingData.push(doc.data()); });
                 
-                snapshot.forEach(doc => { quizDatabase.push(doc.data()); });
+                // Lọc bỏ đề cũ của các giáo viên này ra khỏi kho
+                quizDatabase = quizDatabase.filter(q => !chunk.includes(q.authorId));
                 
-                loadedCount++;
-                // Báo cáo hoàn thành khi tất cả các thư mục đã được nạp
-                if (loadedCount >= pinnedFolders.length) {
-                    isQuizzesLoaded = true;
-                    if (screens.home && !screens.home.classList.contains('hidden') && currentStudentTab === 'browse') {
-                        renderHomeQuizList();
-                    }
-                    if (screens.subjectDetail && !screens.subjectDetail.classList.contains('hidden')) {
-                        renderSubjectDetailView(currentSelectedCategory);
-                    }
+                // Chỉ nhặt đúng những đề nằm trong Thư mục đã ghim
+                let relevantIncoming = incomingData.filter(quiz => 
+                    pinnedFolders.some(f => f.teacherId === quiz.authorId && f.category === quiz.category)
+                );
+                
+                quizDatabase = [...quizDatabase, ...relevantIncoming];
+                isQuizzesLoaded = true; // Phất cờ báo hiệu đã tải xong
+                
+                // Âm thầm cập nhật lại số lượng đề trên giao diện
+                if (screens.home && !screens.home.classList.contains('hidden') && currentStudentTab === 'browse') {
+                    renderHomeQuizList();
                 }
-            }, (error) => {
-                console.error("Lỗi dòng truyền: ", error);
-                loadedCount++; // Gặp lỗi vẫn cho qua để tải các thư mục khác
-                if (loadedCount >= pinnedFolders.length) {
-                    isQuizzesLoaded = true;
-                    if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList();
-                }
-            });
+            }, (error) => { console.error("Lỗi đường truyền học sinh:", error); });
+        
         window.studentQuizListeners.push(unsub);
-    });
+    }
 }
 
 function fetchHistoryFromFirebase() {
@@ -585,7 +586,25 @@ function renderHomeQuizList() {
 
         let categoriesToRender = [];
 
-        // [VIP] LOGIC TÁCH BẠCH: GIÁO VIÊN NHÌN VÀO KHO, HỌC SINH NHÌN VÀO DANH SÁCH GHIM
+        // [VIP] HIỂN THỊ KIỂM SOÁT TẢI DỮ LIỆU & TÌM KIẾM
+function renderHomeQuizList() {
+    const container = document.getElementById('quiz-list-container');
+    if(!container) return;
+    container.innerHTML = '';
+    
+    const searchEl = document.getElementById('search-folder-input');
+    const keyword = searchEl ? searchEl.value.trim().toLowerCase() : "";
+    
+    if (currentRole === 'teacher' || currentStudentTab === 'browse') {
+        
+        // GIÁO VIÊN thì phải đợi load kho. HỌC SINH thì không bị chặn, cho hiện thư mục ngay!
+        if (!isQuizzesLoaded && currentRole === 'teacher') {
+            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8 animate-pulse"><i class="fas fa-spinner fa-spin mr-2"></i> Đang tải kho môn học...</p>';
+            return;
+        }
+
+        let categoriesToRender = [];
+
         if (currentRole === 'teacher') {
             categoriesToRender = [...new Set(quizDatabase.map(q => q.category))].map(cat => ({ category: cat }));
         } else {
@@ -593,8 +612,7 @@ function renderHomeQuizList() {
                 container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Kho môn học trống. Hãy dán link chia sẻ từ Giáo viên để lưu thư mục.</p>';
                 return;
             }
-            // Học sinh thì vẽ thẳng từ danh sách ghim (Folder luôn hiện dù có bị rỗng đề đi chăng nữa)
-            categoriesToRender = pinnedFolders;
+            categoriesToRender = pinnedFolders; // Bốc thẳng từ hồ sơ cá nhân ra vẽ ngay
         }
         
         if (keyword) {
@@ -609,10 +627,14 @@ function renderHomeQuizList() {
         categoriesToRender.forEach(folderObj => {
             const category = folderObj.category;
             
-            // Giáo viên đếm toàn bộ, Học sinh đếm đúng của giáo viên đó
             const totalQuizzes = currentRole === 'teacher' 
                 ? quizDatabase.filter(q => q.category === category).length
                 : quizDatabase.filter(q => q.category === category && q.authorId === folderObj.teacherId).length;
+
+            // [VIP] Hiệu ứng: Nếu chưa load xong thì hiện "Đang đồng bộ...", load xong mới hiện số đề
+            let quizCountText = !isQuizzesLoaded && currentRole === 'student' 
+                ? '<i class="fas fa-circle-notch fa-spin text-blue-500"></i> Đang đồng bộ...' 
+                : `Gồm có ${totalQuizzes} bộ đề`;
 
             const card = document.createElement('div');
             card.className = 'relative p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-xl transition-all cursor-pointer flex items-center justify-between group';
@@ -633,7 +655,7 @@ function renderHomeQuizList() {
                     </div>
                     <div>
                         <h3 class="text-xl font-bold text-gray-800 dark:text-white group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors">${category}</h3>
-                        <p class="text-sm text-gray-400 mt-1">Gồm có ${totalQuizzes} bộ đề</p>
+                        <p class="text-sm text-gray-400 mt-1">${quizCountText}</p>
                     </div>
                 </div>
                 <div class="text-gray-300 group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors pr-6"><i class="fas fa-chevron-right text-xl"></i></div>
@@ -642,6 +664,7 @@ function renderHomeQuizList() {
             container.appendChild(card);
         });
     } 
+    // [Phần Lịch Sử giữ nguyên không đổi]
     else if (currentRole === 'student' && currentStudentTab === 'history') {
         if (!auth.currentUser) return;
         
