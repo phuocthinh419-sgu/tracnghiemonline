@@ -569,7 +569,7 @@ function switchScreen(screenName) {
     }
 }
 
-// [VIP] HIỂN THỊ KIỂM SOÁT TẢI DỮ LIỆU
+// [VIP] HIỂN THỊ KIỂM SOÁT TẢI DỮ LIỆU & TÌM KIẾM
 function renderHomeQuizList() {
     const container = document.getElementById('quiz-list-container');
     if(!container) return;
@@ -580,7 +580,7 @@ function renderHomeQuizList() {
     
     if (currentRole === 'teacher' || currentStudentTab === 'browse') {
         
-        // GIÁO VIÊN thì phải đợi load kho. HỌC SINH thì không bị chặn, cho hiện thư mục ngay!
+        // GIÁO VIÊN thì phải đợi load kho. HỌC SINH thì vẽ luôn từ danh sách ghim!
         if (!isQuizzesLoaded && currentRole === 'teacher') {
             container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8 animate-pulse"><i class="fas fa-spinner fa-spin mr-2"></i> Đang tải kho môn học...</p>';
             return;
@@ -588,7 +588,6 @@ function renderHomeQuizList() {
 
         let categoriesToRender = [];
 
-        // [VIP] LOGIC TÁCH BẠCH: GIÁO VIÊN NHÌN VÀO KHO, HỌC SINH NHÌN VÀO DANH SÁCH GHIM
         if (currentRole === 'teacher') {
             categoriesToRender = [...new Set(quizDatabase.map(q => q.category))].map(cat => ({ category: cat }));
         } else {
@@ -596,7 +595,7 @@ function renderHomeQuizList() {
                 container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Kho môn học trống. Hãy dán link chia sẻ từ Giáo viên để lưu thư mục.</p>';
                 return;
             }
-            categoriesToRender = pinnedFolders; // Bốc thẳng từ hồ sơ cá nhân ra vẽ ngay
+            categoriesToRender = pinnedFolders; 
         }
         
         if (keyword) {
@@ -608,102 +607,62 @@ function renderHomeQuizList() {
             return;
         }
 
+        // [VIP] Khởi tạo bộ nhớ tạm để chứa số đếm, giúp load trong 0 giây!
+        const cachedCounts = JSON.parse(localStorage.getItem('cachedQuizCounts') || '{}');
+
         categoriesToRender.forEach(folderObj => {
             const category = folderObj.category;
             
-            const totalQuizzes = currentRole === 'teacher' 
-                ? quizDatabase.filter(q => q.category === category).length
-                : quizDatabase.filter(q => q.category === category && q.authorId === folderObj.teacherId).length;
+            let totalQuizzes = 0;
+            if (isQuizzesLoaded || currentRole === 'teacher') {
+                totalQuizzes = currentRole === 'teacher' 
+                    ? quizDatabase.filter(q => q.category === category).length
+                    : quizDatabase.filter(q => q.category === category && q.authorId === folderObj.teacherId).length;
+                
+                // Cập nhật bộ nhớ tạm
+                cachedCounts[category] = totalQuizzes;
+                localStorage.setItem('cachedQuizCounts', JSON.stringify(cachedCounts));
+            } else {
+                // Nếu mạng lag chưa load xong thì lấy số từ trí nhớ ra xài tạm (0ms)
+                totalQuizzes = cachedCounts[category] || 0;
+            }
 
-            // [VIP] Hiệu ứng: Nếu chưa load xong thì hiện "Đang đồng bộ...", load xong mới hiện số đề
-            let quizCountText = !isQuizzesLoaded && currentRole === 'student' 
-                ? '<i class="fas fa-circle-notch fa-spin text-blue-500"></i> Đang đồng bộ...' 
-                : `Gồm có ${totalQuizzes} bộ đề`;
+            // Tắt dòng "Đang đồng bộ" gây nghẽn, thay bằng chấm xanh tinh tế
+            let quizCountText = `Gồm có ${totalQuizzes} bộ đề`;
+            if (!isQuizzesLoaded && currentRole === 'student') {
+                quizCountText += ` <span class="inline-block w-2 h-2 ml-1 bg-blue-400 rounded-full animate-pulse shadow-[0_0_5px_rgba(96,165,250,0.8)]" title="Đang đồng bộ ngầm..."></span>`;
+            }
 
             const card = document.createElement('div');
-            card.className = 'relative p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-xl transition-all cursor-pointer flex items-center justify-between group';
+            card.className = 'relative p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-xl transition-all cursor-pointer group overflow-hidden';
             
             let shareBtnHTML = '';
             if (checkIsMasterAdmin() || currentRole === 'teacher') {
                 const folderLink = `${window.location.origin}${window.location.pathname}?folder=${encodeURIComponent(category)}&t=${auth.currentUser.uid}`;
-                shareBtnHTML = `<button onclick="event.stopPropagation(); copyLink('${folderLink}')" class="absolute top-4 right-24 text-gray-400 hover:text-blue-500 bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Chia sẻ toàn bộ môn này"><i class="fas fa-share-alt"></i></button>`;
+                shareBtnHTML = `<button onclick="event.stopPropagation(); copyLink('${folderLink}')" class="absolute top-4 right-4 text-gray-400 hover:text-blue-500 bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-20" title="Chia sẻ toàn bộ môn này"><i class="fas fa-share-alt"></i></button>`;
             } else if (currentRole === 'student') {
-                shareBtnHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${folderObj.teacherId}')" class="absolute top-4 right-4 text-blue-500 hover:text-red-500 bg-blue-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Bỏ ghim thư mục"><i class="fas fa-bookmark"></i></button>`;
+                shareBtnHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${folderObj.teacherId}')" class="absolute top-4 right-4 text-blue-500 hover:text-red-500 bg-gray-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-20" title="Bỏ ghim thư mục"><i class="fas fa-bookmark"></i></button>`;
             }
 
             card.innerHTML = `
                 ${shareBtnHTML}
-                <div class="flex items-center gap-4">
-                    <div class="w-14 h-14 bg-blue-50 dark:bg-gray-800 text-blue-900 dark:text-blue-400 rounded-xl flex items-center justify-center text-2xl group-hover:bg-blue-900 group-hover:text-white transition-colors">
+                <div class="flex items-center w-full min-w-0">
+                    <div class="w-14 h-14 bg-blue-50 dark:bg-gray-800 text-blue-900 dark:text-blue-400 rounded-xl flex items-center justify-center text-2xl group-hover:bg-blue-900 group-hover:text-white transition-colors shrink-0 mr-4">
                         <i class="fas fa-folder"></i>
                     </div>
-                    <div>
-                        <h3 class="text-xl font-bold text-gray-800 dark:text-white group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors">${category}</h3>
-                        <p class="text-sm text-gray-400 mt-1">${quizCountText}</p>
+                    <div class="flex-1 min-w-0 pr-12"> <h3 class="text-xl font-bold text-gray-800 dark:text-white group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors truncate" title="${category}">${category}</h3>
+                        <p class="text-sm text-gray-400 mt-1 flex items-center truncate">${quizCountText}</p>
                     </div>
                 </div>
-                <div class="text-gray-300 group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors pr-6"><i class="fas fa-chevron-right text-xl"></i></div>
+                <div class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors pointer-events-none z-10">
+                    <i class="fas fa-chevron-right text-xl"></i>
+                </div>
             `;
             card.onclick = () => { currentSelectedCategory = category; switchScreen('subjectDetail'); };
             container.appendChild(card);
         });
     } 
-    else if (currentRole === 'student' && currentStudentTab === 'history') {
-        if (!auth.currentUser) return;
-        
-        if (!isHistoryLoaded) {
-            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8 animate-pulse">Đang tải dữ liệu lịch sử...</p>'; 
-            return;
-        }
-
-        let filteredHistory = historyDatabase;
-        if (keyword) {
-            filteredHistory = historyDatabase.filter(item => 
-                (item.data.quizTitle && item.data.quizTitle.toLowerCase().includes(keyword)) ||
-                (item.data.category && item.data.category.toLowerCase().includes(keyword))
-            );
-        }
-
-        if (filteredHistory.length === 0) {
-            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Không tìm thấy lịch sử bài thi nào khớp.</p>'; return;
-        }
-
-        filteredHistory.forEach(item => {
-            const res = item.data;
-            const formatStr = res.timestamp ? new Date(res.timestamp.seconds * 1000).toLocaleString('vi-VN') : "Vừa xong";
-            
-            const card = document.createElement('div');
-            card.className = 'p-5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm flex flex-col justify-between gap-4 relative group';
-            
-            let isMock = res.quizId && (String(res.quizId).startsWith("MOCK-") || String(res.quizId).startsWith("ERROR-CORRECTION-"));
-            let actionBtnHTML = isMock ? '' : `<button onclick="redoQuizFromHistory('${res.quizId}')" class="px-3 py-1.5 bg-blue-900 text-white text-xs font-bold rounded-lg hover:bg-blue-800 transition-colors"><i class="fas fa-redo mr-1"></i>Làm lại</button>`;
-            let reviewBtnHTML = `<button onclick="reviewPastQuiz('${res.quizId}', '${item.id}')" class="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors mr-2"><i class="fas fa-eye mr-1"></i>Xem lại</button>`;
-            let errorBtnHTML = `<button onclick="generateErrorCorrection('${item.id}')" class="px-3 py-1.5 bg-orange-500 text-white text-xs font-bold rounded-lg hover:bg-orange-600 transition-colors mr-2"><i class="fas fa-tools mr-1"></i>Vá lỗi sai</button>`;
-
-            card.innerHTML = `
-                <button onclick="deleteHistoryEntry('${item.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 bg-gray-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors" title="Xóa dữ liệu"><i class="fas fa-times"></i></button>
-                <div>
-                    <span class="text-[0.7rem] px-2 py-0.5 bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 rounded-full font-bold border dark:border-purple-800">${res.category}</span>
-                    <h3 class="text-base font-bold text-gray-800 dark:text-white mt-2 pr-6 line-clamp-2">${res.quizTitle}</h3>
-                    <p class="text-[0.7rem] text-gray-400 mt-1"><i class="far fa-clock"></i> Cập nhật: ${formatStr}</p>
-                    
-                    <div class="grid grid-cols-2 gap-2 mt-3 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl text-xs">
-                        <div><span class="text-gray-400">Đúng:</span> <strong class="text-blue-600 font-mono">${res.score}</strong></div>
-                        <div><span class="text-gray-400">Tỷ lệ:</span> <strong class="${res.percentage >= 50 ? 'text-green-600' : 'text-red-500'}">${res.percentage}%</strong></div>
-                        <div class="col-span-2"><span class="text-gray-400">Thời gian:</span> <strong class="text-gray-700 dark:text-gray-300 font-mono">${res.timeUsed}</strong></div>
-                    </div>
-                </div>
-                <div class="flex justify-end border-t dark:border-gray-600 pt-2 mt-auto flex-wrap gap-y-2">
-                    ${errorBtnHTML}
-                    ${reviewBtnHTML}
-                    ${actionBtnHTML}
-                </div>
-            `;
-            container.appendChild(card);
-        });
-    }
-}
-
+  
 function redoQuizFromHistory(quizId) {
     db.collection("quizzes").doc(quizId).get().then((doc) => {
         if (doc.exists) { activeQuiz = doc.data(); prepareWelcomeScreen(); } 
