@@ -569,7 +569,7 @@ function switchScreen(screenName) {
     }
 }
 
-// [VIP] HIỂN THỊ KIỂM SOÁT TẢI DỮ LIỆU & TÌM KIẾM
+// [VIP] HIỂN THỊ KIỂM SOÁT TẢI DỮ LIỆU & TÌM KIẾM TOÀN DIỆN (0MS LOAD)
 function renderHomeQuizList() {
     const container = document.getElementById('quiz-list-container');
     if(!container) return;
@@ -580,7 +580,7 @@ function renderHomeQuizList() {
     
     if (currentRole === 'teacher' || currentStudentTab === 'browse') {
         
-        // GIÁO VIÊN thì phải đợi load kho. HỌC SINH thì vẽ luôn từ danh sách ghim!
+        // GIÁO VIÊN thì phải đợi load kho. HỌC SINH thì không bị chặn, cho hiện thư mục ngay!
         if (!isQuizzesLoaded && currentRole === 'teacher') {
             container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8 animate-pulse"><i class="fas fa-spinner fa-spin mr-2"></i> Đang tải kho môn học...</p>';
             return;
@@ -588,6 +588,7 @@ function renderHomeQuizList() {
 
         let categoriesToRender = [];
 
+        // LOGIC TÁCH BẠCH: GIÁO VIÊN NHÌN VÀO KHO, HỌC SINH NHÌN VÀO DANH SÁCH GHIM
         if (currentRole === 'teacher') {
             categoriesToRender = [...new Set(quizDatabase.map(q => q.category))].map(cat => ({ category: cat }));
         } else {
@@ -607,7 +608,7 @@ function renderHomeQuizList() {
             return;
         }
 
-        // [VIP] Khởi tạo bộ nhớ tạm để chứa số đếm, giúp load trong 0 giây!
+        // Khởi tạo bộ nhớ tạm để chứa số đếm, giúp dữ liệu hiện ra trong 0 giây!
         const cachedCounts = JSON.parse(localStorage.getItem('cachedQuizCounts') || '{}');
 
         categoriesToRender.forEach(folderObj => {
@@ -619,15 +620,15 @@ function renderHomeQuizList() {
                     ? quizDatabase.filter(q => q.category === category).length
                     : quizDatabase.filter(q => q.category === category && q.authorId === folderObj.teacherId).length;
                 
-                // Cập nhật bộ nhớ tạm
+                // Ghi nhớ số lượng đề vào não bộ trình duyệt
                 cachedCounts[category] = totalQuizzes;
                 localStorage.setItem('cachedQuizCounts', JSON.stringify(cachedCounts));
             } else {
-                // Nếu mạng lag chưa load xong thì lấy số từ trí nhớ ra xài tạm (0ms)
+                // Nếu mạng chưa phản hồi kịp thì lấy số từ bộ nhớ đệm ra xài luôn
                 totalQuizzes = cachedCounts[category] || 0;
             }
 
-            // Tắt dòng "Đang đồng bộ" gây nghẽn, thay bằng chấm xanh tinh tế
+            // Dấu chấm mạch đập xanh tinh tế báo hiệu đồng bộ ngầm thay vì chặn màn hình
             let quizCountText = `Gồm có ${totalQuizzes} bộ đề`;
             if (!isQuizzesLoaded && currentRole === 'student') {
                 quizCountText += ` <span class="inline-block w-2 h-2 ml-1 bg-blue-400 rounded-full animate-pulse shadow-[0_0_5px_rgba(96,165,250,0.8)]" title="Đang đồng bộ ngầm..."></span>`;
@@ -641,7 +642,7 @@ function renderHomeQuizList() {
                 const folderLink = `${window.location.origin}${window.location.pathname}?folder=${encodeURIComponent(category)}&t=${auth.currentUser.uid}`;
                 shareBtnHTML = `<button onclick="event.stopPropagation(); copyLink('${folderLink}')" class="absolute top-4 right-4 text-gray-400 hover:text-blue-500 bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-20" title="Chia sẻ toàn bộ môn này"><i class="fas fa-share-alt"></i></button>`;
             } else if (currentRole === 'student') {
-                shareBtnHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${folderObj.teacherId}')" class="absolute top-4 right-4 text-blue-500 hover:text-red-500 bg-gray-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-20" title="Bỏ ghim thư mục"><i class="fas fa-bookmark"></i></button>`;
+                shareBtnHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${folderObj.teacherId}')" class="absolute top-4 right-4 text-blue-500 hover:text-red-500 bg-blue-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-20" title="Bỏ ghim thư mục"><i class="fas fa-bookmark"></i></button>`;
             }
 
             card.innerHTML = `
@@ -662,6 +663,112 @@ function renderHomeQuizList() {
             container.appendChild(card);
         });
     } 
+    else if (currentRole === 'student' && currentStudentTab === 'history') {
+        if (!auth.currentUser) return;
+        
+        if (!isHistoryLoaded) {
+            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8 animate-pulse">Đang tải dữ liệu lịch sử...</p>'; 
+            return;
+        }
+
+        let filteredHistory = historyDatabase;
+        if (keyword) {
+            filteredHistory = historyDatabase.filter(item => 
+                (item.data.quizTitle && item.data.quizTitle.toLowerCase().includes(keyword)) ||
+                (item.data.category && item.data.category.toLowerCase().includes(keyword))
+            );
+        }
+
+        if (filteredHistory.length === 0) {
+            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Không tìm thấy lịch sử bài thi nào khớp.</p>'; return;
+        }
+
+        filteredHistory.forEach(item => {
+            const res = item.data;
+            const formatStr = res.timestamp ? new Date(res.timestamp.seconds * 1000).toLocaleString('vi-VN') : "Vừa xong";
+            
+            const card = document.createElement('div');
+            card.className = 'p-5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm flex flex-col justify-between gap-4 relative group';
+            
+            let isMock = res.quizId && (String(res.quizId).startsWith("MOCK-") || String(res.quizId).startsWith("ERROR-CORRECTION-"));
+            let actionBtnHTML = isMock ? '' : `<button onclick="redoQuizFromHistory('${res.quizId}')" class="px-3 py-1.5 bg-blue-900 text-white text-xs font-bold rounded-lg hover:bg-blue-800 transition-colors"><i class="fas fa-redo mr-1"></i>Làm lại</button>`;
+            let reviewBtnHTML = `<button onclick="reviewPastQuiz('${res.quizId}', '${item.id}')" class="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors mr-2"><i class="fas fa-eye mr-1"></i>Xem lại</button>`;
+            let errorBtnHTML = `<button onclick="generateErrorCorrection('${item.id}')" class="px-3 py-1.5 bg-orange-500 text-white text-xs font-bold rounded-lg hover:bg-orange-600 transition-colors mr-2"><i class="fas fa-tools mr-1"></i>Vá lỗi sai</button>`;
+
+            card.innerHTML = `
+                <button onclick="deleteHistoryEntry('${item.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 bg-gray-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors" title="Xóa dữ liệu"><i class="fas fa-times"></i></button>
+                <div>
+                    <span class="text-[0.7rem] px-2 py-0.5 bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 rounded-full font-bold border dark:border-purple-800">${res.category}</span>
+                    <h3 class="text-base font-bold text-gray-800 dark:text-white mt-2 pr-6 line-clamp-2">${res.quizTitle}</h3>
+                    <p class="text-[0.7rem] text-gray-400 mt-1"><i class="far fa-clock"></i> Cập nhật: ${formatStr}</p>
+                    
+                    <div class="grid grid-cols-2 gap-2 mt-3 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl text-xs">
+                        <div><span class="text-gray-400">Đúng:</span> <strong class="text-blue-600 font-mono">${res.score}</strong></div>
+                        <div><span class="text-gray-400">Tỷ lệ:</span> <strong class="${res.percentage >= 50 ? 'text-green-600' : 'text-red-500'}">${res.percentage}%</strong></div>
+                        <div class="col-span-2"><span class="text-gray-400">Thời gian:</span> <strong class="text-gray-700 dark:text-gray-300 font-mono">${res.timeUsed}</strong></div>
+                    </div>
+                </div>
+                <div class="flex justify-end border-t dark:border-gray-600 pt-2 mt-auto flex-wrap gap-y-2">
+                    ${errorBtnHTML}
+                    ${reviewBtnHTML}
+                    ${actionBtnHTML}
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+}
+
+// [VIP] HIỂN THỊ CHI TIẾT MÔN HỌC & BỘ LỌC CHƯƠNG LIVE
+function renderSubjectDetailView(category) {
+    const titleEl = document.getElementById('subject-detail-title'); if(titleEl) titleEl.innerText = "Môn học: " + category;
+    const container = document.getElementById('chapter-list-container'); if(!container) return;
+    container.innerHTML = '';
+
+    const searchEl = document.getElementById('search-chapter-input');
+    const keyword = searchEl ? searchEl.value.trim().toLowerCase() : "";
+
+    let quizzesInFolder = quizDatabase.filter(q => q.category === category);
+    
+    if (keyword) {
+        quizzesInFolder = quizzesInFolder.filter(quiz => quiz.title.toLowerCase().includes(keyword));
+    }
+
+    if(quizzesInFolder.length === 0) {
+        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-4">Không tìm thấy đề thi nào khớp với từ khóa.</p>'; return;
+    }
+
+    quizzesInFolder.forEach(quiz => {
+        const card = document.createElement('div');
+        card.className = 'relative p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-lg transition-all group';
+        
+        let actionBtnsHTML = '';
+        let badgeHTML = quiz.isTestOnly ? 
+            '<span class="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold rounded-full border dark:border-red-800">Kiểm tra</span>' : 
+            '<span class="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold rounded-full border dark:border-gray-500">Luyện tập</span>';
+
+        if (checkIsMasterAdmin() || currentRole === 'teacher') {
+            const shareLink = `${window.location.origin}${window.location.pathname}?quiz=${quiz.id}`;
+            actionBtnsHTML = `
+                <button onclick="event.stopPropagation(); copyLink('${shareLink}')" class="absolute top-4 right-24 text-gray-400 hover:text-blue-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Sao chép liên kết"><i class="fas fa-link"></i></button>
+                <button onclick="event.stopPropagation(); editQuiz('${quiz.id}')" class="absolute top-4 right-14 text-gray-400 hover:text-green-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Chỉnh sửa đề"><i class="fas fa-edit"></i></button>
+                <button onclick="event.stopPropagation(); deleteQuiz('${quiz.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Xóa đề"><i class="fas fa-trash-alt"></i></button>
+            `;
+        } else if (currentRole === 'student') {
+            const catQuiz = quizDatabase.find(q => q.category === category);
+            const tId = catQuiz ? catQuiz.authorId : '';
+            actionBtnsHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${tId}')" class="absolute top-4 right-4 text-blue-500 hover:text-red-500 bg-blue-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Bỏ ghim thư mục"><i class="fas fa-bookmark"></i></button>`;
+        }
+
+        card.innerHTML = `
+            ${actionBtnsHTML}
+            ${badgeHTML}
+            <h3 class="mt-4 text-xl font-bold dark:text-white cursor-pointer hover:text-blue-600" onclick="selectQuiz('${quiz.id}')">${quiz.title}</h3>
+            <p class="mt-2 text-sm text-gray-500"><i class="far fa-clock"></i> ${Math.floor(quiz.timeLimit / 60)} phút • ${quiz.questions.length} câu hỏi</p>
+        `;
+        container.appendChild(card);
+    });
+}
   
 function redoQuizFromHistory(quizId) {
     db.collection("quizzes").doc(quizId).get().then((doc) => {
