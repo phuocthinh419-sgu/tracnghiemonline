@@ -729,29 +729,51 @@ function renderHomeQuizList() {
             const formatStr = res.timestamp ? new Date(res.timestamp.seconds * 1000).toLocaleString('vi-VN') : "Vừa xong";
             
             const card = document.createElement('div');
-            // Thẻ History Card: Phong cách Stripe data row
-            card.className = 'p-5 bg-white dark:bg-[#1E293B] border border-slate-200/60 dark:border-slate-700/60 rounded-[20px] shadow-sm flex flex-col justify-between gap-4 relative hover:shadow-[0_8px_20px_rgba(0,0,0,0.03)] transition-all';
+            // Cân bằng chiều cao bằng h-full, layout dọc linh hoạt
+            card.className = 'p-5 sm:p-6 bg-white dark:bg-[#1E293B] border border-slate-200/60 dark:border-slate-700/60 rounded-[24px] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] flex flex-col h-full relative hover:shadow-[0_12px_30px_-6px_rgba(0,0,0,0.06)] hover:-translate-y-1 hover:border-slate-300 dark:hover:border-slate-500 transition-all duration-300 group';
             
             let isMock = res.quizId && (String(res.quizId).startsWith("MOCK-") || String(res.quizId).startsWith("ERROR-CORRECTION-"));
-            let actionBtnHTML = isMock ? '' : `<button onclick="redoQuizFromHistory('${res.quizId}')" class="px-4 py-2 bg-slate-900 dark:bg-slate-700 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-sm"><i class="fas fa-redo text-[10px] mr-1.5"></i>Làm lại</button>`;
-            let reviewBtnHTML = `<button onclick="reviewPastQuiz('${res.quizId}', '${item.id}')" class="px-4 py-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl hover:bg-slate-50 border border-slate-200 dark:border-slate-700 transition-colors mr-2"><i class="fas fa-eye text-[10px] mr-1.5"></i>Chi tiết</button>`;
-            let errorBtnHTML = `<button onclick="generateErrorCorrection('${item.id}')" class="px-4 py-2 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-xs font-bold rounded-xl hover:bg-amber-100 border border-amber-200/60 dark:border-amber-800/50 transition-colors mr-2"><i class="fas fa-tools text-[10px] mr-1.5"></i>Vá lỗi sai</button>`;
+            
+            // Các nút bấm chuyển sang w-full để lấp đầy ô Grid
+            let actionBtnHTML = isMock ? '' : `<button onclick="redoQuizFromHistory('${res.quizId}')" class="w-full py-2.5 bg-slate-900 dark:bg-slate-700 text-white text-[11px] sm:text-xs font-bold rounded-xl hover:bg-slate-800 shadow-md shadow-slate-900/10 transition-all flex items-center justify-center gap-1.5"><i class="fas fa-redo text-[10px]"></i>Làm lại đề này</button>`;
+            
+            let reviewBtnHTML = `<button onclick="reviewPastQuiz('${res.quizId}', '${item.id}')" class="w-full py-2.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] sm:text-xs font-bold rounded-xl hover:bg-slate-50 border border-slate-200 dark:border-slate-700 transition-all flex items-center justify-center gap-1.5"><i class="fas fa-eye text-[10px]"></i>Chi tiết</button>`;
+            
+            let errorBtnHTML = `<button onclick="generateErrorCorrection('${item.id}')" class="w-full py-2.5 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-[11px] sm:text-xs font-bold rounded-xl hover:bg-amber-100 border border-amber-200/60 dark:border-amber-800/50 transition-all flex items-center justify-center gap-1.5"><i class="fas fa-tools text-[10px]"></i>Vá lỗi sai</button>`;
 
             card.innerHTML = `
-                <button onclick="deleteHistoryEntry('${item.id}')" class="absolute top-4 right-4 text-slate-300 hover:text-red-500 bg-transparent rounded-full w-7 h-7 flex items-center justify-center transition-colors" title="Xóa dữ liệu"><i class="fas fa-times"></i></button>
-                <div>
-                    <span class="text-[9px] px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-md font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700">${res.category}</span>
-                    <h3 class="text-base font-extrabold tracking-tight text-slate-900 dark:text-white mt-2.5 pr-6 line-clamp-2">${res.quizTitle}</h3>
-                    <p class="text-[10px] text-slate-400 mt-1 font-medium"><i class="far fa-clock mr-1"></i>${formatStr}</p>
+                <!-- Nút Xóa lịch sử làm mượt mà, căn góc chuẩn -->
+                <button onclick="deleteHistoryEntry('${item.id}')" class="absolute top-4 right-4 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full w-8 h-8 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100" title="Xóa lịch sử"><i class="fas fa-times"></i></button>
+                
+                <div class="flex flex-col flex-grow">
+                    <div class="pr-8 mb-4">
+                        <span class="text-[9px] px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-lg font-extrabold uppercase tracking-widest border border-slate-200/60 dark:border-slate-700 inline-block mb-3">${res.category}</span>
+                        <h3 class="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-white line-clamp-2 leading-snug mb-1.5">${res.quizTitle}</h3>
+                        <p class="text-[10px] sm:text-xs text-slate-400 font-medium flex items-center"><i class="far fa-clock mr-1.5"></i>Nộp lúc: ${formatStr}</p>
+                    </div>
                     
-                    <div class="grid grid-cols-2 gap-3 mt-4 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800/50 text-xs">
-                        <div class="flex flex-col"><span class="text-slate-400 uppercase tracking-wider text-[9px] font-bold mb-0.5">Điểm / Tỷ lệ</span> <div class="flex items-baseline gap-1.5"><strong class="text-slate-900 dark:text-white font-mono text-sm">${res.score}</strong> <span class="${res.percentage >= 50 ? 'text-green-500' : 'text-red-500'} font-bold font-mono text-xs">(${res.percentage}%)</span></div></div>
-                        <div class="flex flex-col"><span class="text-slate-400 uppercase tracking-wider text-[9px] font-bold mb-0.5">Thời gian</span> <strong class="text-slate-700 dark:text-slate-300 font-mono text-sm">${res.timeUsed}</strong></div>
+                    <!-- Bảng điểm đối xứng tuyệt đối (Gương soi 2 nửa) -->
+                    <div class="grid grid-cols-2 gap-4 mt-auto p-4 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800/60">
+                        <div class="flex flex-col justify-center border-r border-slate-200 dark:border-slate-700/50 pr-4">
+                            <span class="text-slate-400 uppercase tracking-wider text-[9px] font-bold mb-1">Điểm / Tỷ lệ</span> 
+                            <div class="flex items-baseline gap-1.5">
+                                <strong class="text-slate-900 dark:text-white font-mono text-base">${res.score}</strong> 
+                                <span class="${res.percentage >= 50 ? 'text-green-500' : 'text-red-500'} font-bold font-mono text-xs bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded shadow-sm border border-slate-100 dark:border-slate-700">${res.percentage}%</span>
+                            </div>
+                        </div>
+                        <div class="flex flex-col justify-center pl-1">
+                            <span class="text-slate-400 uppercase tracking-wider text-[9px] font-bold mb-1">Thời gian thi</span> 
+                            <strong class="text-slate-700 dark:text-slate-300 font-mono text-base">${res.timeUsed}</strong>
+                        </div>
                     </div>
                 </div>
-                <div class="flex justify-end border-t border-slate-100 dark:border-slate-700 pt-3 mt-auto flex-wrap gap-y-2">
-                    ${errorBtnHTML}
-                    ${reviewBtnHTML}
+                
+                <!-- Khu vực nút bấm cấu trúc Grid hoàn hảo, không còn hiện tượng thò thụt -->
+                <div class="mt-5 pt-5 border-t border-slate-100 dark:border-slate-700/80">
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        ${errorBtnHTML}
+                        ${reviewBtnHTML}
+                    </div>
                     ${actionBtnHTML}
                 </div>
             `;
