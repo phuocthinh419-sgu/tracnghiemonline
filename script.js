@@ -555,17 +555,18 @@ function setRole(role) {
     if (screens.subjectDetail && !screens.subjectDetail.classList.contains('hidden')) renderSubjectDetailView(currentSelectedCategory);
 }
 
-function switchStudentTab(tabName) {
-    currentStudentTab = tabName;
-    const btnBrowse = document.getElementById('btn-tab-browse'); const btnHistory = document.getElementById('btn-tab-history');
-    if (btnBrowse && btnHistory) {
-        if (tabName === 'browse') {
-            btnBrowse.className = 'px-4 py-2 font-bold rounded-lg bg-blue-900 text-white text-xs sm:text-sm shadow-md';
-            btnHistory.className = 'px-4 py-2 font-bold rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 text-xs sm:text-sm';
-        } else {
-            btnHistory.className = 'px-4 py-2 font-bold rounded-lg bg-blue-900 text-white text-xs sm:text-sm shadow-md';
-            btnBrowse.className = 'px-4 py-2 font-bold rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 text-xs sm:text-sm';
-        }
+function switchStudentTab(tab) {
+    currentStudentTab = tab;
+    const btnBrowse = document.getElementById('btn-tab-browse');
+    const btnHistory = document.getElementById('btn-tab-history');
+    
+    // Style mới: Nút bo tròn (Pill), màu sắc tinh giản
+    if (tab === 'browse') {
+        btnBrowse.className = "px-5 py-2 font-bold rounded-full text-xs sm:text-sm transition-all bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md";
+        btnHistory.className = "px-5 py-2 font-bold rounded-full text-xs sm:text-sm transition-all text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5";
+    } else {
+        btnBrowse.className = "px-5 py-2 font-bold rounded-full text-xs sm:text-sm transition-all text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800";
+        btnHistory.className = "px-5 py-2 font-bold rounded-full text-xs sm:text-sm transition-all bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md flex items-center gap-1.5";
     }
     renderHomeQuizList();
 }
@@ -621,7 +622,7 @@ function switchScreen(screenName) {
     }
 }
 
-// [VIP TỐI THƯỢNG] HÀM HIỂN THỊ KHÔNG BIẾT HOÃN - MỞ RA LÀ HIỆN CARD TỨC THÌ
+// [VIP SAAS] HIỂN THỊ KHO MÔN HỌC & LỊCH SỬ PHONG CÁCH LINEAR / NOTION
 function renderHomeQuizList() {
     const container = document.getElementById('quiz-list-container');
     if(!container) return;
@@ -634,11 +635,10 @@ function renderHomeQuizList() {
         let categoriesToRender = [];
 
         if (currentRole === 'teacher') {
-            // Đọc thẳng từ bộ nhớ đệm quizDatabase ra để vẽ ngay, không quan tâm mạng load xong chưa
             categoriesToRender = [...new Set(quizDatabase.map(q => q.category))].map(cat => ({ category: cat }));
         } else {
             if (pinnedFolders.length === 0) {
-                container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Kho môn học trống. Hãy dán link chia sẻ từ Giáo viên để lưu thư mục.</p>';
+                container.innerHTML = '<div class="col-span-full flex flex-col items-center justify-center py-16 text-slate-400"><i class="fas fa-folder-open text-4xl mb-3 opacity-20"></i><p class="text-sm font-medium">Kho lưu trữ trống. Vui lòng sử dụng liên kết từ Giáo viên để ghim môn học.</p></div>';
                 return;
             }
             categoriesToRender = pinnedFolders; 
@@ -652,50 +652,53 @@ function renderHomeQuizList() {
         }
 
         if (categoriesToRender.length === 0) {
-            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Không tìm thấy môn học nào khớp.</p>';
-            return;
+            container.innerHTML = '<p class="col-span-full text-center text-slate-400 font-medium py-12">Không tìm thấy môn học nào khớp với từ khóa.</p>'; return;
         }
+
+        const cachedCounts = JSON.parse(localStorage.getItem('cachedQuizCounts') || '{}');
 
         categoriesToRender.forEach(folderObj => {
             const category = typeof folderObj === 'object' ? folderObj.category : folderObj;
             const tId = typeof folderObj === 'object' ? folderObj.teacherId : null;
             
-            // Tính toán số bộ đề có sẵn trong RAM dữ liệu
-            const totalQuizzes = currentRole === 'teacher' 
-                ? quizDatabase.filter(q => q.category === category).length
-                : quizDatabase.filter(q => q.category === category && q.authorId === tId).length;
+            let totalQuizzes = 0;
+            if (isQuizzesLoaded || currentRole === 'teacher') {
+                totalQuizzes = currentRole === 'teacher' 
+                    ? quizDatabase.filter(q => q.category === category).length
+                    : quizDatabase.filter(q => q.category === category && q.authorId === tId).length;
+                cachedCounts[category] = totalQuizzes;
+                localStorage.setItem('cachedQuizCounts', JSON.stringify(cachedCounts));
+            } else {
+                totalQuizzes = cachedCounts[category] || 0;
+            }
 
-            // Chấm xanh nhấp nháy tinh tế
-            let quizCountText = `Gồm có ${totalQuizzes} bộ đề`;
-            if (!isQuizzesLoaded) {
-                quizCountText += ` <span class="inline-block w-2 h-2 ml-1 bg-blue-400 rounded-full animate-pulse shadow-[0_0_5px_rgba(96,165,250,0.8)]" title="Đang đồng bộ ngầm..."></span>`;
+            let quizCountText = `<span class="font-semibold text-slate-500 dark:text-slate-400">${totalQuizzes}</span> đề thi`;
+            if (!isQuizzesLoaded && currentRole === 'student') {
+                quizCountText += ` <span class="inline-block w-1.5 h-1.5 ml-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.6)]" title="Đang đồng bộ ngầm..."></span>`;
             }
 
             const card = document.createElement('div');
-            // [VIP] Thêm hiệu ứng bay bổng (-translate-y-1), viền sáng bóng
-            card.className = 'relative p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-300 cursor-pointer group overflow-hidden flex flex-col justify-between min-h-[110px]';
+            // Premium Card: Không màu mè, Border mỏng, Shadow cực êm, Lift nhẹ
+            card.className = 'relative p-5 bg-white dark:bg-[#1E293B] border border-slate-200/60 dark:border-slate-700/60 rounded-[20px] hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(0,0,0,0.04)] hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-300 cursor-pointer group flex flex-col justify-between min-h-[110px]';
             
             let shareBtnHTML = '';
             if (checkIsMasterAdmin() || currentRole === 'teacher') {
                 const folderLink = `${window.location.origin}${window.location.pathname}?folder=${encodeURIComponent(category)}&t=${auth.currentUser.uid}`;
-                shareBtnHTML = `<button onclick="event.stopPropagation(); copyLink('${folderLink}')" class="absolute top-3 right-3 text-gray-400 hover:text-blue-600 bg-gray-50 hover:bg-blue-100 dark:bg-gray-700 dark:hover:bg-blue-900/50 rounded-full w-8 h-8 flex items-center justify-center transition-colors z-20 shadow-sm" title="Chia sẻ toàn bộ môn này"><i class="fas fa-share-alt text-sm"></i></button>`;
+                shareBtnHTML = `<button onclick="event.stopPropagation(); copyLink('${folderLink}')" class="absolute top-4 right-4 text-slate-300 hover:text-blue-600 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full w-8 h-8 flex items-center justify-center transition-colors z-20" title="Chia sẻ toàn bộ môn này"><i class="fas fa-link text-xs"></i></button>`;
             } else if (currentRole === 'student') {
-                shareBtnHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${tId}')" class="absolute top-3 right-3 text-blue-400 hover:text-red-500 bg-blue-50 hover:bg-red-50 dark:bg-gray-700 dark:hover:bg-red-900/50 rounded-full w-8 h-8 flex items-center justify-center transition-colors z-20 shadow-sm" title="Bỏ ghim thư mục"><i class="fas fa-bookmark text-sm"></i></button>`;
+                shareBtnHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${tId}')" class="absolute top-4 right-4 text-slate-300 hover:text-red-500 bg-transparent hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full w-8 h-8 flex items-center justify-center transition-colors z-20" title="Bỏ ghim thư mục"><i class="fas fa-bookmark text-xs"></i></button>`;
             }
 
             card.innerHTML = `
                 ${shareBtnHTML}
                 <div class="flex items-start w-full min-w-0 pr-8">
-                    <div class="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-700 dark:to-gray-800 text-blue-700 dark:text-blue-400 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shadow-inner group-hover:scale-110 transition-transform duration-300 shrink-0 mr-3 sm:mr-4">
-                        <i class="fas fa-folder-open"></i>
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-slate-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 rounded-[12px] flex items-center justify-center text-lg sm:text-xl border border-slate-100 dark:border-slate-700/50 group-hover:scale-105 transition-transform duration-300 shrink-0 mr-3.5 shadow-sm">
+                        <i class="fas fa-folder"></i>
                     </div>
                     <div class="flex-1 min-w-0 pt-0.5">
-                        <h3 class="text-lg sm:text-xl font-bold text-gray-800 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors leading-tight" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="${category}">${category}</h3>
-                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1.5 flex items-center font-medium">${quizCountText}</p>
+                        <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-tight tracking-tight" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="${category}">${category}</h3>
+                        <p class="text-[11px] sm:text-xs text-slate-400 mt-2 flex items-center tracking-wide uppercase">${quizCountText}</p>
                     </div>
-                </div>
-                <div class="absolute right-4 bottom-4 text-gray-200 group-hover:text-blue-500 dark:text-gray-600 dark:group-hover:text-blue-400 transition-all duration-300 transform group-hover:translate-x-1 pointer-events-none z-10">
-                    <i class="fas fa-arrow-right text-lg"></i>
                 </div>
             `;
             card.onclick = () => { currentSelectedCategory = category; switchScreen('subjectDetail'); };
@@ -706,8 +709,7 @@ function renderHomeQuizList() {
         if (!auth.currentUser) return;
         
         if (!isHistoryLoaded) {
-            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8 animate-pulse">Đang tải dữ liệu lịch sử...</p>'; 
-            return;
+            container.innerHTML = '<div class="col-span-full flex flex-col items-center py-12"><i class="fas fa-circle-notch fa-spin text-slate-300 text-3xl mb-3"></i><p class="text-sm font-medium text-slate-400">Đang đồng bộ dữ liệu lịch sử...</p></div>'; return;
         }
 
         let filteredHistory = historyDatabase;
@@ -719,7 +721,7 @@ function renderHomeQuizList() {
         }
 
         if (filteredHistory.length === 0) {
-            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Không tìm thấy lịch sử bài thi nào khớp.</p>'; return;
+            container.innerHTML = '<p class="col-span-full text-center text-slate-400 font-medium py-12">Chưa có dữ liệu lịch sử làm bài.</p>'; return;
         }
 
         filteredHistory.forEach(item => {
@@ -727,27 +729,27 @@ function renderHomeQuizList() {
             const formatStr = res.timestamp ? new Date(res.timestamp.seconds * 1000).toLocaleString('vi-VN') : "Vừa xong";
             
             const card = document.createElement('div');
-            card.className = 'p-5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm flex flex-col justify-between gap-4 relative group';
+            // Thẻ History Card: Phong cách Stripe data row
+            card.className = 'p-5 bg-white dark:bg-[#1E293B] border border-slate-200/60 dark:border-slate-700/60 rounded-[20px] shadow-sm flex flex-col justify-between gap-4 relative hover:shadow-[0_8px_20px_rgba(0,0,0,0.03)] transition-all';
             
             let isMock = res.quizId && (String(res.quizId).startsWith("MOCK-") || String(res.quizId).startsWith("ERROR-CORRECTION-"));
-            let actionBtnHTML = isMock ? '' : `<button onclick="redoQuizFromHistory('${res.quizId}')" class="px-3 py-1.5 bg-blue-900 text-white text-xs font-bold rounded-lg hover:bg-blue-800 transition-colors"><i class="fas fa-redo mr-1"></i>Làm lại</button>`;
-            let reviewBtnHTML = `<button onclick="reviewPastQuiz('${res.quizId}', '${item.id}')" class="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors mr-2"><i class="fas fa-eye mr-1"></i>Xem lại</button>`;
-            let errorBtnHTML = `<button onclick="generateErrorCorrection('${item.id}')" class="px-3 py-1.5 bg-orange-500 text-white text-xs font-bold rounded-lg hover:bg-orange-600 transition-colors mr-2"><i class="fas fa-tools mr-1"></i>Vá lỗi sai</button>`;
+            let actionBtnHTML = isMock ? '' : `<button onclick="redoQuizFromHistory('${res.quizId}')" class="px-4 py-2 bg-slate-900 dark:bg-slate-700 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-sm"><i class="fas fa-redo text-[10px] mr-1.5"></i>Làm lại</button>`;
+            let reviewBtnHTML = `<button onclick="reviewPastQuiz('${res.quizId}', '${item.id}')" class="px-4 py-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl hover:bg-slate-50 border border-slate-200 dark:border-slate-700 transition-colors mr-2"><i class="fas fa-eye text-[10px] mr-1.5"></i>Chi tiết</button>`;
+            let errorBtnHTML = `<button onclick="generateErrorCorrection('${item.id}')" class="px-4 py-2 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-xs font-bold rounded-xl hover:bg-amber-100 border border-amber-200/60 dark:border-amber-800/50 transition-colors mr-2"><i class="fas fa-tools text-[10px] mr-1.5"></i>Vá lỗi sai</button>`;
 
             card.innerHTML = `
-                <button onclick="deleteHistoryEntry('${item.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 bg-gray-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors" title="Xóa dữ liệu"><i class="fas fa-times"></i></button>
+                <button onclick="deleteHistoryEntry('${item.id}')" class="absolute top-4 right-4 text-slate-300 hover:text-red-500 bg-transparent rounded-full w-7 h-7 flex items-center justify-center transition-colors" title="Xóa dữ liệu"><i class="fas fa-times"></i></button>
                 <div>
-                    <span class="text-[0.7rem] px-2 py-0.5 bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 rounded-full font-bold border dark:border-purple-800">${res.category}</span>
-                    <h3 class="text-base font-bold text-gray-800 dark:text-white mt-2 pr-6 line-clamp-2">${res.quizTitle}</h3>
-                    <p class="text-[0.7rem] text-gray-400 mt-1"><i class="far fa-clock"></i> Cập nhật: ${formatStr}</p>
+                    <span class="text-[9px] px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-md font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700">${res.category}</span>
+                    <h3 class="text-base font-extrabold tracking-tight text-slate-900 dark:text-white mt-2.5 pr-6 line-clamp-2">${res.quizTitle}</h3>
+                    <p class="text-[10px] text-slate-400 mt-1 font-medium"><i class="far fa-clock mr-1"></i>${formatStr}</p>
                     
-                    <div class="grid grid-cols-2 gap-2 mt-3 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl text-xs">
-                        <div><span class="text-gray-400">Đúng:</span> <strong class="text-blue-600 font-mono">${res.score}</strong></div>
-                        <div><span class="text-gray-400">Tỷ lệ:</span> <strong class="${res.percentage >= 50 ? 'text-green-600' : 'text-red-500'}">${res.percentage}%</strong></div>
-                        <div class="col-span-2"><span class="text-gray-400">Thời gian:</span> <strong class="text-gray-700 dark:text-gray-300 font-mono">${res.timeUsed}</strong></div>
+                    <div class="grid grid-cols-2 gap-3 mt-4 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800/50 text-xs">
+                        <div class="flex flex-col"><span class="text-slate-400 uppercase tracking-wider text-[9px] font-bold mb-0.5">Điểm / Tỷ lệ</span> <div class="flex items-baseline gap-1.5"><strong class="text-slate-900 dark:text-white font-mono text-sm">${res.score}</strong> <span class="${res.percentage >= 50 ? 'text-green-500' : 'text-red-500'} font-bold font-mono text-xs">(${res.percentage}%)</span></div></div>
+                        <div class="flex flex-col"><span class="text-slate-400 uppercase tracking-wider text-[9px] font-bold mb-0.5">Thời gian</span> <strong class="text-slate-700 dark:text-slate-300 font-mono text-sm">${res.timeUsed}</strong></div>
                     </div>
                 </div>
-                <div class="flex justify-end border-t dark:border-gray-600 pt-2 mt-auto flex-wrap gap-y-2">
+                <div class="flex justify-end border-t border-slate-100 dark:border-slate-700 pt-3 mt-auto flex-wrap gap-y-2">
                     ${errorBtnHTML}
                     ${reviewBtnHTML}
                     ${actionBtnHTML}
@@ -758,9 +760,9 @@ function renderHomeQuizList() {
     }
 }
 
-// [VIP] HIỂN THỊ CHI TIẾT MÔN HỌC & BỘ LỌC CHƯƠNG LIVE
+// [VIP SAAS] HIỂN THỊ CHI TIẾT MÔN HỌC & ĐỀ THI
 function renderSubjectDetailView(category) {
-    const titleEl = document.getElementById('subject-detail-title'); if(titleEl) titleEl.innerText = "Môn học: " + category;
+    const titleEl = document.getElementById('subject-detail-title'); if(titleEl) titleEl.innerText = category;
     const container = document.getElementById('chapter-list-container'); if(!container) return;
     container.innerHTML = '';
 
@@ -774,36 +776,38 @@ function renderSubjectDetailView(category) {
     }
 
     if(quizzesInFolder.length === 0) {
-        container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-4">Không tìm thấy đề thi nào khớp với từ khóa.</p>'; return;
+        container.innerHTML = '<p class="col-span-full text-center text-slate-400 font-medium py-10">Không tìm thấy tài nguyên nào.</p>'; return;
     }
 
     quizzesInFolder.forEach(quiz => {
         const card = document.createElement('div');
-        card.className = 'relative p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-lg transition-all group';
+        // Quiz Card: Tối giản, tập trung vào Typography
+        card.className = 'relative p-5 sm:p-6 bg-white dark:bg-[#1E293B] border border-slate-200/60 dark:border-slate-700/60 rounded-[20px] shadow-sm hover:shadow-[0_8px_20px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-slate-600 transition-all group flex flex-col';
         
         let actionBtnsHTML = '';
         let badgeHTML = quiz.isTestOnly ? 
-            '<span class="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold rounded-full border dark:border-red-800">Kiểm tra</span>' : 
-            '<span class="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold rounded-full border dark:border-gray-500">Luyện tập</span>';
+            '<span class="px-2 py-0.5 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-[9px] font-bold uppercase tracking-wider rounded-md border border-red-200/50 dark:border-red-900/50">Kiểm tra</span>' : 
+            '<span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[9px] font-bold uppercase tracking-wider rounded-md border border-slate-200/50 dark:border-slate-700">Luyện tập</span>';
 
         if (checkIsMasterAdmin() || currentRole === 'teacher') {
             const shareLink = `${window.location.origin}${window.location.pathname}?quiz=${quiz.id}`;
             actionBtnsHTML = `
-                <button onclick="event.stopPropagation(); copyLink('${shareLink}')" class="absolute top-4 right-24 text-gray-400 hover:text-blue-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Sao chép liên kết"><i class="fas fa-link"></i></button>
-                <button onclick="event.stopPropagation(); editQuiz('${quiz.id}')" class="absolute top-4 right-14 text-gray-400 hover:text-green-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Chỉnh sửa đề"><i class="fas fa-edit"></i></button>
-                <button onclick="event.stopPropagation(); deleteQuiz('${quiz.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm" title="Xóa đề"><i class="fas fa-trash-alt"></i></button>
+                <div class="absolute top-4 right-4 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onclick="event.stopPropagation(); copyLink('${shareLink}')" class="text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg w-7 h-7 flex items-center justify-center transition-colors border border-slate-200 dark:border-slate-700" title="Sao chép link"><i class="fas fa-link text-[10px]"></i></button>
+                    <button onclick="event.stopPropagation(); editQuiz('${quiz.id}')" class="text-slate-400 hover:text-amber-500 bg-slate-50 hover:bg-amber-50 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg w-7 h-7 flex items-center justify-center transition-colors border border-slate-200 dark:border-slate-700" title="Sửa"><i class="fas fa-edit text-[10px]"></i></button>
+                    <button onclick="event.stopPropagation(); deleteQuiz('${quiz.id}')" class="text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg w-7 h-7 flex items-center justify-center transition-colors border border-slate-200 dark:border-slate-700" title="Xóa"><i class="fas fa-trash-alt text-[10px]"></i></button>
+                </div>
             `;
-        } else if (currentRole === 'student') {
-            const catQuiz = quizDatabase.find(q => q.category === category);
-            const tId = catQuiz ? catQuiz.authorId : '';
-            actionBtnsHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${tId}')" class="absolute top-4 right-4 text-blue-500 hover:text-red-500 bg-blue-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Bỏ ghim thư mục"><i class="fas fa-bookmark"></i></button>`;
         }
 
         card.innerHTML = `
             ${actionBtnsHTML}
-            ${badgeHTML}
-            <h3 class="mt-4 text-xl font-bold dark:text-white cursor-pointer hover:text-blue-600" onclick="selectQuiz('${quiz.id}')">${quiz.title}</h3>
-            <p class="mt-2 text-sm text-gray-500"><i class="far fa-clock"></i> ${Math.floor(quiz.timeLimit / 60)} phút • ${quiz.questions.length} câu hỏi</p>
+            <div class="mb-3">${badgeHTML}</div>
+            <h3 class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white cursor-pointer group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2 leading-snug" onclick="selectQuiz('${quiz.id}')">${quiz.title}</h3>
+            <div class="mt-auto pt-4 flex items-center gap-4 text-[11px] font-medium text-slate-400 uppercase tracking-wide">
+                <span><i class="far fa-clock mr-1 text-slate-300"></i>${Math.floor(quiz.timeLimit / 60)} phút</span>
+                <span><i class="fas fa-layer-group mr-1 text-slate-300"></i>${quiz.questions.length} câu</span>
+            </div>
         `;
         container.appendChild(card);
     });
@@ -1457,27 +1461,23 @@ function reviewQuiz() {
 
 // --- 9. ADMIN ZONE ---
 function switchAdminTab(tab) {
-    if (tab === 'users' && !checkIsMasterAdmin()) {
-        showToast("Chỉ có bậc Hoàng đế tối cao mới có quyền sắc phong đặc quyền VIP.", true);
-        return;
-    }
-
-    const panels = ['panel-smart', 'panel-manual', 'panel-stats', 'panel-users'];
-    panels.forEach(p => {
-        const el = document.getElementById(p);
-        if(el) el.style.display = p === 'panel-' + tab ? 'block' : 'none';
-    });
+    document.getElementById('panel-smart').classList.toggle('hidden', tab !== 'smart');
+    document.getElementById('panel-manual').classList.toggle('hidden', tab !== 'manual');
+    document.getElementById('panel-stats').classList.toggle('hidden', tab !== 'stats');
+    document.getElementById('panel-users').classList.toggle('hidden', tab !== 'users');
     
     const tabs = ['smart', 'manual', 'stats', 'users'];
+    // Style mới: Tab vuông vức, nền trắng khi active (giống Stripe)
     tabs.forEach(t => {
-        const btn = document.getElementById('tab-' + t);
-        if(btn) {
-            btn.className = t === tab ? 
-                "flex-1 md:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base font-bold rounded-lg bg-blue-100 text-blue-700" : 
-                "flex-1 md:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base font-bold rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700";
+        const btn = document.getElementById(`tab-${t}`);
+        if(!btn) return;
+        if (t === tab) {
+            btn.className = `flex-1 md:flex-none px-4 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-200/50 dark:border-slate-700 flex items-center justify-center gap-1.5`;
+        } else {
+            btn.className = `flex-1 md:flex-none px-4 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all text-slate-500 hover:text-slate-900 dark:hover:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 flex items-center justify-center gap-1.5 border border-transparent`;
         }
     });
-
+    
     if (tab === 'stats') fetchResultsFromFirebase();
 }
 
@@ -1887,27 +1887,20 @@ function showFullscreenLock() {
 let subjectChartInstance = null; 
 
 function switchSubjectTab(tab) {
-    if (tab === 'stats') {
-        if (!checkFeatureAccess('stats_basic')) {
-            switchSubjectTab('list');
-            return;
-        }
-        renderSubjectStats();
-    }
+    document.getElementById('subject-tab-list').classList.toggle('hidden', tab !== 'list');
+    document.getElementById('subject-tab-stats').classList.toggle('hidden', tab !== 'stats');
     
     const btnList = document.getElementById('tab-btn-list');
     const btnStats = document.getElementById('tab-btn-stats');
     
-    if(tab === 'list') {
-        if (btnList) btnList.className = "pb-3 text-base sm:text-lg font-bold text-blue-700 border-b-4 border-blue-700 dark:text-blue-400 dark:border-blue-400 transition-all";
-        if (btnStats) btnStats.className = "pb-3 text-base sm:text-lg font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-4 border-transparent transition-all flex items-center";
-        document.getElementById('subject-tab-list').classList.remove('hidden');
-        document.getElementById('subject-tab-stats').classList.add('hidden');
+    // Style mới: Viền dưới (Bottom border), màu slate/blue
+    if (tab === 'list') {
+        btnList.className = "pb-3 text-sm sm:text-base font-bold transition-all flex items-center gap-2 text-slate-900 dark:text-white border-b-2 border-slate-900 dark:border-white";
+        btnStats.className = "pb-3 text-sm sm:text-base font-bold transition-all flex items-center gap-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 border-b-2 border-transparent";
     } else {
-        if (btnStats) btnStats.className = "pb-3 text-base sm:text-lg font-bold text-indigo-600 border-b-4 border-indigo-600 dark:text-indigo-400 dark:border-indigo-400 transition-all flex items-center";
-        if (btnList) btnList.className = "pb-3 text-base sm:text-lg font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-4 border-transparent transition-all";
-        document.getElementById('subject-tab-list').classList.add('hidden');
-        document.getElementById('subject-tab-stats').classList.remove('hidden');
+        btnList.className = "pb-3 text-sm sm:text-base font-bold transition-all flex items-center gap-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 border-b-2 border-transparent";
+        btnStats.className = "pb-3 text-sm sm:text-base font-bold transition-all flex items-center gap-2 text-slate-900 dark:text-white border-b-2 border-slate-900 dark:border-white";
+        renderSubjectStats(currentSelectedCategory);
     }
 }
 
