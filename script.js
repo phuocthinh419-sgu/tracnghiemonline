@@ -1471,7 +1471,7 @@ function fetchResultsFromFirebase() {
     let isFetched = false;
     const timeoutId = setTimeout(() => {
         if (!isFetched) {
-            tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-red-500 font-bold"><i class="fas fa-wifi mb-2 text-2xl"></i><br>Mạng chậm hoặc máy chủ quá tải. Bệ hạ vui lòng ấn "Làm mới".</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-red-500 font-bold"><i class="fas fa-wifi mb-2 text-2xl"></i><br>Mạng chậm hoặc máy chủ quá tải. Vui lòng ấn "Làm mới".</td></tr>';
         }
     }, 5000);
 
