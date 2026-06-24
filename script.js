@@ -2298,3 +2298,167 @@ function getFilteredIndex(step) {
     }
     return -1; // Báo hiệu đã hết câu thỏa mãn
 }
+
+// [VIP SAAS] XỬ LÝ HỒ SƠ NĂNG LỰC & BIỂU ĐỒ RADAR (HÀM MỚI BỔ SUNG)
+function renderSubjectStats(category) {
+    if (!category) return;
+    
+    let quizzesInFolder = quizDatabase.filter(q => q.category === category);
+    let historyInFolder = historyDatabase.filter(h => h.data.category === category);
+    
+    let totalQuizzes = quizzesInFolder.length;
+    let attemptedQuizzes = [...new Set(historyInFolder.map(h => h.data.quizId))];
+    let completedCount = attemptedQuizzes.length;
+    
+    let completionRate = totalQuizzes === 0 ? 0 : Math.round((completedCount / totalQuizzes) * 100);
+    
+    let avgScore = 0;
+    let maxScore = 0;
+    let mastery = 0;
+
+    if (historyInFolder.length > 0) {
+        let totalPercentages = historyInFolder.reduce((sum, h) => sum + (h.data.percentage || 0), 0);
+        avgScore = Math.round(totalPercentages / historyInFolder.length);
+        maxScore = Math.max(...historyInFolder.map(h => h.data.percentage || 0));
+        mastery = Math.round((completionRate * 0.4) + (avgScore * 0.6));
+    }
+
+    // Đồng bộ chính xác với 4 thẻ kiến trúc HTML mới
+    const elMastery = document.getElementById('stat-mastery'); if(elMastery) elMastery.innerText = mastery + '%';
+    const elCompletion = document.getElementById('stat-completion'); if(elCompletion) elCompletion.innerHTML = `${completedCount}/${totalQuizzes} <span class="text-xs font-medium text-slate-400 ml-1">chương</span>`;
+    const elAvg = document.getElementById('stat-avg-score'); if(elAvg) elAvg.innerText = avgScore + '%';
+    const elMax = document.getElementById('stat-max-score'); if(elMax) elMax.innerText = maxScore + '%';
+
+    // Nhóm dữ liệu để vẽ bảng và biểu đồ
+    let grouped = {};
+    let labels = [];
+    let dataPoints = [];
+
+    historyInFolder.forEach(h => {
+        let qId = h.data.quizId;
+        if(!grouped[qId]) grouped[qId] = { title: h.data.quizTitle, attempts: 0, sumPct: 0, maxPct: 0 };
+        grouped[qId].attempts++;
+        grouped[qId].sumPct += (h.data.percentage || 0);
+        if((h.data.percentage || 0) > grouped[qId].maxPct) grouped[qId].maxPct = (h.data.percentage || 0);
+    });
+
+    const tbody = document.getElementById('stat-table-body');
+    if (tbody) {
+        tbody.innerHTML = '';
+        if (Object.keys(grouped).length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium">Chưa có dữ liệu làm bài. Hãy hoàn thành ít nhất 1 bài thi để hệ thống phân tích.</td></tr>';
+        } else {
+            Object.values(grouped).forEach(g => {
+                let avg = Math.round(g.sumPct / g.attempts);
+                
+                // Thu thập dữ liệu Chart (Cắt gọn tên nếu quá dài để Radar không bị méo)
+                let shortTitle = g.title.length > 18 ? g.title.substring(0, 18) + '...' : g.title;
+                labels.push(shortTitle);
+                dataPoints.push(g.maxPct);
+
+                let tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-b border-slate-100 dark:border-slate-700/60 last:border-0';
+                tr.innerHTML = `
+                    <td class="p-5 font-bold text-slate-800 dark:text-slate-200 truncate max-w-[200px]" title="${g.title}">${g.title}</td>
+                    <td class="p-5 text-center text-slate-500 dark:text-slate-400 font-mono font-semibold">${g.attempts}</td>
+                    <td class="p-5 text-center font-bold ${avg >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}">${avg}%</td>
+                    <td class="p-5 text-center font-extrabold text-blue-600 dark:text-blue-400">${g.maxPct}%</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    }
+
+    // VẼ BIỂU ĐỒ RADAR HỒ SƠ NĂNG LỰC
+    const ctx = document.getElementById('masteryChart');
+    if (ctx) {
+        if (window.masteryChartInstance) {
+            window.masteryChartInstance.destroy();
+        }
+
+        // Radar chart cần ít nhất 3 điểm để thành hình đa giác. Nếu ít hơn, tạo trục ảo để giữ form đẹp.
+        if (labels.length > 0 && labels.length < 3) {
+            labels.push('Phản xạ', 'Ghi nhớ');
+            dataPoints.push(avgScore, maxScore);
+        }
+
+        const isDark = document.documentElement.classList.contains('dark');
+        const textColor = isDark ? '#94a3b8' : '#64748b'; 
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+
+        window.masteryChartInstance = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Đỉnh điểm năng lực (%)',
+                    data: dataPoints,
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)', // Nền xanh mờ cao cấp
+                    borderColor: '#2563eb',
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#2563eb',
+                    pointHoverBackgroundColor: '#2563eb',
+                    pointHoverBorderColor: '#ffffff',
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: { color: gridColor },
+                        grid: { color: gridColor },
+                        pointLabels: {
+                            color: textColor,
+                            font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: 'bold' }
+                        },
+                        ticks: { display: false, min: 0, max: 100 } // Ẩn số trục để đồ thị sạch sẽ
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                        titleColor: isDark ? '#ffffff' : '#0f172a',
+                        bodyColor: isDark ? '#cbd5e1' : '#475569',
+                        borderColor: isDark ? '#334155' : '#e2e8f0',
+                        borderWidth: 1,
+                        padding: 12,
+                        boxPadding: 6,
+                        usePointStyle: true,
+                        titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 13 },
+                        bodyFont: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: 'bold' }
+                    }
+                }
+            }
+        });
+    }
+
+    // AI TƯ VẤN LỘ TRÌNH THÔNG MINH
+    const aiBox = document.getElementById('ai-roadmap-content');
+    if (aiBox) {
+        let aiHTML = '';
+        if (historyInFolder.length === 0) {
+            aiHTML = '<p class="flex items-start gap-3"><i class="fas fa-info-circle text-blue-500 mt-1 text-lg"></i> <span>Hệ thống chưa đủ dữ liệu. Xin học viên làm thử 1 đề để AI thiết lập ma trận phân tích.</span></p>';
+        } else if (mastery >= 80) {
+            aiHTML = `
+                <p class="flex items-start gap-3"><i class="fas fa-check-circle text-green-500 mt-1 text-lg"></i> <span><strong>Thành tích xuất sắc:</strong> Nền tảng kiến thức cốt lõi của khóa học này đã vững vàng.</span></p>
+                <p class="flex items-start gap-3"><i class="fas fa-arrow-circle-up text-blue-500 mt-1 text-lg"></i> <span><strong>Khuyến nghị:</strong> Tiến hành <strong class="text-slate-800 dark:text-white">Thi thử tổng hợp (Mock Test)</strong> để làm quen áp lực thời gian.</span></p>
+            `;
+        } else if (mastery >= 50) {
+            aiHTML = `
+                <p class="flex items-start gap-3"><i class="fas fa-exclamation-circle text-amber-500 mt-1 text-lg"></i> <span><strong>Đánh giá:</strong> Năng lực duy trì ở mức khá, nhưng phong độ còn nhiều điểm mù.</span></p>
+                <p class="flex items-start gap-3"><i class="fas fa-tools text-amber-600 mt-1 text-lg"></i> <span><strong>Khuyến nghị:</strong> Ưu tiên khởi chạy <strong class="text-slate-800 dark:text-white">Trộn Câu Sai</strong> để rà soát và lấp lỗ hổng tri thức.</span></p>
+            `;
+        } else {
+            aiHTML = `
+                <p class="flex items-start gap-3"><i class="fas fa-exclamation-triangle text-red-500 mt-1 text-lg"></i> <span><strong>Báo động đỏ:</strong> Ma trận kiến thức đang xuất hiện nhiều rạn nứt nghiêm trọng.</span></p>
+                <p class="flex items-start gap-3"><i class="fas fa-book-reader text-blue-500 mt-1 text-lg"></i> <span><strong>Lộ trình:</strong> Tạm ngưng làm bài mới. Vui lòng đọc kỹ <strong class="text-slate-800 dark:text-white">Giải thích chi tiết</strong> ở các đề cũ.</span></p>
+            `;
+        }
+        aiBox.innerHTML = aiHTML;
+    }
+}
