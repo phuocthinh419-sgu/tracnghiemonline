@@ -654,36 +654,37 @@ function renderHomeQuizList() {
                 ? quizDatabase.filter(q => q.category === category).length
                 : quizDatabase.filter(q => q.category === category && q.authorId === tId).length;
 
-            // Chấm xanh nhấp nháy tinh tế báo hiệu đang kiểm tra cập nhật ngầm, không thèm khóa màn hình
+            // Chấm xanh nhấp nháy tinh tế
             let quizCountText = `Gồm có ${totalQuizzes} bộ đề`;
             if (!isQuizzesLoaded) {
                 quizCountText += ` <span class="inline-block w-2 h-2 ml-1 bg-blue-400 rounded-full animate-pulse shadow-[0_0_5px_rgba(96,165,250,0.8)]" title="Đang đồng bộ ngầm..."></span>`;
             }
 
             const card = document.createElement('div');
-            card.className = 'relative p-6 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-xl transition-all cursor-pointer group overflow-hidden';
+            // [VIP] Thêm hiệu ứng bay bổng (-translate-y-1), viền sáng bóng
+            card.className = 'relative p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-300 cursor-pointer group overflow-hidden flex flex-col justify-between min-h-[110px]';
             
             let shareBtnHTML = '';
             if (checkIsMasterAdmin() || currentRole === 'teacher') {
                 const folderLink = `${window.location.origin}${window.location.pathname}?folder=${encodeURIComponent(category)}&t=${auth.currentUser.uid}`;
-                shareBtnHTML = `<button onclick="event.stopPropagation(); copyLink('${folderLink}')" class="absolute top-4 right-24 text-gray-400 hover:text-blue-500 bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Chia sẻ toàn bộ môn này"><i class="fas fa-share-alt"></i></button>`;
+                shareBtnHTML = `<button onclick="event.stopPropagation(); copyLink('${folderLink}')" class="absolute top-3 right-3 text-gray-400 hover:text-blue-600 bg-gray-50 hover:bg-blue-100 dark:bg-gray-700 dark:hover:bg-blue-900/50 rounded-full w-8 h-8 flex items-center justify-center transition-colors z-20 shadow-sm" title="Chia sẻ toàn bộ môn này"><i class="fas fa-share-alt text-sm"></i></button>`;
             } else if (currentRole === 'student') {
-                shareBtnHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${tId}')" class="absolute top-4 right-4 text-blue-500 hover:text-red-500 bg-blue-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Bỏ ghim thư mục"><i class="fas fa-bookmark"></i></button>`;
+                shareBtnHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${tId}')" class="absolute top-3 right-3 text-blue-400 hover:text-red-500 bg-blue-50 hover:bg-red-50 dark:bg-gray-700 dark:hover:bg-red-900/50 rounded-full w-8 h-8 flex items-center justify-center transition-colors z-20 shadow-sm" title="Bỏ ghim thư mục"><i class="fas fa-bookmark text-sm"></i></button>`;
             }
 
             card.innerHTML = `
                 ${shareBtnHTML}
-                <div class="flex items-center w-full min-w-0">
-                    <div class="w-14 h-14 bg-blue-50 dark:bg-gray-800 text-blue-900 dark:text-blue-400 rounded-xl flex items-center justify-center text-2xl group-hover:bg-blue-900 group-hover:text-white transition-colors shrink-0 mr-4">
-                        <i class="fas fa-folder"></i>
+                <div class="flex items-start w-full min-w-0 pr-8">
+                    <div class="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-700 dark:to-gray-800 text-blue-700 dark:text-blue-400 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shadow-inner group-hover:scale-110 transition-transform duration-300 shrink-0 mr-3 sm:mr-4">
+                        <i class="fas fa-folder-open"></i>
                     </div>
-                    <div class="flex-1 min-w-0 pr-12">
-                        <h3 class="text-xl font-bold text-gray-800 dark:text-white group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors truncate" title="${category}">${category}</h3>
-                        <p class="text-sm text-gray-400 mt-1 flex items-center truncate">${quizCountText}</p>
+                    <div class="flex-1 min-w-0 pt-0.5">
+                        <h3 class="text-lg sm:text-xl font-bold text-gray-800 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors leading-tight" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="${category}">${category}</h3>
+                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1.5 flex items-center font-medium">${quizCountText}</p>
                     </div>
                 </div>
-                <div class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors pointer-events-none z-10">
-                    <i class="fas fa-chevron-right text-xl"></i>
+                <div class="absolute right-4 bottom-4 text-gray-200 group-hover:text-blue-500 dark:text-gray-600 dark:group-hover:text-blue-400 transition-all duration-300 transform group-hover:translate-x-1 pointer-events-none z-10">
+                    <i class="fas fa-arrow-right text-lg"></i>
                 </div>
             `;
             card.onclick = () => { currentSelectedCategory = category; switchScreen('subjectDetail'); };
