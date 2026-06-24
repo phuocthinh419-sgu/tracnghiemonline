@@ -50,6 +50,10 @@ let teacherQuizListener = null;
 let studentQuizListener = null; 
 
 // --- 3. THEO DÕI TRẠNG THÁI & KHỞI TẠO AN TOÀN ---
+// [VIP] Khôi phục trí nhớ Sáng/Tối ngay khi load Web
+if (localStorage.getItem('theme') === 'dark') {
+    document.documentElement.classList.add('dark');
+}
 document.addEventListener("DOMContentLoaded", () => { 
     screens = {
         auth: document.getElementById('auth-screen'),
@@ -61,7 +65,9 @@ document.addEventListener("DOMContentLoaded", () => {
         admin: document.getElementById('admin-zone'),
         pricing: document.getElementById('pricing-screen')
     };
-
+// Đồng bộ icon giao diện lúc vừa tải trang
+    const themeIcon = document.getElementById('theme-icon');
+    if (themeIcon) themeIcon.className = document.documentElement.classList.contains('dark') ? 'fas fa-sun text-lg sm:text-xl' : 'fas fa-moon text-lg sm:text-xl';
     setupEventListeners(); 
     setupHighlighting(); 
     
@@ -566,8 +572,13 @@ function switchStudentTab(tabName) {
 
 function toggleDarkMode() {
     document.documentElement.classList.toggle('dark');
+    const isDark = document.documentElement.classList.contains('dark');
+    
     const icon = document.getElementById('theme-icon');
-    if(icon) icon.className = document.documentElement.classList.contains('dark') ? 'fas fa-sun text-lg sm:text-xl' : 'fas fa-moon text-lg sm:text-xl';
+    if(icon) icon.className = isDark ? 'fas fa-sun text-lg sm:text-xl' : 'fas fa-moon text-lg sm:text-xl';
+    
+    // [VIP] Khắc lệnh vào kim bài bộ nhớ
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
 }
 
 function switchScreen(screenName) {
