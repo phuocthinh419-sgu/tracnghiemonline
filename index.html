@@ -20,14 +20,22 @@
     <link rel="stylesheet" href="style.css">
 
     <style>
-        /* Tối ưu hóa phông chữ và thanh cuộn cho chuẩn SaaS */
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .dark ::-webkit-scrollbar-thumb { background: #475569; }
 
-        /* HỆ THỐNG HIỆU ỨNG CHIỀU SÂU VÀ ÁNH SÁNG */
+        :root {
+            --primary: #1E40AF; 
+            --secondary: #EAB308;
+            --secondary-light: #fef08a; 
+            --dark: #0F172A; 
+            --white: #ffffff;
+            --success: #22C55E;
+        }
+
         .glass-panel {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
@@ -53,37 +61,24 @@
             position: absolute; border-radius: 50%; filter: blur(120px); pointer-events: none; z-index: 0; opacity: 0.5;
         }
 
-        /* GÓI PRO KHUYÊN DÙNG */
-        .pricing-card-pro {
-            box-shadow: 0 10px 40px -10px rgba(37, 99, 235, 0.15);
-        }
-        .pricing-card-pro:hover {
-            box-shadow: 0 20px 50px -10px rgba(37, 99, 235, 0.25);
-            transform: translateY(-8px);
-        }
+        .pricing-card-pro { box-shadow: 0 10px 40px -10px rgba(37, 99, 235, 0.15); }
+        .pricing-card-pro:hover { box-shadow: 0 20px 50px -10px rgba(37, 99, 235, 0.25); transform: translateY(-8px); }
 
-        /* GÓI ULTRA ROYAL (BLACK LUXURY) */
         .pricing-card-royal {
-            background: linear-gradient(145deg, #0F172A 0%, #020617 100%); 
-            color: white; 
-            border: 1px solid rgba(234, 179, 8, 0.2);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25); 
-            position: relative;
-            overflow: hidden;
+            background: linear-gradient(145deg, #0F172A 0%, #020617 100%); color: white; 
+            border: 1px solid rgba(234, 179, 8, 0.2); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25); 
+            position: relative; overflow: hidden;
         }
         .pricing-card-royal:hover { 
-            border-color: rgba(234, 179, 8, 0.5);
-            box-shadow: 0 24px 50px rgba(0, 0, 0, 0.4), 0 0 40px -10px rgba(234, 179, 8, 0.2); 
+            border-color: rgba(234, 179, 8, 0.5); box-shadow: 0 24px 50px rgba(0, 0, 0, 0.4), 0 0 40px -10px rgba(234, 179, 8, 0.2); 
             transform: translateY(-8px);
         }
         .pricing-card-royal::before {
             content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-            background: radial-gradient(circle at 50% 50%, rgba(234,179,8,0.08) 0%, transparent 60%);
-            pointer-events: none; z-index: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(234,179,8,0.08) 0%, transparent 60%); pointer-events: none; z-index: 0;
         }
         .royal-content { position: relative; z-index: 10; }
 
-        /* BADGE HIỆU ỨNG ÁNH KIM TÀI KHOẢN */
         .badge-pill {
             position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center;
             padding: 4px 14px; border-radius: 9999px; font-size: 0.725rem; font-weight: 800; text-transform: uppercase;
@@ -103,34 +98,23 @@
         .badge-basic { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
         .dark .badge-basic { background: #1e293b; color: #94a3b8; border-color: #334155; }
         
-        .pro-blur-overlay {
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            background: rgba(255, 255, 255, 0.75);
-        }
-        .dark .pro-blur-overlay {
-            background: rgba(15, 23, 42, 0.85);
-        }
+        .pro-blur-overlay { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); background: rgba(255, 255, 255, 0.75); }
+        .dark .pro-blur-overlay { background: rgba(15, 23, 42, 0.85); }
     </style>
 </head>
 <body class="bg-[#F8FAFC] dark:bg-[#0F172A] text-slate-800 dark:text-slate-200 min-h-screen antialiased selection:bg-blue-100 selection:text-blue-900 transition-colors duration-300 flex justify-center w-full">
 
-    <!-- KHUNG HỆ THỐNG TOAST THÔNG BÁO -->
     <div id="system-toast" class="fixed top-6 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3.5 rounded-xl shadow-xl font-bold z-[9999] transition-all duration-300 flex items-center gap-3 opacity-0 pointer-events-none text-sm tracking-wide">
         <i class="fas fa-exclamation-triangle text-base"></i>
         <span id="system-toast-msg"></span>
     </div>
 
-    <!-- NÚT CHUYỂN ĐỔI CHẾ ĐỘ SÁNG/TỐI -->
     <button id="btn-theme-toggle" class="fixed bottom-6 right-6 p-3.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-yellow-400 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 hover:scale-110 active:scale-95 transition-all z-50">
         <i class="fas fa-moon text-lg" id="theme-icon"></i>
     </button>
 
-    <!-- TRỤC CONTAINER CHÍNH CỦA WEBSITE -->
-    <div id="app" class="w-full max-w-[1400px] min-h-screen p-0 sm:p-4 lg:p-6 flex flex-col justify-center relative">
+    <div id="app" class="w-full max-w-[1400px] h-screen p-0 sm:p-4 lg:p-6 flex flex-col justify-center relative">
         
-        <!-- ========================================================================= -->
-        <!-- MÀN HÌNH 1: ĐĂNG NHẬP / ĐĂNG KÝ (AUTH SCREEN) -->
-        <!-- ========================================================================= -->
         <div id="auth-screen" class="hidden w-full max-w-md mx-auto p-8 bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-xl py-12 relative z-10">
             <div class="mb-6 flex justify-center">
                 <div class="w-12 h-12 bg-blue-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400 text-xl shadow-inner border border-blue-100 dark:border-slate-700">
@@ -162,12 +146,7 @@
             </div>
         </div>
 
-        <!-- ========================================================================= -->
-        <!-- MÀN HÌNH 2: TRANG CHỦ TỔNG QUAN (HOME SCREEN) -->
-        <!-- ========================================================================= -->
-        <div id="home-screen" class="hidden bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-xl p-6 sm:p-8 lg:p-10 relative overflow-hidden">
-            
-            <!-- TOP BAR ĐIỀU HƯỚNG -->
+        <div id="home-screen" class="hidden bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-xl p-6 sm:p-8 lg:p-10 relative overflow-hidden max-h-full overflow-y-auto custom-scrollbar">
             <div class="flex flex-col lg:flex-row justify-between items-center mb-12 gap-5 border-b border-slate-100 dark:border-slate-700/60 pb-6 relative z-10">
                 <div class="flex items-center gap-3 w-full lg:w-auto">
                     <button id="btn-logout" class="w-full lg:w-auto justify-center flex items-center gap-2 px-4 py-2.5 bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-all border border-slate-200/40 dark:border-slate-700/40">
@@ -195,20 +174,16 @@
                 </div>
             </div>
 
-           <!-- TIÊU ĐỀ KHỞI CHẠY (HERO SECTION) - [ĐÃ MỞ RỘNG TRÁNH NGẮT CHỮ] -->
             <div class="text-center max-w-5xl mx-auto mb-14 relative">
-                <!-- Quầng sáng bổ trợ chiều sâu -->
                 <div class="bg-glow w-72 h-72 bg-blue-500/10 dark:bg-blue-500/15 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
                 
                 <div class="relative z-10 px-4">
                     <span class="inline-block py-1.5 px-4 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] sm:text-xs font-extrabold uppercase tracking-widest mb-6 border border-blue-100 dark:border-blue-800 shadow-sm">
                         <i class="fas fa-star mr-1 text-amber-500"></i> Nền Tảng Luyện Thi Trắc Nghiệm Trực Tuyến
                     </span>
-                    <!-- [VIP] Đã gỡ drop-shadow, chỉnh leading-normal và thêm pb-2 để bảo toàn dấu nặng chữ "Phục" -->
                     <h1 class="text-4xl md:text-5xl lg:text-[64px] font-extrabold tracking-tight mb-6 text-gradient leading-normal pb-2 px-2">
                         Chinh Phục Đỉnh Cao Tri Thức
                     </h1>
-                    <!-- [VIP] Nới rộng max-w-3xl để dòng chữ trải dài, không rớt dòng vô duyên -->
                     <p class="text-slate-500 dark:text-slate-400 text-sm sm:text-base font-medium max-w-3xl mx-auto leading-relaxed">
                         Theo dõi hồ sơ năng lực cá nhân. Bắt đầu hành trình rèn luyện chuyên sâu và bứt phá phổ điểm mục tiêu của bạn.
                     </p>
@@ -230,9 +205,6 @@
             <div id="quiz-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-10"></div>
         </div>
 
-        <!-- ========================================================================= -->
-        <!-- MÀN HÌNH 3: BẢNG GIÁ ĐĂNG KÝ PREMIUM (PRICING SCREEN) -->
-        <!-- ========================================================================= -->
         <div id="pricing-screen" class="hidden bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-xl p-6 sm:p-10 h-[90vh] overflow-y-auto custom-scrollbar relative">
             <button onclick="switchScreen('home')" class="mb-8 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors text-xs sm:text-sm font-bold flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 w-max hover:shadow-sm">
                 <i class="fas fa-arrow-left"></i> Về Trang Chủ
@@ -243,10 +215,7 @@
                 <p class="text-slate-500 dark:text-slate-400 text-sm sm:text-base font-medium leading-relaxed">Đầu tư vào giải pháp phân tích thông minh. Lựa chọn ngân sách phù hợp nhất với hành trình chinh phục kỳ thi của bạn.</p>
             </div>
             
-            <!-- ĐỐI XỨNG TUYỆT ĐỐI - KHÔNG CÒN THÒ THỤT MARGIN Ở GÓI PRO -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8 items-stretch w-full pb-10">
-                
-                <!-- 1. GÓI BASIC (0Đ) -->
                 <div class="flex flex-col bg-white dark:bg-[#1E293B] p-6 lg:p-8 rounded-[24px] border border-slate-200 dark:border-slate-700 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:border-slate-300 dark:hover:border-slate-600 group relative">
                     <div class="mb-5">
                         <h3 class="text-2xl font-extrabold text-slate-900 dark:text-white mb-1.5">Basic</h3>
@@ -267,7 +236,6 @@
                     <button class="w-full py-3.5 mt-auto rounded-xl font-bold text-sm bg-slate-50 text-slate-400 dark:bg-slate-800/50 dark:text-slate-500 cursor-not-allowed text-center border border-slate-200 dark:border-slate-700 transition-colors">Đang Sử Dụng</button>
                 </div>
                 
-                <!-- 2. GÓI PLUS (20K) -->
                 <div class="flex flex-col bg-white dark:bg-[#1E293B] p-6 lg:p-8 rounded-[24px] border border-slate-200 dark:border-slate-700 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:border-slate-300 dark:hover:border-slate-600 group relative">
                     <div class="mb-5">
                         <h3 class="text-2xl font-extrabold text-slate-900 dark:text-white mb-1.5">Plus</h3>
@@ -289,7 +257,6 @@
                     <button class="w-full py-3.5 mt-auto rounded-xl font-bold text-sm bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-blue-400 border border-blue-200 dark:border-blue-900 hover:bg-blue-600 hover:text-white hover:border-transparent transition-all duration-300 text-center shadow-sm" onclick="openPaymentModal('qr-plus.webp', 'Gói Plus', '20.000đ')">Đăng Ký Plus</button>
                 </div>
                 
-                <!-- 3. GÓI PRO (35K - KHUYÊN DÙNG) - ĐÃ BỎ MARGIN GÂY LỆCH -->
                 <div class="flex flex-col bg-white dark:bg-[#1E293B] p-6 lg:p-8 rounded-[24px] border-2 border-blue-600 pricing-card-pro transition-all duration-300 relative z-10 bg-gradient-to-b from-white to-blue-50/30 dark:from-[#1E293B] dark:to-blue-900/10">
                     <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest shadow-md whitespace-nowrap border border-white/20"><i class="fas fa-fire mr-1 text-amber-400"></i> Lựa Chọn Tối Ưu</div>
                     
@@ -311,7 +278,6 @@
                     <button class="w-full py-3.5 mt-auto rounded-xl font-bold text-sm bg-blue-600 text-white hover:bg-blue-700 transition-all duration-300 text-center shadow-lg shadow-blue-600/20 active:scale-[0.98]" onclick="openPaymentModal('qr-pro.webp', 'Gói Pro', '35.000đ')">Đăng Ký Pro</button>
                 </div>
                 
-                <!-- 4. GÓI ULTRA (50K - LUXURY) -->
                 <div class="flex flex-col p-6 lg:p-8 rounded-[24px] transition-all duration-300 group relative pricing-card-royal items-stretch">
                     <div class="royal-content flex flex-col h-full">
                         <div class="mb-5">
@@ -333,9 +299,6 @@
             </div>
         </div>
 
-        <!-- ========================================================================= -->
-        <!-- MÀN HÌNH 4: CHI TIẾT KHÓA HỌC VÀ HỒ SƠ NĂNG LỰC HỌC TẬP (SUBJECT DETAIL) -->
-        <!-- ========================================================================= -->
         <div id="subject-detail-screen" class="hidden bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-xl p-6 sm:p-8 lg:p-10 h-[90vh] overflow-y-auto custom-scrollbar">
             <button id="btn-back-to-home" class="mb-8 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors text-xs sm:text-sm font-bold flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 w-max hover:shadow-sm">
                 <i class="fas fa-arrow-left"></i>Quay lại Trang Chủ
@@ -345,7 +308,6 @@
                 <h2 id="subject-detail-title" class="text-3xl sm:text-4xl text-slate-900 dark:text-white font-extrabold tracking-tight mb-2">Tên Khóa Học</h2>
             </div>
 
-            <!-- TABS CON CHUYỂN PHÂN HỆ -->
             <div class="flex gap-8 border-b border-slate-100 dark:border-slate-700 mb-8 relative">
                 <button id="tab-btn-list" onclick="switchSubjectTab('list')" class="pb-3.5 text-sm sm:text-base font-bold transition-all flex items-center gap-2">
                     <i class="fas fa-list-ul text-xs opacity-70"></i>Danh Sách Đề Bài
@@ -355,9 +317,7 @@
                 </button>
             </div>
 
-            <!-- TAB 4.1: DANH SÁCH ĐỀ THI -->
             <div id="subject-tab-list" class="block">
-                <!-- KHUNG MOCK TEST / HỌC PHẦN ÔN TẬP CAO CẤP -->
                 <div class="p-6 sm:p-8 bg-slate-50 dark:bg-slate-900 rounded-[24px] border border-slate-200/50 dark:border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm mb-8 relative overflow-hidden">
                     <div class="flex items-center gap-5">
                         <div class="w-14 h-14 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center text-2xl shadow-sm border border-slate-200/60 dark:border-slate-700 shrink-0"><i class="fas fa-shuffle"></i></div>
@@ -380,7 +340,6 @@
                     </div>
                 </div>
 
-                <!-- THANH TÌM KIẾM CHƯƠNG -->
                 <div class="mb-8 max-w-md relative group">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
                         <i class="fas fa-search text-sm"></i>
@@ -391,11 +350,8 @@
                 <div id="chapter-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
             </div>
 
-            <!-- TAB 4.2: HỒ SƠ NĂNG LỰC TÍNH TOÁN (EDTECH HUD VISUALS) -->
             <div id="subject-tab-stats" class="hidden">
-                <!-- GRID INSIGHT CARDS VISUALS -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-8">
-                    <!-- Khối chỉ số thành thạo nổi bật -->
                     <div class="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 rounded-[24px] shadow-lg text-white col-span-2 md:col-span-1 relative overflow-hidden group">
                         <i class="fas fa-chess-knight absolute -right-4 -bottom-4 text-7xl opacity-10 group-hover:scale-110 transition-transform duration-500"></i>
                         <p class="text-[10px] font-bold uppercase tracking-widest text-blue-200 mb-2">Độ Thành Thạo</p>
@@ -421,7 +377,6 @@
                     </div>
                 </div>
 
-                <!-- BẢNG ĐIỂM TIẾN ĐỘ -->
                 <div class="bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-sm overflow-hidden mb-8">
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
@@ -439,7 +394,6 @@
                     </div>
                 </div>
 
-                <!-- PHÂN TÍCH CHUYÊN SÂU NĂNG LỰC -->
                 <div class="relative rounded-[24px] overflow-hidden mb-6">
                     <div id="pro-stats-container" class="grid grid-cols-1 lg:grid-cols-3 gap-6 transition-all duration-500">
                         <div class="lg:col-span-2 bg-white dark:bg-[#1E293B] p-6 sm:p-8 rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
@@ -456,7 +410,6 @@
                         </div>
                     </div>
 
-                    <!-- MÀN CHẮN PRO BLUR KHÓA TÍNH NĂNG -->
                     <div id="pro-lock-overlay" class="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center pro-blur-overlay hidden">
                         <i class="fas fa-lock text-4xl text-slate-400 mb-4 drop-shadow-sm"></i>
                         <h3 class="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-2">Báo Cáo Chuyên Sâu Bị Khóa</h3>
@@ -469,9 +422,6 @@
             </div>
         </div>
 
-        <!-- ========================================================================= -->
-        <!-- MÀN HÌNH 5: BẢNG ĐIỀU KHIỂN QUẢN TRỊ (ADMIN ZONE) -->
-        <!-- ========================================================================= -->
         <div id="admin-zone" class="hidden bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-xl p-6 sm:p-8 lg:p-10 dark:text-white h-[90vh] overflow-y-auto custom-scrollbar">
             <button onclick="switchScreen('home')" class="mb-8 text-slate-500 hover:text-slate-900 dark:hover:text-white text-xs sm:text-sm font-bold flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 w-max hover:shadow-sm"><i class="fas fa-arrow-left"></i> Về Trang chủ</button>
             
@@ -488,7 +438,6 @@
                 </div>
             </div>
 
-            <!-- TAB 5.1: NHẬP FILE NHANH -->
             <div id="panel-smart" class="block w-full max-w-6xl mx-auto">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
                     <div>
@@ -507,7 +456,7 @@
 
                 <div class="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50 rounded-xl mb-6 shadow-sm">
                     <input type="checkbox" id="smart-test-only" class="w-4 h-4 cursor-pointer accent-red-600 shrink-0 rounded">
-                    <label for="smart-test-only" class="font-bold text-red-700 dark:text-red-400 cursor-pointer text-xs sm:text-sm">Bật chế độ Khảo Thí (Học viên chỉ được thi 1 lần, vô hiệu hóa nút luyện tập)</label>
+                    <label for="smart-test-only" class="font-bold text-red-700 dark:text-red-400 cursor-pointer text-xs sm:text-sm">Bật chế độ Khảo Thí (Học viên chỉ được thi 1 lần, vô hiệu hóa tính năng luyện tập)</label>
                 </div>
 
                 <div class="flex flex-col lg:flex-row gap-6 mb-8">
@@ -532,7 +481,6 @@
                 <div id="smart-status" class="mt-4 text-center font-bold text-sm hidden"></div>
             </div>
 
-            <!-- TAB 5.2: NHẬP THỦ CÔNG -->
             <div id="panel-manual" class="hidden max-w-4xl mx-auto">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
                     <div>
@@ -563,11 +511,10 @@
                 </div>
             </div>
 
-            <!-- TAB 5.3: THỐNG KÊ ĐIỂM -->
-            <div id="panel-stats" class="hidden w-full mx-auto">
+            <div id="panel-stats" class="hidden w-full max-w-6xl mx-auto">
                 <div class="mb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
                     <p class="text-sm text-slate-500 font-medium">Bảng giám sát trực tuyến điểm số các học viên trực thuộc máy chủ của bạn.</p>
-                    <button onclick="fetchResultsFromFirebase()" class="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg hover:bg-slate-100 flex items-center gap-2 shrink-0 shadow-sm transition-all"><i class="fas fa-sync-alt text-[10px]"></i>Đồng bộ dữ liệu</button>
+                    <button onclick="fetchResultsFromFirebase()" class="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl hover:bg-slate-100 flex items-center gap-2 shrink-0 shadow-sm transition-all"><i class="fas fa-sync-alt text-[10px]"></i>Đồng bộ dữ liệu</button>
                 </div>
                 <div class="overflow-x-auto rounded-[20px] border border-slate-200/60 dark:border-slate-700/60 shadow-sm bg-white dark:bg-slate-900">
                     <table class="w-full text-left border-collapse min-w-[700px]">
@@ -587,30 +534,25 @@
                 </div>
             </div>
 
-            <!-- TAB 5.4: PHÂN QUYỀN VIP -->
             <div id="panel-users" class="hidden w-full max-w-3xl mx-auto">
                 <div class="bg-white dark:bg-slate-900 p-8 rounded-[24px] border border-slate-200/60 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)]">
-                    <h3 class="text-xl font-extrabold mb-6 text-slate-900 dark:text-slate-100 flex items-center gap-2 tracking-tight"><i class="fas fa-user-shield text-blue-600"></i>Quản Lý Đặc Quyền Học Viên</h3>
+                    <h3 class="text-xl font-extrabold mb-6 text-slate-900 dark:text-slate-100 flex items-center gap-2 tracking-tight"><i class="fas fa-user-shield text-blue-600"></i>Quản Lý Đặc Quyền Hệ Thống</h3>
                     <div class="flex flex-col sm:flex-row gap-4 p-5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 items-center shadow-inner">
-                        <input type="email" id="admin-upgrade-email" placeholder="Nhập Email học viên trên hệ thống..." class="w-full sm:flex-grow p-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-600 font-semibold text-sm shadow-sm transition-all">
-                        <select id="admin-upgrade-plan" class="w-full sm:w-auto p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-bold outline-none text-sm text-slate-700 dark:text-slate-300 shadow-sm cursor-pointer transition-all">
+                        <input type="email" id="admin-upgrade-email" placeholder="Nhập Email học viên trên hệ thống..." class="w-full sm:flex-grow p-3.5 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-600 font-semibold text-sm shadow-sm transition-all">
+                        <select id="admin-upgrade-plan" class="w-full sm:w-auto p-3.5 bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700 rounded-xl font-bold outline-none text-sm text-slate-700 dark:text-slate-300 shadow-sm cursor-pointer transition-all">
                             <option value="basic">Gói Basic (Mặc định)</option>
                             <option value="plus">Gói Plus</option>
                             <option value="pro">Gói Pro</option>
                             <option value="ultra">Gói Ultra</option>
                         </select>
-                        <button onclick="upgradeUserPlanByEmail()" class="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-md shadow-blue-600/10 whitespace-nowrap flex items-center justify-center gap-2"><i class="fas fa-check-circle opacity-80"></i>Cấp Quyền</button>
+                        <button onclick="upgradeUserPlanByEmail()" class="w-full sm:w-auto px-6 py-3.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-md shadow-blue-600/10 whitespace-nowrap flex items-center justify-center gap-2"><i class="fas fa-check-circle opacity-80"></i>Cấp Quyền</button>
                     </div>
-                    <p class="text-xs text-slate-400 font-medium mt-4 px-2 flex items-start gap-2"><i class="fas fa-info-circle mt-0.5 opacity-60"></i> Tài khoản được cấp quyền chỉ cần làm mới trang (F5) để hệ thống đồng bộ các chức năng cao cấp.</p>
+                    <p class="text-xs text-slate-400 font-medium mt-4 px-2 flex items-start gap-2"><i class="fas fa-info-circle mt-0.5 opacity-60"></i> Tài khoản đích cần làm mới trang (F5) để hệ thống đồng bộ các chức năng đã mở khóa.</p>
                 </div>
             </div>
         </div>
 
-        <!-- ========================================================================= -->
-        <!-- MÀN HÌNH 6: XÁC NHẬN TRƯỚC THI (WELCOME SCREEN) -->
-        <!-- ========================================================================= -->
-        <div id="welcome-screen" class="hidden w-full max-w-xl mx-auto bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-2xl p-8 sm:p-12 text-center relative py-16 overflow-hidden">
-            <!-- Deco Effect -->
+        <div id="welcome-screen" class="hidden w-full max-w-xl mx-auto bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-2xl p-8 sm:p-12 text-center relative py-16 overflow-hidden z-10">
             <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-bl-full pointer-events-none"></div>
             
             <button id="btn-back-to-subject" class="absolute top-6 left-6 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors text-sm font-bold bg-slate-50 dark:bg-slate-800 w-10 h-10 rounded-full flex items-center justify-center"><i class="fas fa-arrow-left"></i></button>
@@ -627,18 +569,12 @@
             </div>
         </div>
 
-        <!-- ========================================================================= -->
-        <!-- MÀN HÌNH 7: GIAO DIỆN PHÒNG THI CHUYÊN SÂU (QUIZ SCREEN) -->
-        <!-- ========================================================================= -->
-        <!-- [VIP] Đổi min-h thành h-[88vh] để khóa cứng chiều cao, không cho phép phình to tràn màn hình -->
-        <div id="quiz-screen" class="hidden flex-col lg:flex-row h-[88vh] bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-2xl overflow-hidden relative">
+        <div id="quiz-screen" class="hidden flex-col lg:flex-row h-[85vh] sm:h-[90vh] bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-2xl overflow-hidden relative z-10">
             <div class="absolute inset-0 bg-slate-50/50 dark:bg-slate-900/50 pointer-events-none"></div>
 
-            <!-- KHUNG TRÁI: CÂU HỎI -->
-            <div class="flex-grow flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200/80 dark:border-slate-700/80 w-full lg:w-3/4 order-1 relative z-10 bg-white dark:bg-[#1E293B]">
+            <div class="flex-1 min-w-0 min-h-0 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200/80 dark:border-slate-700/80 order-1 relative z-10 bg-white dark:bg-[#1E293B]">
                 
-                <!-- HEADER (Được khóa cứng bằng shrink-0) -->
-                <div class="px-6 py-5 border-b border-slate-100 dark:border-slate-700 flex flex-row justify-between items-center gap-4 bg-white dark:bg-[#1E293B] shrink-0">
+                <div class="px-6 py-4 sm:py-5 border-b border-slate-100 dark:border-slate-700 flex flex-row justify-between items-center gap-4 bg-white dark:bg-[#1E293B] shrink-0">
                     <div class="flex items-center gap-5 min-w-0">
                         <button id="btn-exit-quiz" class="text-slate-400 hover:text-red-500 transition-colors shrink-0 bg-slate-50 dark:bg-slate-800 w-10 h-10 rounded-full flex items-center justify-center border border-slate-100 dark:border-slate-700" title="Thoát phòng thi">
                             <i class="fas fa-times"></i>
@@ -653,9 +589,9 @@
                     </div>
                 </div>
 
-                <!-- BODY CÂU HỎI (Khu vực duy nhất được phép cuộn chuột: flex-1, min-h-0, overflow-y-auto) -->
-                <div class="p-6 sm:p-8 flex-1 min-h-0 overflow-y-auto custom-scrollbar bg-transparent relative flex flex-col">
-                    <div class="flex flex-wrap justify-between items-center mb-6 gap-3 shrink-0">
+                <div class="flex-1 min-h-0 flex flex-col p-5 sm:p-6 lg:p-8 bg-transparent relative">
+                    
+                    <div class="flex flex-wrap justify-between items-center mb-5 sm:mb-6 gap-3 shrink-0">
                         <span id="question-counter" class="inline-flex items-center justify-center px-4 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-extrabold tracking-wider border border-slate-200/60 dark:border-slate-700">CÂU 0 / 0</span>
                         <div class="flex gap-2 w-full sm:w-auto">
                             <button id="btn-flag" class="flex-1 sm:flex-none justify-center flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-xs hover:bg-slate-50 hover:border-amber-200 transition-colors shadow-sm"><i class="fas fa-flag text-[10px]"></i> Cần Cân Nhắc</button>
@@ -663,22 +599,21 @@
                         </div>
                     </div>
                     
-                    <div class="flex flex-col md:flex-row gap-8 items-start w-full">
-                        <!-- Split Screen Bài đọc -->
-                        <div id="passage-container" class="hidden w-full md:w-1/2 bg-white dark:bg-[#1E293B] p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative">
-                            <div class="sticky top-0 bg-white/90 dark:bg-[#1E293B]/90 backdrop-blur-sm border-b border-slate-100 dark:border-slate-700 pb-3 mb-5 z-10">
-                                <h4 class="font-extrabold text-[11px] uppercase tracking-widest text-slate-400 flex items-center gap-2"><i class="fas fa-book-open text-blue-500"></i> Ngữ Liệu Văn Bản</h4>
+                    <div class="flex-1 min-h-0 flex flex-col md:flex-row gap-6 items-stretch w-full">
+                        
+                        <div id="passage-container" class="hidden w-full md:w-1/2 bg-white dark:bg-[#1E293B] rounded-[20px] border border-slate-200/80 dark:border-slate-700/80 shadow-sm flex-col overflow-hidden min-h-0">
+                            <div class="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-700 px-5 py-3.5 shrink-0 z-10">
+                                <h4 class="font-extrabold text-[11px] uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fas fa-book-open text-blue-500"></i> Ngữ Liệu Văn Bản</h4>
                             </div>
-                            <div id="passage-text" class="text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap text-sm sm:text-[15px] font-medium"></div>
+                            <div id="passage-text" class="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6 text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap text-sm sm:text-[15px] font-medium custom-scrollbar"></div>
                         </div>
 
-                        <!-- Khung câu hỏi (Đã gỡ bỏ giới hạn max-h, để nó dài tự nhiên trong khung cuộn cha) -->
-                        <div id="question-wrapper" class="w-full h-auto pr-2 pb-4">
-                            <h3 id="question-content" class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white leading-snug mb-8 tracking-tight"></h3>
-                            <div id="options-container" class="grid grid-cols-1 gap-3.5"></div>
+                        <div id="question-wrapper" class="w-full flex-1 flex flex-col min-h-0 overflow-y-auto custom-scrollbar pr-3 sm:pr-4 pb-4">
+                            <h3 id="question-content" class="text-[17px] sm:text-xl font-bold text-slate-900 dark:text-white leading-snug mb-6 tracking-tight shrink-0"></h3>
+                            <div id="options-container" class="grid grid-cols-1 gap-3.5 shrink-0"></div>
                             
-                            <div id="hint-box" class="hidden mt-5 p-5 bg-amber-50 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/30 rounded-xl text-amber-800 dark:text-amber-400 font-semibold text-xs sm:text-sm leading-relaxed shadow-inner"></div>
-                            <div id="explanation-box" class="hidden mt-8 p-6 bg-blue-50/50 dark:bg-slate-800/50 border border-blue-100 dark:border-slate-700 rounded-2xl shadow-sm">
+                            <div id="hint-box" class="hidden mt-5 p-5 bg-amber-50 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/30 rounded-xl text-amber-800 dark:text-amber-400 font-semibold text-xs sm:text-sm leading-relaxed shadow-inner shrink-0"></div>
+                            <div id="explanation-box" class="hidden mt-6 p-6 bg-blue-50/50 dark:bg-slate-800/50 border border-blue-100 dark:border-slate-700 rounded-2xl shadow-sm shrink-0">
                                 <h4 class="font-extrabold text-blue-900 dark:text-blue-400 mb-3 flex items-center gap-2 text-[11px] uppercase tracking-widest"><i class="fas fa-microscope text-sm"></i> Báo Cáo Giải Nghĩa Chi Tiết</h4>
                                 <p id="explanation-text" class="text-slate-700 dark:text-slate-300 leading-relaxed text-sm font-medium"></p>
                             </div>
@@ -686,11 +621,10 @@
                     </div>
                 </div>
 
-                <!-- FOOTER: NÚT ĐIỀU HƯỚNG & THANH NĂNG LƯỢNG (Khóa cứng bằng shrink-0) -->
                 <div class="shrink-0 bg-white dark:bg-[#1E293B] relative z-20">
-                    <div id="energy-bar-container" class="w-full bg-slate-200 dark:bg-slate-800 h-1.5 overflow-hidden shadow-inner"><div id="energy-fill" class="h-full bg-blue-600 transition-all duration-300" style="width: 100%;"></div></div>
+                    <div id="energy-bar-container" class="w-full bg-slate-200 dark:bg-slate-800 h-1.5 overflow-hidden shadow-inner"><div id="energy-fill" class="h-full bg-blue-600 transition-all duration-300 rounded-full" style="width: 100%;"></div></div>
                     
-                    <div class="px-6 sm:px-8 py-5 border-t border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
+                    <div class="px-6 sm:px-8 py-4 sm:py-5 border-t border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
                         <div class="flex gap-3 justify-between sm:justify-start">
                             <button id="btn-prev" class="flex-1 sm:flex-none px-5 py-2.5 text-slate-500 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 rounded-xl disabled:opacity-40 transition-all flex items-center justify-center gap-2"><i class="fas fa-arrow-left text-xs opacity-70"></i> Trở về</button>
                             <button id="btn-next" class="flex-1 sm:flex-none px-5 py-2.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-white font-bold border border-slate-200/80 dark:border-slate-600 rounded-xl hover:bg-slate-50 hover:border-slate-300 dark:hover:border-slate-500 text-sm shadow-sm transition-all flex items-center justify-center gap-2">Tiếp tục <i class="fas fa-arrow-right text-xs opacity-70"></i></button>
@@ -700,33 +634,27 @@
                 </div>
             </div>
 
-            <!-- KHUNG PHẢI: NAVIGATOR GRID -->
-            <div class="w-full lg:w-1/4 bg-slate-50/50 dark:bg-[#1E293B] p-6 sm:p-8 flex flex-col order-2 z-10 border-l border-white/20">
-                <h3 class="font-extrabold text-[11px] uppercase tracking-widest text-slate-400 mb-5 text-center pb-3 flex items-center justify-center gap-2 shrink-0"><i class="fas fa-th text-xs"></i> Lưới Tọa Độ</h3>
+            <div class="w-full lg:w-1/4 bg-slate-50/50 dark:bg-[#1E293B] p-5 sm:p-6 flex flex-col min-h-0 order-2 z-10 border-l border-white/20">
+                <h3 class="font-extrabold text-[11px] uppercase tracking-widest text-slate-400 mb-4 text-center pb-3 flex items-center justify-center gap-2 shrink-0"><i class="fas fa-th text-xs"></i> Lưới Tọa Độ</h3>
                 
-                <div id="filter-tabs-practice" class="grid grid-cols-4 lg:grid-cols-2 gap-2 mb-6 text-[10px] sm:text-xs font-bold shrink-0">
-                    <button onclick="setFilter('all', this)" class="filter-btn ring-2 ring-blue-600/30 py-2.5 px-1 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-center shadow-sm transition-all">Toàn bộ</button>
+                <div id="filter-tabs-practice" class="grid grid-cols-4 lg:grid-cols-2 gap-2 mb-5 text-[10px] sm:text-xs font-bold shrink-0">
+                    <button onclick="setFilter('all', this)" class="filter-btn ring-2 ring-blue-600/30 py-2.5 px-1 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-center shadow-sm transition-all">Tất cả</button>
                     <button onclick="setFilter('pending', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-transparent text-slate-500 border border-slate-200 dark:border-slate-700 text-center hover:bg-white transition-all">Chưa xử lý</button>
-                    <button onclick="setFilter('done', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800/50 text-center transition-all">Đã điền</button>
+                    <button onclick="setFilter('done', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800/50 text-center transition-all">Đã trả lời</button>
                     <button onclick="setFilter('flagged', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-900/20 dark:border-amber-800/50 text-center transition-all">Phân vân</button>
                 </div>
 
-                <div id="filter-tabs-review" class="hidden grid-cols-3 gap-2 mb-6 text-[10px] sm:text-xs font-bold shrink-0">
-                    <button onclick="setFilter('all', this)" class="filter-btn ring-2 ring-blue-600/30 py-2.5 px-1 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-center shadow-sm transition-all">Toàn bộ</button>
-                    <button onclick="setFilter('correct', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-green-50 text-green-700 border border-green-100 dark:bg-green-900/20 dark:border-green-800/50 text-center transition-all">Chuẩn xác</button>
-                    <button onclick="setFilter('wrong', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:border-red-800/50 text-center transition-all">Cần sửa</button>
+                <div id="filter-tabs-review" class="hidden grid-cols-3 gap-2 mb-5 text-[10px] sm:text-xs font-bold shrink-0">
+                    <button onclick="setFilter('all', this)" class="filter-btn ring-2 ring-blue-600/30 py-2.5 px-1 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-center shadow-sm transition-all">Tất cả</button>
+                    <button onclick="setFilter('correct', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-green-50 text-green-700 border border-green-100 dark:bg-green-900/20 dark:border-green-800/50 text-center transition-all">Đúng</button>
+                    <button onclick="setFilter('wrong', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:border-red-800/50 text-center transition-all">Sai</button>
                 </div>
 
-                <!-- Lưới câu hỏi cũng được thiết lập cuộn độc lập -->
-                <div id="navigator-grid" class="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-4 gap-2 flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-2"></div>
+                <div id="navigator-grid" class="flex-1 min-h-0 overflow-y-auto custom-scrollbar grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-4 gap-2 pr-1 pb-4"></div>
             </div>
         </div>
 
-        <!-- ========================================================================= -->
-        <!-- MÀN HÌNH 8: TỔNG KẾT BẢNG VÀNG SAU THI (RESULT SCREEN) -->
-        <!-- ========================================================================= -->
-        <div id="result-screen" class="hidden bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-2xl p-8 sm:p-12 py-16 text-center max-w-2xl mx-auto relative overflow-hidden">
-            <!-- Glow background -->
+        <div id="result-screen" class="hidden bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-2xl p-8 sm:p-12 py-16 text-center max-w-2xl mx-auto relative overflow-hidden z-10">
             <div class="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-green-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
             <div class="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl flex items-center justify-center text-white text-4xl mx-auto mb-6 shadow-lg shadow-green-500/20 relative z-10 transform -rotate-6"><i class="fas fa-trophy"></i></div>
@@ -754,9 +682,6 @@
             </div>
         </div>
 
-        <!-- ========================================================================= -->
-        <!-- MÀN HÌNH 9: POPUP HIGHLIGHT BÚT DẠ (PALETTE POPUP) -->
-        <!-- ========================================================================= -->
         <div id="highlight-palette" class="hidden absolute z-[100] bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-2xl border border-slate-200/80 dark:border-slate-700 rounded-xl p-2.5 flex items-center gap-2.5 transition-all">
             <button class="w-6 h-6 rounded-full bg-red-400 hover:scale-125 transition-transform border border-transparent shadow-sm" onclick="applyHighlight('#f87171')"></button>
             <button class="w-6 h-6 rounded-full bg-orange-400 hover:scale-125 transition-transform border border-transparent shadow-sm" onclick="applyHighlight('#fb923c')"></button>
@@ -769,12 +694,8 @@
         </div>
     </div>
 
-    <!-- ========================================================================= -->
-    <!-- MÀN HÌNH 10: HỘP THOẠI THANH TOÁN (PAYMENT MODAL) -->
-    <!-- ========================================================================= -->
     <div id="payment-modal" class="hidden fixed inset-0 bg-slate-900/60 z-[2000] flex items-center justify-center backdrop-blur-md transition-all">
         <div class="bg-white dark:bg-[#1E293B] p-8 sm:p-10 rounded-[32px] w-[90%] max-w-sm text-center relative shadow-2xl border border-slate-100 dark:border-slate-700/60 overflow-hidden">
-            <!-- Deco Glow -->
             <div class="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
             <i class="fas fa-times absolute top-6 right-6 cursor-pointer text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors text-xl bg-slate-50 dark:bg-slate-800 w-8 h-8 rounded-full flex items-center justify-center" onclick="closePaymentModal()"></i>
