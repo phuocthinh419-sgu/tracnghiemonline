@@ -171,15 +171,28 @@ function saveProgressLocally() {
     localStorage.setItem('quizProgress_' + activeQuiz.id, JSON.stringify(progress));
 }
 
-// [VIP TỐI THƯỢNG] THUẬT TOÁN THÔNG MẠCH - DIỆT VÒNG LẶP, TẢI TỨC THỜI TRONG 0MS
+// [VIP TỐI THƯỢNG] THUẬT TOÁN BỘ NHỚ ĐỆM ĐA TẦNG - HIỂN THỊ TRONG 0MS CHO CẢ GV VÀ HS
 function fetchQuizzesFromFirebase() {
     if (!auth.currentUser) return;
     
-    // Ngắt tuyệt đối các luồng lắng nghe cũ để chống sập mạch, nghẽn mạng
+    // Ngắt tuyệt đối các luồng cũ để giải phóng bộ nhớ, chống nghẽn mạch
     if (teacherQuizListener) { teacherQuizListener(); teacherQuizListener = null; }
     if (window.studentQuizListeners && window.studentQuizListeners.length > 0) {
         window.studentQuizListeners.forEach(unsub => unsub());
         window.studentQuizListeners = [];
+    }
+
+    // [VIP] CẤY LÕI TRÍ NHỚ TẠM: Nạp dữ liệu từ RAM máy ngay lập tức khi vừa mở Web
+    const cachedQuizzes = localStorage.getItem('cachedQuizzes_' + auth.currentUser.uid);
+    if (cachedQuizzes) {
+        quizDatabase = JSON.parse(cachedQuizzes);
+    } else {
+        quizDatabase = [];
+    }
+
+    // Vẽ card môn học ngay lập tức trong 0 mili-giây, bất chấp mạng lag
+    if (screens.home && !screens.home.classList.contains('hidden')) {
+        renderHomeQuizList();
     }
 
     if (currentRole === 'teacher') {
@@ -187,9 +200,14 @@ function fetchQuizzesFromFirebase() {
           .where("authorId", "==", auth.currentUser.uid)
           .onSnapshot((snapshot) => {
             if (isSharedMode) return; 
-            quizDatabase = [];
-            snapshot.forEach((doc) => { quizDatabase.push(doc.data()); });
+            let tempQuizzes = [];
+            snapshot.forEach((doc) => { tempQuizzes.push(doc.data()); });
+            
+            quizDatabase = tempQuizzes;
             isQuizzesLoaded = true; 
+            
+            // Khắc ghi dữ liệu gốc vào bộ nhớ máy để lần sau load tức thời
+            localStorage.setItem('cachedQuizzes_' + auth.currentUser.uid, JSON.stringify(quizDatabase));
             
             if (screens.home && !screens.home.classList.contains('hidden')) {
                 renderHomeQuizList(); 
@@ -197,13 +215,17 @@ function fetchQuizzesFromFirebase() {
             if (screens.subjectDetail && !screens.subjectDetail.classList.contains('hidden')) {
                 renderSubjectDetailView(currentSelectedCategory);
             }
-        }, (error) => { console.error("Lỗi tải dữ liệu Giáo viên: ", error); });
+        }, (error) => { 
+            console.error("Lỗi tải dữ liệu Giáo viên: ", error); 
+            isQuizzesLoaded = true; 
+            renderHomeQuizList();
+        });
     } else {
         fetchStudentPinnedQuizzes(); 
     }
 }
 
-// [VIP TỐI THƯỢNG] TUYẾN ĐƯỜNG ĐẠI BÁC GOM ĐỀ - HIỂN THỊ THƯ MỤC TRONG 0 GIÂY
+// [VIP TỐI THƯỢNG] TUYẾN ĐƯỜNG ĐẠI BÁC GOM ĐỀ CHẠY NGẦM CHO HỌC SINH
 function fetchStudentPinnedQuizzes() {
     if (currentRole !== 'student' || isSharedMode) return;
     
@@ -213,18 +235,12 @@ function fetchStudentPinnedQuizzes() {
         if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList();
         return;
     }
-
-    // VẼ GIAO DIỆN LẬP TỨC (0MS) - Trích xuất từ danh sách ghim cá nhân, bất chấp mạng lag
-    if (screens.home && !screens.home.classList.contains('hidden') && currentStudentTab === 'browse') {
-        renderHomeQuizList(); 
-    }
     
     if (window.studentQuizListeners && window.studentQuizListeners.length > 0) {
         window.studentQuizListeners.forEach(unsub => unsub());
     }
     window.studentQuizListeners = [];
     
-    // Chuẩn hóa dữ liệu: Gom sạch ID giáo viên (Chống lỗi cấu trúc cũ/mới)
     const teacherIds = [...new Set(pinnedFolders.map(f => typeof f === 'object' ? f.teacherId : auth.currentUser.uid))].filter(Boolean);
     
     if (teacherIds.length === 0) {
@@ -232,7 +248,9 @@ function fetchStudentPinnedQuizzes() {
         return;
     }
 
-    // Bắn duy nhất 1 gói thầu lên Firebase để hốt toàn bộ đề về RAM xử lý
+    let loadedChunks = 0;
+    const totalChunks = Math.ceil(teacherIds.length / 10);
+
     for (let i = 0; i < teacherIds.length; i += 10) {
         const chunk = teacherIds.slice(i, i + 10);
         let unsub = db.collection("quizzes")
@@ -245,23 +263,36 @@ function fetchStudentPinnedQuizzes() {
                 
                 let relevantIncoming = incomingData.filter(quiz => 
                     pinnedFolders.some(f => {
-                        if (typeof f === 'object') {
-                            return f.teacherId === quiz.authorId && f.category === quiz.category;
-                        }
-                        return quiz.category === f; // Tương thích ngược dữ liệu bản cũ
+                        if (typeof f === 'object') return f.teacherId === quiz.authorId && f.category === quiz.category;
+                        return quiz.category === f; 
                     })
                 );
                 
                 quizDatabase = [...quizDatabase, ...relevantIncoming];
                 isQuizzesLoaded = true; 
                 
+                // Cập nhật bộ nhớ đệm học sinh
+                localStorage.setItem('cachedQuizzes_' + auth.currentUser.uid, JSON.stringify(quizDatabase));
+                
                 if (screens.home && !screens.home.classList.contains('hidden') && currentStudentTab === 'browse') {
                     renderHomeQuizList();
                 }
-            }, (error) => { console.error("Lỗi đường truyền học sinh:", error); });
+            }, (error) => {
+                console.error("Lỗi đường truyền học sinh:", error);
+                isQuizzesLoaded = true;
+                if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList();
+            });
         
         window.studentQuizListeners.push(unsub);
     }
+
+    // Bảo hiểm chống treo mạch mạng
+    setTimeout(() => {
+        if (!isQuizzesLoaded) {
+            isQuizzesLoaded = true;
+            if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList();
+        }
+    }, 4000);
 }
 
 function fetchHistoryFromFirebase() {
@@ -579,7 +610,7 @@ function switchScreen(screenName) {
     }
 }
 
-// [VIP] HIỂN THỊ KIỂM SOÁT TẢI DỮ LIỆU & TÌM KIẾM TOÀN DIỆN (0MS LOAD)
+// [VIP TỐI THƯỢNG] HÀM HIỂN THỊ KHÔNG BIẾT HOÃN - MỞ RA LÀ HIỆN CARD TỨC THÌ
 function renderHomeQuizList() {
     const container = document.getElementById('quiz-list-container');
     if(!container) return;
@@ -589,17 +620,10 @@ function renderHomeQuizList() {
     const keyword = searchEl ? searchEl.value.trim().toLowerCase() : "";
     
     if (currentRole === 'teacher' || currentStudentTab === 'browse') {
-        
-        // GIÁO VIÊN thì phải đợi load kho. HỌC SINH thì không bị chặn, cho hiện thư mục ngay!
-        if (!isQuizzesLoaded && currentRole === 'teacher') {
-            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8 animate-pulse"><i class="fas fa-spinner fa-spin mr-2"></i> Đang tải kho môn học...</p>';
-            return;
-        }
-
         let categoriesToRender = [];
 
-        // LOGIC TÁCH BẠCH: GIÁO VIÊN NHÌN VÀO KHO, HỌC SINH NHÌN VÀO DANH SÁCH GHIM
         if (currentRole === 'teacher') {
+            // Đọc thẳng từ bộ nhớ đệm quizDatabase ra để vẽ ngay, không quan tâm mạng load xong chưa
             categoriesToRender = [...new Set(quizDatabase.map(q => q.category))].map(cat => ({ category: cat }));
         } else {
             if (pinnedFolders.length === 0) {
@@ -610,7 +634,10 @@ function renderHomeQuizList() {
         }
         
         if (keyword) {
-            categoriesToRender = categoriesToRender.filter(f => f.category.toLowerCase().includes(keyword));
+            categoriesToRender = categoriesToRender.filter(f => {
+                let catName = typeof f === 'object' ? f.category : f;
+                return catName.toLowerCase().includes(keyword);
+            });
         }
 
         if (categoriesToRender.length === 0) {
@@ -618,29 +645,18 @@ function renderHomeQuizList() {
             return;
         }
 
-        // Khởi tạo bộ nhớ tạm để chứa số đếm, giúp dữ liệu hiện ra trong 0 giây!
-        const cachedCounts = JSON.parse(localStorage.getItem('cachedQuizCounts') || '{}');
-
         categoriesToRender.forEach(folderObj => {
-            const category = folderObj.category;
+            const category = typeof folderObj === 'object' ? folderObj.category : folderObj;
+            const tId = typeof folderObj === 'object' ? folderObj.teacherId : null;
             
-            let totalQuizzes = 0;
-            if (isQuizzesLoaded || currentRole === 'teacher') {
-                totalQuizzes = currentRole === 'teacher' 
-                    ? quizDatabase.filter(q => q.category === category).length
-                    : quizDatabase.filter(q => q.category === category && q.authorId === folderObj.teacherId).length;
-                
-                // Ghi nhớ số lượng đề vào não bộ trình duyệt
-                cachedCounts[category] = totalQuizzes;
-                localStorage.setItem('cachedQuizCounts', JSON.stringify(cachedCounts));
-            } else {
-                // Nếu mạng chưa phản hồi kịp thì lấy số từ bộ nhớ đệm ra xài luôn
-                totalQuizzes = cachedCounts[category] || 0;
-            }
+            // Tính toán số bộ đề có sẵn trong RAM dữ liệu
+            const totalQuizzes = currentRole === 'teacher' 
+                ? quizDatabase.filter(q => q.category === category).length
+                : quizDatabase.filter(q => q.category === category && q.authorId === tId).length;
 
-            // Dấu chấm mạch đập xanh tinh tế báo hiệu đồng bộ ngầm thay vì chặn màn hình
+            // Chấm xanh nhấp nháy tinh tế báo hiệu đang kiểm tra cập nhật ngầm, không thèm khóa màn hình
             let quizCountText = `Gồm có ${totalQuizzes} bộ đề`;
-            if (!isQuizzesLoaded && currentRole === 'student') {
+            if (!isQuizzesLoaded) {
                 quizCountText += ` <span class="inline-block w-2 h-2 ml-1 bg-blue-400 rounded-full animate-pulse shadow-[0_0_5px_rgba(96,165,250,0.8)]" title="Đang đồng bộ ngầm..."></span>`;
             }
 
@@ -650,9 +666,9 @@ function renderHomeQuizList() {
             let shareBtnHTML = '';
             if (checkIsMasterAdmin() || currentRole === 'teacher') {
                 const folderLink = `${window.location.origin}${window.location.pathname}?folder=${encodeURIComponent(category)}&t=${auth.currentUser.uid}`;
-                shareBtnHTML = `<button onclick="event.stopPropagation(); copyLink('${folderLink}')" class="absolute top-4 right-4 text-gray-400 hover:text-blue-500 bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-20" title="Chia sẻ toàn bộ môn này"><i class="fas fa-share-alt"></i></button>`;
+                shareBtnHTML = `<button onclick="event.stopPropagation(); copyLink('${folderLink}')" class="absolute top-4 right-24 text-gray-400 hover:text-blue-500 bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Chia sẻ toàn bộ môn này"><i class="fas fa-share-alt"></i></button>`;
             } else if (currentRole === 'student') {
-                shareBtnHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${folderObj.teacherId}')" class="absolute top-4 right-4 text-blue-500 hover:text-red-500 bg-blue-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-20" title="Bỏ ghim thư mục"><i class="fas fa-bookmark"></i></button>`;
+                shareBtnHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${tId}')" class="absolute top-4 right-4 text-blue-500 hover:text-red-500 bg-blue-50 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors z-10" title="Bỏ ghim thư mục"><i class="fas fa-bookmark"></i></button>`;
             }
 
             card.innerHTML = `
@@ -661,7 +677,8 @@ function renderHomeQuizList() {
                     <div class="w-14 h-14 bg-blue-50 dark:bg-gray-800 text-blue-900 dark:text-blue-400 rounded-xl flex items-center justify-center text-2xl group-hover:bg-blue-900 group-hover:text-white transition-colors shrink-0 mr-4">
                         <i class="fas fa-folder"></i>
                     </div>
-                    <div class="flex-1 min-w-0 pr-12"> <h3 class="text-xl font-bold text-gray-800 dark:text-white group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors truncate" title="${category}">${category}</h3>
+                    <div class="flex-1 min-w-0 pr-12">
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors truncate" title="${category}">${category}</h3>
                         <p class="text-sm text-gray-400 mt-1 flex items-center truncate">${quizCountText}</p>
                     </div>
                 </div>
