@@ -473,8 +473,8 @@ function setupEventListeners() {
     addEvt('btn-start-mock-generate', 'click', generateSubjectMockTest);
     addEvt('btn-practice', 'click', () => startQuiz(true));
     addEvt('btn-mock', 'click', () => startQuiz(false));
-    addEvt('btn-prev', 'click', () => loadQuestion(currentQuestionIndex - 1));
-    addEvt('btn-next', 'click', () => loadQuestion(currentQuestionIndex + 1));
+    addEvt('btn-prev', 'click', () => { const idx = getFilteredIndex(-1); if (idx !== -1) loadQuestion(idx); });
+    addEvt('btn-next', 'click', () => { const idx = getFilteredIndex(1); if (idx !== -1) loadQuestion(idx); });
     
     addEvt('btn-submit', 'click', () => {
         if (isReviewMode) switchScreen('result'); 
@@ -1163,6 +1163,13 @@ function setFilter(type, btnElement) {
     document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-1'));
     if(btnElement) btnElement.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1');
     renderNavigator();
+    
+    // [VIP] Quét lại trạng thái Next/Prev ngay lập tức để khớp với tab lọc
+    const prevIdx = getFilteredIndex(-1);
+    const nextIdx = getFilteredIndex(1);
+    const bPrev = document.getElementById('btn-prev'); if(bPrev) bPrev.disabled = prevIdx === -1;
+    const bNext = document.getElementById('btn-next'); if(bNext) bNext.classList.toggle('hidden', nextIdx === -1);
+    const bSub = document.getElementById('btn-submit'); if(bSub) bSub.classList.toggle('hidden', nextIdx !== -1 || isReviewMode);
 }
 
 function resetFilterButtons(container) {
@@ -1319,12 +1326,16 @@ function loadQuestion(index) {
         else hintBtn.classList.add('hidden');
     }
 
-    const bPrev = document.getElementById('btn-prev'); if(bPrev) bPrev.disabled = index === 0;
-    const bNext = document.getElementById('btn-next'); if(bNext) bNext.classList.toggle('hidden', index === activeQuiz.questions.length - 1);
+   // [VIP] Ẩn/hiện nút dựa trên bộ lọc, thay vì chỉ đếm chay tới câu cuối
+    const prevIdx = getFilteredIndex(-1);
+    const nextIdx = getFilteredIndex(1);
+    
+    const bPrev = document.getElementById('btn-prev'); if(bPrev) bPrev.disabled = prevIdx === -1;
+    const bNext = document.getElementById('btn-next'); if(bNext) bNext.classList.toggle('hidden', nextIdx === -1);
     
     const bSub = document.getElementById('btn-submit'); 
     if(bSub) {
-        bSub.classList.toggle('hidden', index !== activeQuiz.questions.length - 1 || isReviewMode);
+        bSub.classList.toggle('hidden', nextIdx !== -1 || isReviewMode);
     }
 
     const explanationBox = document.getElementById('explanation-box');
@@ -2251,3 +2262,24 @@ window.editQuiz = function(quizId) {
     
     showToast("Đã nạp dữ liệu đề thi. Bệ hạ có thể bắt đầu chỉnh sửa.", false);
 };
+
+// [VIP] Lõi định vị câu hỏi theo bộ lọc (Đúng/Sai/Chưa làm...)
+function getFilteredIndex(step) {
+    let nextIdx = currentQuestionIndex + step;
+    while (nextIdx >= 0 && nextIdx < activeQuiz.questions.length) {
+        let isDone = userAnswers[nextIdx] !== null; 
+        let isFlagged = flaggedQuestions[nextIdx];
+        let isCorrect = isDone && userAnswers[nextIdx] === activeQuiz.questions[nextIdx].correctAnswer;
+        let isWrong = isDone && userAnswers[nextIdx] !== activeQuiz.questions[nextIdx].correctAnswer;
+
+        if (currentFilter === 'all') return nextIdx;
+        if (currentFilter === 'pending' && !isDone) return nextIdx;
+        if (currentFilter === 'done' && isDone) return nextIdx;
+        if (currentFilter === 'flagged' && isFlagged) return nextIdx;
+        if (currentFilter === 'correct' && isCorrect) return nextIdx;
+        if (currentFilter === 'wrong' && isWrong) return nextIdx;
+
+        nextIdx += step;
+    }
+    return -1; // Báo hiệu đã hết câu thỏa mãn
+}
