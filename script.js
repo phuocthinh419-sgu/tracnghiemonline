@@ -171,11 +171,16 @@ function saveProgressLocally() {
     localStorage.setItem('quizProgress_' + activeQuiz.id, JSON.stringify(progress));
 }
 
+// [VIP TỐI THƯỢNG] THUẬT TOÁN THÔNG MẠCH - DIỆT VÒNG LẶP, TẢI TỨC THỜI TRONG 0MS
 function fetchQuizzesFromFirebase() {
     if (!auth.currentUser) return;
     
+    // Ngắt tuyệt đối các luồng lắng nghe cũ để chống sập mạch, nghẽn mạng
     if (teacherQuizListener) { teacherQuizListener(); teacherQuizListener = null; }
-    if (studentQuizListener) { studentQuizListener(); studentQuizListener = null; }
+    if (window.studentQuizListeners && window.studentQuizListeners.length > 0) {
+        window.studentQuizListeners.forEach(unsub => unsub());
+        window.studentQuizListeners = [];
+    }
 
     if (currentRole === 'teacher') {
         teacherQuizListener = db.collection("quizzes")
@@ -187,7 +192,7 @@ function fetchQuizzesFromFirebase() {
             isQuizzesLoaded = true; 
             
             if (screens.home && !screens.home.classList.contains('hidden')) {
-                if (currentRole === 'teacher' || currentStudentTab === 'browse') renderHomeQuizList(); 
+                renderHomeQuizList(); 
             }
             if (screens.subjectDetail && !screens.subjectDetail.classList.contains('hidden')) {
                 renderSubjectDetailView(currentSelectedCategory);
@@ -198,32 +203,36 @@ function fetchQuizzesFromFirebase() {
     }
 }
 
-// [VIP] THUẬT TOÁN ĐƯỜNG TRUYỀN SIÊU TỐC - TẢI NGẦM KHÔNG GÂY LAG MÀN HÌNH
+// [VIP TỐI THƯỢNG] TUYẾN ĐƯỜNG ĐẠI BÁC GOM ĐỀ - HIỂN THỊ THƯ MỤC TRONG 0 GIÂY
 function fetchStudentPinnedQuizzes() {
     if (currentRole !== 'student' || isSharedMode) return;
     
-    if (pinnedFolders.length === 0) {
+    if (!pinnedFolders || pinnedFolders.length === 0) {
         quizDatabase = [];
         isQuizzesLoaded = true;
         if (screens.home && !screens.home.classList.contains('hidden')) renderHomeQuizList();
         return;
     }
 
-    // 1. VẼ GIAO DIỆN NGAY LẬP TỨC TRONG 0 GIÂY (Không bắt khách hàng đợi mạng)
+    // VẼ GIAO DIỆN LẬP TỨC (0MS) - Trích xuất từ danh sách ghim cá nhân, bất chấp mạng lag
     if (screens.home && !screens.home.classList.contains('hidden') && currentStudentTab === 'browse') {
         renderHomeQuizList(); 
     }
     
-    // Dọn dẹp đường ống cũ tránh rò rỉ bộ nhớ
     if (window.studentQuizListeners && window.studentQuizListeners.length > 0) {
         window.studentQuizListeners.forEach(unsub => unsub());
     }
     window.studentQuizListeners = [];
     
-    // 2. TẠO 1 ĐƯỜNG ỐNG ĐẠI BÁC DUY NHẤT thay vì mở hàng chục ống nhỏ gây nghẽn Firebase
-    const teacherIds = [...new Set(pinnedFolders.map(f => f.teacherId))];
+    // Chuẩn hóa dữ liệu: Gom sạch ID giáo viên (Chống lỗi cấu trúc cũ/mới)
+    const teacherIds = [...new Set(pinnedFolders.map(f => typeof f === 'object' ? f.teacherId : auth.currentUser.uid))].filter(Boolean);
     
-    // Firebase chỉ cho phép gọi mẻ 10 ID một lúc
+    if (teacherIds.length === 0) {
+        isQuizzesLoaded = true;
+        return;
+    }
+
+    // Bắn duy nhất 1 gói thầu lên Firebase để hốt toàn bộ đề về RAM xử lý
     for (let i = 0; i < teacherIds.length; i += 10) {
         const chunk = teacherIds.slice(i, i + 10);
         let unsub = db.collection("quizzes")
@@ -232,18 +241,20 @@ function fetchStudentPinnedQuizzes() {
                 let incomingData = [];
                 snapshot.forEach(doc => { incomingData.push(doc.data()); });
                 
-                // Lọc bỏ đề cũ của các giáo viên này ra khỏi kho
                 quizDatabase = quizDatabase.filter(q => !chunk.includes(q.authorId));
                 
-                // Chỉ nhặt đúng những đề nằm trong Thư mục đã ghim
                 let relevantIncoming = incomingData.filter(quiz => 
-                    pinnedFolders.some(f => f.teacherId === quiz.authorId && f.category === quiz.category)
+                    pinnedFolders.some(f => {
+                        if (typeof f === 'object') {
+                            return f.teacherId === quiz.authorId && f.category === quiz.category;
+                        }
+                        return quiz.category === f; // Tương thích ngược dữ liệu bản cũ
+                    })
                 );
                 
                 quizDatabase = [...quizDatabase, ...relevantIncoming];
-                isQuizzesLoaded = true; // Phất cờ báo hiệu đã tải xong
+                isQuizzesLoaded = true; 
                 
-                // Âm thầm cập nhật lại số lượng đề trên giao diện
                 if (screens.home && !screens.home.classList.contains('hidden') && currentStudentTab === 'browse') {
                     renderHomeQuizList();
                 }
@@ -268,7 +279,6 @@ function fetchHistoryFromFirebase() {
           });
           
           isHistoryLoaded = true; 
-          
           if (currentRole === 'student' && currentStudentTab === 'history' && screens.home && !screens.home.classList.contains('hidden')) {
               renderHomeQuizList(); 
           }
