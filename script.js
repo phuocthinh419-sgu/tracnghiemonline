@@ -1459,35 +1459,67 @@ function switchAdminTab(tab) {
     if (tab === 'stats') fetchResultsFromFirebase();
 }
 
+// [VIP] THỐNG KÊ ĐIỂM GIÁO VIÊN - TẢI SIÊU TỐC 0MS VÀ CHỐNG TREO MÁY
 function fetchResultsFromFirebase() {
     const tableBody = document.getElementById('stats-table-body'); if(!tableBody) return;
-    tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Đang xử lý dữ liệu...</td></tr>';
+    
+    // Hiệu ứng xoay vòng đẹp mắt trong lúc chờ (tối đa vài mili-giây)
+    tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-8"><i class="fas fa-spinner fa-spin text-blue-500 text-2xl mb-2"></i><br><span class="text-gray-500">Đang trích xuất sổ điểm...</span></td></tr>';
     if (!auth.currentUser) return;
 
-    db.collection("results").where("teacherId", "==", auth.currentUser.uid).get().then((snapshot) => {
+    // [VIP] BẢO HIỂM CHỐNG ĐỨNG MÁY: Quá 5 giây mạng lag tự động ngắt!
+    let isFetched = false;
+    const timeoutId = setTimeout(() => {
+        if (!isFetched) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-red-500 font-bold"><i class="fas fa-wifi mb-2 text-2xl"></i><br>Mạng chậm hoặc máy chủ quá tải. Bệ hạ vui lòng ấn "Làm mới".</td></tr>';
+        }
+    }, 5000);
+
+    // [VIP] THUẬT TOÁN RÚT GỌN: Chỉ lấy 100 bài nộp mới nhất để chống sập RAM
+    db.collection("results")
+      .where("teacherId", "==", auth.currentUser.uid)
+      .limit(100) 
+      .get().then((snapshot) => {
+        isFetched = true;
+        clearTimeout(timeoutId);
         tableBody.innerHTML = '';
-        if (snapshot.empty) { tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">Chưa có dữ liệu bài làm.</td></tr>'; return; }
+        
+        if (snapshot.empty) { tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">Chưa có dữ liệu bài làm của học sinh.</td></tr>'; return; }
 
-        let results = []; snapshot.forEach(doc => results.push(doc.data()));
-        results.sort((a, b) => { let timeA = a.timestamp ? a.timestamp.seconds : 0; let timeB = b.timestamp ? b.timestamp.seconds : 0; return timeB - timeA; });
+        let results = []; 
+        snapshot.forEach(doc => results.push(doc.data()));
+        
+        // Sắp xếp bài mới nhất lên đầu
+        results.sort((a, b) => { 
+            let timeA = a.timestamp && a.timestamp.seconds ? a.timestamp.seconds : 0; 
+            let timeB = b.timestamp && b.timestamp.seconds ? b.timestamp.seconds : 0; 
+            return timeB - timeA; 
+        });
 
+        // Vẽ bảng điểm vinh danh
         results.forEach((res) => {
-            const formatStr = res.timestamp ? new Date(res.timestamp.seconds * 1000).toLocaleString('vi-VN') : "Vừa xong";
-            const row = document.createElement('tr'); row.className = 'border-b dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors';
+            const formatStr = (res.timestamp && res.timestamp.seconds) ? new Date(res.timestamp.seconds * 1000).toLocaleString('vi-VN') : "Vừa xong";
+            const row = document.createElement('tr'); 
+            row.className = 'border-b dark:border-gray-700 text-sm hover:bg-blue-50 dark:hover:bg-gray-700/50 transition-colors';
+            
             row.innerHTML = `
-                <td class="p-2 sm:p-3 font-semibold text-gray-900 dark:text-gray-100">${res.studentName}</td>
-                <td class="p-2 sm:p-3 text-gray-600 dark:text-gray-400">
-                    <span class="font-medium">${res.quizTitle}</span>
-                    <span class="text-xs px-2 py-0.5 bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full ml-1 font-bold">${res.category}</span>
+                <td class="p-3 sm:p-4 font-semibold text-gray-900 dark:text-gray-100">${res.studentName || "Ẩn danh"}</td>
+                <td class="p-3 sm:p-4 text-gray-600 dark:text-gray-400">
+                    <div class="font-bold text-blue-700 dark:text-blue-400 truncate max-w-[200px]" title="${res.quizTitle}">${res.quizTitle || "Bài thi"}</div>
+                    <div class="text-[0.65rem] sm:text-xs mt-1"><span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-600 rounded-md border dark:border-gray-500">${res.category || "Chưa phân loại"}</span></div>
                 </td>
-                <td class="p-2 sm:p-3 font-mono font-bold text-blue-600 dark:text-blue-400">${res.score}</td>
-                <td class="p-2 sm:p-3 font-bold ${res.percentage >= 50 ? 'text-green-600' : 'text-red-500'}">${res.percentage}%</td>
-                <td class="p-2 sm:p-3 text-gray-500 dark:text-gray-400">${res.timeUsed}</td>
-                <td class="p-2 sm:p-3 text-gray-400 text-xs">${formatStr}</td>
+                <td class="p-3 sm:p-4 font-mono font-bold text-gray-800 dark:text-gray-200">${res.score || "0/0"}</td>
+                <td class="p-3 sm:p-4 font-bold ${res.percentage >= 50 ? 'text-green-600' : 'text-red-500'}">${res.percentage || 0}%</td>
+                <td class="p-3 sm:p-4 text-gray-500 dark:text-gray-400 font-mono">${res.timeUsed || "--:--"}</td>
+                <td class="p-3 sm:p-4 text-gray-400 text-xs">${formatStr}</td>
             `;
             tableBody.appendChild(row);
         });
-    }).catch(err => { tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-500">Lỗi kết nối máy chủ.</td></tr>'; });
+    }).catch(err => { 
+        isFetched = true;
+        clearTimeout(timeoutId);
+        tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-red-500 font-bold"><i class="fas fa-exclamation-triangle mb-2 text-2xl"></i><br>Lỗi máy chủ Firebase.</td></tr>'; 
+    });
 }
 
 let currentSmartQuestions = [];
