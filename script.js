@@ -1279,11 +1279,11 @@ function loadQuestion(index) {
         answerContainer.innerHTML = ''; 
         const hasExplanationAccess = checkFeatureAccess('explanation', true);
 
-        // [VIP VÁ LỖI TỬ HUYỆT 1] - ĐỊNH NGHĨA LẠI TRẠNG THÁI HIỂN THỊ ĐÁP ÁN
+        // [VIP] KIỂM SOÁT KHÓA NÚT THÔNG MINH
         let isAnswerRevealed = false;
         if (q.type === "tf") {
             if (!Array.isArray(userAnswers[index])) userAnswers[index] = [null, null, null, null];
-            // Chỉ đóng băng câu Đ/S khi: Đã nộp bài HOẶC (Đang luyện tập mà đã tick đủ 4 ý)
+            // CHỈ KHÓA NÚT KHI ĐÃ TICK ĐỦ 4 Ý (Luyện tập) HOẶC ĐANG XEM LẠI BÀI
             isAnswerRevealed = isReviewMode || (isPracticeMode && userAnswers[index].every(a => a !== null));
         } else {
             isAnswerRevealed = isReviewMode || (isPracticeMode && userAnswers[index] !== null && userAnswers[index] !== "");
@@ -1296,8 +1296,17 @@ function loadQuestion(index) {
             gridOpts.className = "grid grid-cols-1 gap-3.5";
 
             q.options.forEach((optText, optIndex) => {
-                const btn = document.createElement('button');
+                let cleanText = optText;
                 let optExpText = (q.optionExplanations && q.optionExplanations[optIndex]) ? q.optionExplanations[optIndex] : "";
+                
+                // Dọn rác nếu ngài lỡ nhập thủ công sai
+                if (cleanText.includes("::")) {
+                    let parts = cleanText.split('::');
+                    cleanText = parts[0].trim();
+                    if (!optExpText) optExpText = parts[1].replace(/đúng|sai/gi, '').replace(/^[.,\-\s]+/, '').trim();
+                }
+
+                const btn = document.createElement('button');
                 if (!hasExplanationAccess) optExpText = ""; 
 
                 let expBlock = ''; let labelBg = 'bg-slate-100 dark:bg-slate-800'; let labelText = 'text-slate-500 dark:text-slate-400';
@@ -1334,7 +1343,7 @@ function loadQuestion(index) {
                 }
 
                 btn.className = `option-btn text-left p-4 rounded-xl flex flex-col border transition-all w-full shadow-sm ${btnBorder} ${btnBg} ${isAnswerRevealed ? 'cursor-default' : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50'}`;
-                btn.innerHTML = `<div class="flex items-center gap-4 w-full"><span class="w-10 h-10 flex items-center justify-center rounded-lg ${labelBg} font-mono font-bold ${labelText} shrink-0 text-base shadow-sm">${labels[optIndex]}</span><span class="text-base font-medium text-slate-800 dark:text-slate-200">${optText}</span></div>${expBlock}`;
+                btn.innerHTML = `<div class="flex items-center gap-4 w-full"><span class="w-10 h-10 flex items-center justify-center rounded-lg ${labelBg} font-mono font-bold ${labelText} shrink-0 text-base shadow-sm">${labels[optIndex]}</span><span class="text-base font-medium text-slate-800 dark:text-slate-200">${cleanText}</span></div>${expBlock}`;
                 gridOpts.appendChild(btn);
             });
             answerContainer.appendChild(gridOpts);
@@ -1347,12 +1356,25 @@ function loadQuestion(index) {
             wrapper.className = "flex flex-col gap-3.5";
 
             q.options.forEach((optText, optIndex) => {
-                const row = document.createElement('div');
-                row.className = "flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm";
+                let cleanText = optText;
+                let optExpText = (q.explanations && q.explanations[optIndex]) ? q.explanations[optIndex] : "";
                 
+                // Dọn sạch mã thừa do lưu thủ công
+                if (cleanText.includes("::")) {
+                    let parts = cleanText.split('::');
+                    cleanText = parts[0].trim();
+                    if (!optExpText) optExpText = parts[2] ? parts[2].trim() : parts[1].replace(/đúng|sai/gi, '').replace(/^[.,\-\s]+/, '').trim();
+                }
+
+                const row = document.createElement('div');
+                row.className = "flex flex-col p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm";
+                
+                const mainRow = document.createElement('div');
+                mainRow.className = "flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center w-full";
+
                 const textCol = document.createElement('div');
                 textCol.className = "flex gap-3.5 text-base font-medium text-slate-800 dark:text-slate-200 flex-1";
-                textCol.innerHTML = `<span class="font-mono font-bold text-slate-400">${labels[optIndex]}.</span> <span>${optText}</span>`;
+                textCol.innerHTML = `<span class="font-mono font-bold text-slate-400">${labels[optIndex]}.</span> <span>${cleanText}</span>`;
                 
                 const btnCol = document.createElement('div');
                 btnCol.className = "flex gap-2 shrink-0";
@@ -1369,11 +1391,8 @@ function loadQuestion(index) {
                     let correctVal = q.correctAnswers[optIndex]; 
                     let userVal = userAnswers[index][optIndex];
                     
-                    if (userVal === true) {
-                        trueBg = correctVal === true ? "bg-green-500 text-white border-green-500" : "bg-red-500 text-white border-red-500";
-                    } else if (userVal === false) {
-                        falseBg = correctVal === false ? "bg-green-500 text-white border-green-500" : "bg-red-500 text-white border-red-500";
-                    }
+                    if (userVal === true) trueBg = correctVal === true ? "bg-green-500 text-white border-green-500" : "bg-red-500 text-white border-red-500";
+                    else if (userVal === false) falseBg = correctVal === false ? "bg-green-500 text-white border-green-500" : "bg-red-500 text-white border-red-500";
                     
                     if (correctVal === true && userVal !== true) trueBg = "bg-green-100 dark:bg-green-950/30 text-green-600 dark:text-green-400 border-green-500 border-dashed animate-pulse";
                     if (correctVal === false && userVal !== false) falseBg = "bg-green-100 dark:bg-green-950/30 text-green-600 dark:text-green-400 border-green-500 border-dashed animate-pulse";
@@ -1387,7 +1406,15 @@ function loadQuestion(index) {
 
                 btnTrue.className = baseBtnClass + trueBg; btnFalse.className = baseBtnClass + falseBg;
                 btnCol.appendChild(btnTrue); btnCol.appendChild(btnFalse);
-                row.appendChild(textCol); row.appendChild(btnCol);
+                
+                mainRow.appendChild(textCol); mainRow.appendChild(btnCol);
+                row.appendChild(mainRow);
+
+                if (isAnswerRevealed && optExpText && hasExplanationAccess) {
+                    let expHTML = `<div class="w-full mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 text-xs sm:text-sm rounded-lg border border-blue-100 dark:border-blue-800/50"><i class="fas fa-info-circle mr-1"></i> <strong>Giải thích:</strong> ${optExpText}</div>`;
+                    row.insertAdjacentHTML('beforeend', expHTML);
+                }
+
                 wrapper.appendChild(row);
             });
             answerContainer.appendChild(wrapper);
@@ -1433,7 +1460,6 @@ function loadQuestion(index) {
     const hintBtn = document.getElementById('btn-hint'); const hintBox = document.getElementById('hint-box');
     if(hintBox) hintBox.classList.add('hidden');
     if(hintBtn) {
-        // Đồng bộ logic: Chỉ hiện gợi ý khi câu chưa bị khóa đáp án
         if (isPracticeMode && !isReviewMode && q.hint && !isAnswerRevealed) hintBtn.classList.remove('hidden');
         else hintBtn.classList.add('hidden');
     }
@@ -1444,9 +1470,12 @@ function loadQuestion(index) {
     const bSub = document.getElementById('btn-submit'); if(bSub) bSub.classList.toggle('hidden', nextIdx !== -1 || isReviewMode);
 
     const explanationBox = document.getElementById('explanation-box');
+    // KHÔNG TÍNH q.type === "tf" VÀO ĐÂY NỮA VÌ TF ĐÃ CÓ GIẢI THÍCH RIÊNG TỪNG Ý BÊN TRÊN
+    const isAnswerRevealedGlobal = isReviewMode || (isPracticeMode && userAnswers[index] !== null && q.type !== "tf");
+    
     if (explanationBox) {
         const eText = document.getElementById('explanation-text');
-        if (isAnswerRevealed && q.explanation && q.explanation !== "Tạo tự động từ dữ liệu văn bản." && q.explanation !== "Chưa có giải thích.") {
+        if (isAnswerRevealedGlobal && q.explanation && q.explanation !== "Tạo tự động từ dữ liệu văn bản." && q.explanation !== "Chưa có giải thích.") {
             if(!checkFeatureAccess('explanation', true)) {
                 if(eText) eText.innerHTML = `<span class="text-slate-400 italic"><i class="fas fa-lock text-amber-500"></i> Xem phân tích giải nghĩa chi tiết yêu cầu kích hoạt gói cước. <a href="#" onclick="switchScreen('pricing')" class="text-blue-500 font-bold underline">Nâng cấp gói</a>.</span>`;
                 explanationBox.classList.remove('hidden');
@@ -2711,13 +2740,14 @@ function loginWithGoogle() {
 let cheatViolationCount = 0;
 
 document.addEventListener("visibilitychange", () => {
-    // [VIP VÁ LỖI TỬ HUYỆT 2] Chống gian lận NHƯNG THA CHO CHẾ ĐỘ LUYỆN TẬP VÀ XEM LẠI BÀI
+    // [VÁ LỖI TỬ HUYỆT] Chế độ Luyện Tập hoặc Xem Lại Bài sẽ được MIỄN TỬ KIM BÀI!
     if (isPracticeMode || isReviewMode) return;
 
     const quizScreen = document.getElementById("quiz-screen");
     if (quizScreen && !quizScreen.classList.contains("hidden")) {
         if (document.visibilityState === "hidden") {
             cheatViolationCount++;
+            
             if (cheatViolationCount === 1) {
                 alert("CẢNH BÁO VI PHẠM (1/2): Hệ thống phát hiện ngài vừa chuyển đổi cửa sổ/Tab trình duyệt!\n\nChiếu theo quy chế, nếu tái phạm lần 2, hệ thống sẽ tự động khóa và nộp bài thi ngay lập tức.");
             } 
