@@ -1083,6 +1083,8 @@ function prepareWelcomeScreen() {
 }
 
 function startQuiz(practice) {
+    resetAntiCheat(); // <--- THÊM DÒNG NÀY ĐỂ XÓA TỘI DANH CŨ KHI BẮT ĐẦU THI
+
     const nameInputEl = document.getElementById('student-name');
     const nameInput = nameInputEl ? nameInputEl.value.trim() : "";
     if (!nameInput) return showToast("Vui lòng xác nhận Họ và Tên trước khi bắt đầu.", true);
