@@ -1083,7 +1083,7 @@ function prepareWelcomeScreen() {
 }
 
 function startQuiz(practice) {
-    resetAntiCheat(); // <--- THÊM DÒNG NÀY ĐỂ XÓA TỘI DANH CŨ KHI BẮT ĐẦU THI
+    if (typeof resetAntiCheat === 'function') resetAntiCheat();
 
     const nameInputEl = document.getElementById('student-name');
     const nameInput = nameInputEl ? nameInputEl.value.trim() : "";
@@ -1101,11 +1101,7 @@ function startQuiz(practice) {
                 userAnswers = parsed.userAnswers;
                 flaggedQuestions = parsed.flaggedQuestions;
                 timeLeft = parsed.timeLeft;
-                
-                if (parsed.shuffledQuestions) {
-                    activeQuiz.questions = parsed.shuffledQuestions;
-                }
-                
+                if (parsed.shuffledQuestions) activeQuiz.questions = parsed.shuffledQuestions;
                 shouldLoadSaved = true;
             } else {
                 localStorage.removeItem('quizProgress_' + activeQuiz.id);
@@ -1113,9 +1109,7 @@ function startQuiz(practice) {
         }
     }
 
-  if (!shouldLoadSaved) {
-        // [VIP VÁ LỖI]: THUẬT TOÁN GOM NHÓM BÀI ĐỌC BẰNG BẢN ĐỒ (MAP)
-        // Đảm bảo các câu cùng bài đọc dính chặt lấy nhau, không bao giờ bị xé lẻ
+    if (!shouldLoadSaved) {
         let passageMap = new Map();
         activeQuiz.questions.forEach(q => {
             let p = q.passage || "";
@@ -1125,14 +1119,12 @@ function startQuiz(practice) {
         
         let groupedQuestions = Array.from(passageMap.values());
 
-        // 1. Trộn vị trí các nhóm (Đảo vị trí Bài đọc A, Bài đọc B và Nhóm câu lẻ)
         for (let i = groupedQuestions.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [groupedQuestions[i], groupedQuestions[j]] = [groupedQuestions[j], groupedQuestions[i]];
         }
 
         groupedQuestions.forEach(group => {
-            // 2. Nếu là nhóm câu hỏi lẻ (KHÔNG có bài đọc) -> Trộn thứ tự các câu hỏi bên trong
             if (!group[0].passage || group[0].passage.trim() === "") {
                 for (let i = group.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
@@ -1140,23 +1132,24 @@ function startQuiz(practice) {
                 }
             }
 
-            // 3. Trộn ngẫu nhiên 4 đáp án A B C D cho TẤT CẢ các câu
+            // [LÕI ĐÃ VÁ] CHỈ TRỘN ĐÁP ÁN NẾU LÀ TRẮC NGHIỆM (MCQ)
             group.forEach(q => {
-                let opts = q.options.map((text, idx) => ({ 
-                    text: text, isCorrect: idx === q.correctAnswer,
-                    explanation: (q.optionExplanations && q.optionExplanations[idx]) ? q.optionExplanations[idx] : ""
-                }));
-                for (let i = opts.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [opts[i], opts[j]] = [opts[j], opts[i]];
+                if (!q.type || q.type === "mcq") {
+                    let opts = q.options.map((text, idx) => ({ 
+                        text: text, isCorrect: idx === q.correctAnswer,
+                        explanation: (q.optionExplanations && q.optionExplanations[idx]) ? q.optionExplanations[idx] : ""
+                    }));
+                    for (let i = opts.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [opts[i], opts[j]] = [opts[j], opts[i]];
+                    }
+                    q.options = opts.map(o => o.text);
+                    q.correctAnswer = opts.findIndex(o => o.isCorrect);
+                    q.optionExplanations = opts.map(o => o.explanation);
                 }
-                q.options = opts.map(o => o.text);
-                q.correctAnswer = opts.findIndex(o => o.isCorrect);
-                q.optionExplanations = opts.map(o => o.explanation);
             });
         });
 
-        // 4. Lắp ráp lại thành đề hoàn chỉnh
         activeQuiz.questions = groupedQuestions.flat();
         userAnswers = new Array(activeQuiz.questions.length).fill(null);
         flaggedQuestions = new Array(activeQuiz.questions.length).fill(false);
@@ -1682,29 +1675,29 @@ window.processSmartText = function() {
             let content = trimmed.split('\n')[0].replace(/^Câu \d+[:.]/i, '').trim();
             let body = trimmed.substring(trimmed.indexOf('\n') + 1).trim();
 
-            // --- NHÁNH 1: TRẢ LỜI NGẮN (SA) ---
             if (body.match(/^(Đáp án|Đ\/a)[:\-]/i)) {
                 let parts = body.replace(/^(Đáp án|Đ\/a)[:\-]/i, '').split('::');
                 let ans = parts[0].trim();
-                let exp = parts[1] ? parts[1].trim() : "Chưa có giải thích.";
+                let exp = parts[1] ? parts[1].trim() : "";
                 if (ans) {
                     currentSmartQuestions.push({ type: "sa", content, correctAnswer: ans, explanation: exp, passage: currentPassage });
-                    previewHTML += `<div class="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-sm text-green-800 dark:text-green-300 mb-3 shadow-sm"><span class="font-bold">Câu ${currentSmartQuestions.length} (Điền từ):</span> ${content}<br><span class="text-xs opacity-80 mt-1 inline-block"><i class="fas fa-check"></i> Đáp án: ${ans}</span></div>`;
+                    previewHTML += `
+                        <div class="p-4 bg-white dark:bg-slate-800 border border-green-200 dark:border-green-800/50 rounded-xl mb-4 shadow-sm">
+                            <p class="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3">Câu ${currentSmartQuestions.length} (Trả lời ngắn): ${content}</p>
+                            <div class="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 p-2.5 rounded-lg text-sm font-mono border border-green-100 dark:border-green-800/50"><i class="fas fa-key mr-2"></i> ${ans}</div>
+                        </div>`;
                 }
             }
-            // --- NHÁNH 2: TRẮC NGHIỆM ĐÚNG/SAI (TF) ---
-            // Bỏ cờ 'i' (case-insensitive). CHỈ bắt a, b, c, d CHỮ THƯỜNG để tránh nhầm lẫn với MCQ!
-            else if (body.match(/^[a-d]\.\s/m) && (body.toLowerCase().includes(":: đúng") || body.toLowerCase().includes(":: sai") || body.toLowerCase().includes("::đúng") || body.toLowerCase().includes("::sai"))) {
+            else if (body.match(/^[a-d]\.\s/im) && (body.toLowerCase().includes(":: đúng") || body.toLowerCase().includes(":: sai") || body.toLowerCase().includes("::đúng") || body.toLowerCase().includes("::sai"))) {
                 let options = []; let correctAnswers = []; let explanations = [];
                 let lines = body.split('\n').filter(l => l.trim().length > 0);
                 
                 lines.forEach(line => {
-                    // Chỉ lấy các dòng bắt đầu bằng a. b. c. d. chữ thường
-                    if (options.length < 4 && line.match(/^[a-d]\.\s/)) {
-                        let parts = line.replace(/^[a-d]\.\s*/, '').split('::');
+                    if (options.length < 4 && line.match(/^[a-d]\.\s/i)) {
+                        let parts = line.replace(/^[a-d]\.\s*/i, '').split('::');
                         let textOnly = parts[0].trim();
                         let truthValue = false;
-                        let exp = "Chưa có giải thích.";
+                        let exp = "";
                         
                         if (parts[1]) {
                             let val = parts[1].trim().toLowerCase();
@@ -1725,12 +1718,24 @@ window.processSmartText = function() {
                 
                 if (options.length === 4) {
                     currentSmartQuestions.push({ type: "tf", content, options, correctAnswers, explanations, passage: currentPassage });
-                    previewHTML += `<div class="p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg text-sm text-indigo-800 dark:text-indigo-300 mb-3 shadow-sm"><span class="font-bold">Câu ${currentSmartQuestions.length} (Đ/S):</span> ${content}</div>`;
-                } else {
-                    previewHTML += `<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900 rounded-lg text-sm text-red-600 dark:text-red-400 mb-3 shadow-sm font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> Lỗi Đ/S: Cần đúng 4 ý a, b, c, d chữ thường ở Câu ${currentSmartQuestions.length + 1}!</div>`;
+                    
+                    let optsHTML = options.map((opt, idx) => `
+                        <div class="flex items-start gap-3 mt-2.5 text-sm text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
+                            <span class="font-bold uppercase w-5 shrink-0 text-slate-400">${['a','b','c','d'][idx]}.</span>
+                            <span class="flex-1">${opt}</span>
+                            <span class="font-bold ${correctAnswers[idx] ? 'text-green-600 bg-green-50 dark:bg-green-900/30' : 'text-red-500 bg-red-50 dark:bg-red-900/30'} px-2 py-0.5 rounded text-xs">[${correctAnswers[idx] ? 'ĐÚNG' : 'SAI'}]</span>
+                        </div>
+                    `).join('');
+
+                    previewHTML += `
+                        <div class="p-4 bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-800/50 rounded-xl mb-4 shadow-sm">
+                            <p class="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3">Câu ${currentSmartQuestions.length} (Đúng/Sai): ${content}</p>
+                            <div class="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700/60 shadow-inner">
+                                ${optsHTML}
+                            </div>
+                        </div>`;
                 }
             }
-            // --- NHÁNH 3: TRẮC NGHIỆM 4 CHỌN 1 (MCQ) ---
             else {
                 let parseRegex = /([*#]*)[Aa]\s*[.)\-:/]([\s\S]*?)([*#]*)[Bb]\s*[.)\-:/]([\s\S]*?)([*#]*)[Cc]\s*[.)\-:/]([\s\S]*?)([*#]*)[Dd]\s*[.)\-:/]([\s\S]*)/i;
                 let match = body.match(parseRegex);
@@ -1744,21 +1749,31 @@ window.processSmartText = function() {
                         opts.push(p[0].trim());
                         let exp = p[1] ? p[1].trim() : "";
                         exps.push(exp);
-                        
-                        // Nếu đánh dấu * HOẶC chữ đầu tiên của giải thích là "Đúng"
                         if (o.includes('*') || exp.toLowerCase().startsWith("đúng")) {
                             correctIndex = idx;
                         }
                     });
                     
                     if (correctIndex === -1) correctIndex = match[1] || match[2].includes('*') ? 0 : (match[3] || match[4].includes('*') ? 1 : (match[5] || match[6].includes('*') ? 2 : 3));
-                    if (correctIndex === -1) correctIndex = 0; // Backup an toàn
+                    if (correctIndex === -1) correctIndex = 0; 
 
                     currentSmartQuestions.push({ type: "mcq", content, options: opts, optionExplanations: exps, correctAnswer: correctIndex, passage: currentPassage });
-                    previewHTML += `<div class="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-200 mb-3 shadow-sm"><span class="font-bold">Câu ${currentSmartQuestions.length} (MCQ):</span> ${content}</div>`;
+                    
+                    let optsHTML = opts.map((opt, idx) => `
+                        <div class="flex items-start gap-3 mt-2 text-sm p-2 rounded-lg ${correctIndex === idx ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-bold border border-blue-100 dark:border-blue-800' : 'text-slate-600 dark:text-slate-300 border border-transparent'}">
+                            <span class="w-5 shrink-0">${['A','B','C','D'][idx]}.</span>
+                            <span class="flex-1">${opt}</span>
+                        </div>
+                    `).join('');
+
+                    previewHTML += `
+                        <div class="p-4 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800/50 rounded-xl mb-4 shadow-sm">
+                            <p class="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3">Câu ${currentSmartQuestions.length} (Trắc nghiệm 4 lựa chọn): ${content}</p>
+                            ${optsHTML}
+                        </div>`;
                 } else {
                     let c = content.substring(0, 40) + "...";
-                    previewHTML += `<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900 rounded-lg text-sm text-red-600 dark:text-red-400 mb-3 shadow-sm font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> Sai định dạng tại: ${c}</div>`;
+                    previewHTML += `<div class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900 rounded-xl text-sm text-red-600 dark:text-red-400 mb-4 shadow-sm font-bold"><i class="fas fa-exclamation-triangle mr-2 text-lg"></i> Sai định dạng tại: ${c}</div>`;
                 }
             }
         }
@@ -1770,7 +1785,7 @@ window.processSmartText = function() {
     const spb = document.getElementById('smart-preview-box');
     if (spb) {
         if (previewHTML === "") {
-            spb.innerHTML = `<p class="text-sm text-slate-400 text-center mt-12 italic font-medium">Khung xem trước cấu trúc hệ thống sẽ hiển thị theo thời gian thực...</p>`;
+            spb.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400"><i class="fas fa-magic text-4xl mb-3 opacity-20"></i><p class="text-sm font-medium italic">Khung xem trước cấu trúc hệ thống sẽ hiển thị theo thời gian thực...</p></div>`;
         } else {
             spb.innerHTML = previewHTML;
         }
