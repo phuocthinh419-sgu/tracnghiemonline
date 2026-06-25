@@ -2463,36 +2463,40 @@ function renderSubjectStats(category) {
     }
 }
 
-// [VIP SAAS] TÍNH NĂNG ĐĂNG NHẬP BẰNG GOOGLE TỰ ĐỘNG KHỞI TẠO DATA
+// [VIP SAAS] TÍNH NĂNG ĐĂNG NHẬP BẰNG GOOGLE (VÁ LỖI LỆCH NHỊP VÀ ÉP CHỌN TÀI KHOẢN)
 function loginWithGoogle() {
     const provider = new firebase.auth.GoogleAuthProvider();
     
-    // Gọi hộp thoại đăng nhập của Google
+    // [VIP] Buộc Google phải hiện danh sách tài khoản, không cho phép tự động chớp tắt
+    provider.setCustomParameters({ prompt: 'select_account' });
+
     auth.signInWithPopup(provider)
         .then((result) => {
             const user = result.user;
             
-            // [Suy luận] Kiểm tra xem tài khoản này đã có hồ sơ trên Firestore chưa
             db.collection("users").doc(user.uid).get().then((docSnap) => {
                 if (!docSnap.exists) {
-                    // Nếu là tài khoản Google mới, lập tức thiết lập hạ tầng dữ liệu mặc định
+                    // Nếu là tài khoản mới, khởi tạo hồ sơ
                     db.collection("users").doc(user.uid).set({
-                        name: user.displayName || "Học viên mới",
-                        role: "student", // Vai trò mặc định ban đầu
+                        name: user.displayName || "Học viên",
+                        role: "student", 
                         pinnedFolders: [],
-                        plan: "basic" // Gói cước mặc định ban đầu
+                        plan: "basic" 
                     }).then(() => {
-                        console.log("Khởi tạo hồ sơ Google thành công.");
+                        // [VIP] Khởi tạo xong, ép tải lại trang để vào thẳng Tàng Kinh Các
+                        window.location.reload();
                     }).catch((err) => {
                         console.error("Lỗi khởi tạo hồ sơ Firestore:", err);
                     });
+                } else {
+                    // Nếu tài khoản đã tồn tại mà bị kẹt, ép tải lại trang để thông mạch
+                    window.location.reload();
                 }
             });
         })
         .catch((error) => {
             console.error("Lỗi đăng nhập Google:", error);
             
-            // Bắn thông báo lỗi lên thanh Toast hệ thống nếu quá trình kết nối bị hủy
             const toastEl = document.getElementById('system-toast');
             const toastMsg = document.getElementById('system-toast-msg');
             if (toastEl && toastMsg) {
