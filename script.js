@@ -2462,3 +2462,45 @@ function renderSubjectStats(category) {
         aiBox.innerHTML = aiHTML;
     }
 }
+
+// [VIP SAAS] TÍNH NĂNG ĐĂNG NHẬP BẰNG GOOGLE TỰ ĐỘNG KHỞI TẠO DATA
+function loginWithGoogle() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    
+    // Gọi hộp thoại đăng nhập của Google
+    auth.signInWithPopup(provider)
+        .then((result) => {
+            const user = result.user;
+            
+            // [Suy luận] Kiểm tra xem tài khoản này đã có hồ sơ trên Firestore chưa
+            db.collection("users").doc(user.uid).get().then((docSnap) => {
+                if (!docSnap.exists) {
+                    // Nếu là tài khoản Google mới, lập tức thiết lập hạ tầng dữ liệu mặc định
+                    db.collection("users").doc(user.uid).set({
+                        name: user.displayName || "Học viên mới",
+                        role: "student", // Vai trò mặc định ban đầu
+                        pinnedFolders: [],
+                        plan: "basic" // Gói cước mặc định ban đầu
+                    }).then(() => {
+                        console.log("Khởi tạo hồ sơ Google thành công.");
+                    }).catch((err) => {
+                        console.error("Lỗi khởi tạo hồ sơ Firestore:", err);
+                    });
+                }
+            });
+        })
+        .catch((error) => {
+            console.error("Lỗi đăng nhập Google:", error);
+            
+            // Bắn thông báo lỗi lên thanh Toast hệ thống nếu quá trình kết nối bị hủy
+            const toastEl = document.getElementById('system-toast');
+            const toastMsg = document.getElementById('system-toast-msg');
+            if (toastEl && toastMsg) {
+                toastMsg.innerText = "Đăng nhập thất bại: " + error.message;
+                toastEl.classList.remove('opacity-0', 'pointer-events-none');
+                setTimeout(() => {
+                    toastEl.classList.add('opacity-0', 'pointer-events-none');
+                }, 4000);
+            }
+        });
+}
