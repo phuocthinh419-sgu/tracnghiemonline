@@ -1277,8 +1277,17 @@ function loadQuestion(index) {
     const answerContainer = document.getElementById('dynamic-answer-container');
     if(answerContainer) {
         answerContainer.innerHTML = ''; 
-        const isAnswerRevealed = isReviewMode || (isPracticeMode && userAnswers[index] !== null);
         const hasExplanationAccess = checkFeatureAccess('explanation', true);
+
+        // [VIP VÁ LỖI TỬ HUYỆT 1] - ĐỊNH NGHĨA LẠI TRẠNG THÁI HIỂN THỊ ĐÁP ÁN
+        let isAnswerRevealed = false;
+        if (q.type === "tf") {
+            if (!Array.isArray(userAnswers[index])) userAnswers[index] = [null, null, null, null];
+            // Chỉ đóng băng câu Đ/S khi: Đã nộp bài HOẶC (Đang luyện tập mà đã tick đủ 4 ý)
+            isAnswerRevealed = isReviewMode || (isPracticeMode && userAnswers[index].every(a => a !== null));
+        } else {
+            isAnswerRevealed = isReviewMode || (isPracticeMode && userAnswers[index] !== null && userAnswers[index] !== "");
+        }
 
         // --- NHÁNH 1: TRẮC NGHIỆM ĐA LỰA CHỌN (4 CHỌN 1) ---
         if (!q.type || q.type === "mcq") {
@@ -1336,8 +1345,6 @@ function loadQuestion(index) {
             const labels = ['A', 'B', 'C', 'D'];
             const wrapper = document.createElement('div');
             wrapper.className = "flex flex-col gap-3.5";
-            
-            if (!Array.isArray(userAnswers[index])) userAnswers[index] = [null, null, null, null];
 
             q.options.forEach((optText, optIndex) => {
                 const row = document.createElement('div');
@@ -1426,7 +1433,8 @@ function loadQuestion(index) {
     const hintBtn = document.getElementById('btn-hint'); const hintBox = document.getElementById('hint-box');
     if(hintBox) hintBox.classList.add('hidden');
     if(hintBtn) {
-        if (isPracticeMode && !isReviewMode && q.hint && userAnswers[index] === null) hintBtn.classList.remove('hidden');
+        // Đồng bộ logic: Chỉ hiện gợi ý khi câu chưa bị khóa đáp án
+        if (isPracticeMode && !isReviewMode && q.hint && !isAnswerRevealed) hintBtn.classList.remove('hidden');
         else hintBtn.classList.add('hidden');
     }
 
@@ -1436,7 +1444,6 @@ function loadQuestion(index) {
     const bSub = document.getElementById('btn-submit'); if(bSub) bSub.classList.toggle('hidden', nextIdx !== -1 || isReviewMode);
 
     const explanationBox = document.getElementById('explanation-box');
-    const isAnswerRevealed = isReviewMode || (isPracticeMode && userAnswers[index] !== null);
     if (explanationBox) {
         const eText = document.getElementById('explanation-text');
         if (isAnswerRevealed && q.explanation && q.explanation !== "Tạo tự động từ dữ liệu văn bản." && q.explanation !== "Chưa có giải thích.") {
@@ -2701,38 +2708,28 @@ function loginWithGoogle() {
 // =========================================================================
 // [VIP SAAS] TRẬN PHÁP CHỐNG GIAN LẬN: CẢNH BÁO CHUYỂN TAB / ĐỔI CỬA SỔ
 // =========================================================================
-let cheatViolationCount = 0; // Bộ đếm số lần vi phạm
+let cheatViolationCount = 0;
 
 document.addEventListener("visibilitychange", () => {
+    // [VIP VÁ LỖI TỬ HUYỆT 2] Chống gian lận NHƯNG THA CHO CHẾ ĐỘ LUYỆN TẬP VÀ XEM LẠI BÀI
+    if (isPracticeMode || isReviewMode) return;
+
     const quizScreen = document.getElementById("quiz-screen");
-    
-    // Chỉ theo dõi và bắt lỗi nếu học viên đang ở bên trong phòng thi (quiz-screen không bị ẩn)
     if (quizScreen && !quizScreen.classList.contains("hidden")) {
-        
-        // Trạng thái 'hidden' nghĩa là người dùng vừa lướt sang Tab khác hoặc thu nhỏ trình duyệt
         if (document.visibilityState === "hidden") {
             cheatViolationCount++;
-            
             if (cheatViolationCount === 1) {
-                // Vi phạm lần 1: Đình chỉ tạm thời bằng Alert để chặn thao tác, cảnh cáo thép
                 alert("CẢNH BÁO VI PHẠM (1/2): Hệ thống phát hiện ngài vừa chuyển đổi cửa sổ/Tab trình duyệt!\n\nChiếu theo quy chế, nếu tái phạm lần 2, hệ thống sẽ tự động khóa và nộp bài thi ngay lập tức.");
             } 
             else if (cheatViolationCount >= 2) {
-                // Vi phạm lần 2: Trảm! Tự động nộp bài
                 alert("ĐÌNH CHỈ THI (2/2): Đã vi phạm quy chế lần 2!\n\nHệ thống đang tiến hành khóa dữ liệu và tự động nộp bài...");
-                
-                // Móc trực tiếp vào ID của nút "Khóa & Nộp Bài" để kích hoạt lệnh nộp y như người dùng tự bấm
                 const btnSubmit = document.getElementById("btn-submit");
-                if (btnSubmit) {
-                    btnSubmit.click();
-                }
+                if (btnSubmit) btnSubmit.click();
             }
         }
     }
 });
 
-// [QUAN TRỌNG] Hàm để reset bộ đếm về 0 mỗi khi bắt đầu một lượt thi mới
-// Bệ hạ cần chèn dòng: resetAntiCheat(); vào bên trong hàm bắt đầu thi của ngài (ví dụ hàm startQuiz hoặc tương đương)
-function resetAntiCheat() {
+window.resetAntiCheat = function() {
     cheatViolationCount = 0;
 }
