@@ -2463,48 +2463,13 @@ function renderSubjectStats(category) {
     }
 }
 
-// [VIP SAAS] TÍNH NĂNG ĐĂNG NHẬP BẰNG GOOGLE (VÁ LỖI LỆCH NHỊP VÀ ÉP CHỌN TÀI KHOẢN)
+// [VIP SAAS] TỐI ƯU ĐĂNG NHẬP GOOGLE BẰNG PHƯƠNG PHÁP CHUYỂN HƯỚNG (ĐẶC TRỊ LỖI CHẶN POPUP)
 function loginWithGoogle() {
     const provider = new firebase.auth.GoogleAuthProvider();
     
-    // [VIP] Buộc Google phải hiện danh sách tài khoản, không cho phép tự động chớp tắt
+    // Ép Google phải hiển thị danh sách tài khoản để lựa chọn
     provider.setCustomParameters({ prompt: 'select_account' });
 
-    auth.signInWithPopup(provider)
-        .then((result) => {
-            const user = result.user;
-            
-            db.collection("users").doc(user.uid).get().then((docSnap) => {
-                if (!docSnap.exists) {
-                    // Nếu là tài khoản mới, khởi tạo hồ sơ
-                    db.collection("users").doc(user.uid).set({
-                        name: user.displayName || "Học viên",
-                        role: "student", 
-                        pinnedFolders: [],
-                        plan: "basic" 
-                    }).then(() => {
-                        // [VIP] Khởi tạo xong, ép tải lại trang để vào thẳng Tàng Kinh Các
-                        window.location.reload();
-                    }).catch((err) => {
-                        console.error("Lỗi khởi tạo hồ sơ Firestore:", err);
-                    });
-                } else {
-                    // Nếu tài khoản đã tồn tại mà bị kẹt, ép tải lại trang để thông mạch
-                    window.location.reload();
-                }
-            });
-        })
-        .catch((error) => {
-            console.error("Lỗi đăng nhập Google:", error);
-            
-            const toastEl = document.getElementById('system-toast');
-            const toastMsg = document.getElementById('system-toast-msg');
-            if (toastEl && toastMsg) {
-                toastMsg.innerText = "Đăng nhập thất bại: " + error.message;
-                toastEl.classList.remove('opacity-0', 'pointer-events-none');
-                setTimeout(() => {
-                    toastEl.classList.add('opacity-0', 'pointer-events-none');
-                }, 4000);
-            }
-        });
+    // Dùng signInWithRedirect để ép chuyển trang, vượt qua mọi lớp chặn Pop-up của trình duyệt
+    auth.signInWithRedirect(provider);
 }
