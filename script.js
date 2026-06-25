@@ -2463,13 +2463,60 @@ function renderSubjectStats(category) {
     }
 }
 
-// [VIP SAAS] TỐI ƯU ĐĂNG NHẬP GOOGLE BẰNG PHƯƠNG PHÁP CHUYỂN HƯỚNG (ĐẶC TRỊ LỖI CHẶN POPUP)
+// [VIP SAAS] TÍNH NĂNG ĐĂNG NHẬP GOOGLE BỌC THÉP (CHUYỂN GIAO DIỆN TRỰC TIẾP KHÔNG RELOAD)
 function loginWithGoogle() {
     const provider = new firebase.auth.GoogleAuthProvider();
-    
-    // Ép Google phải hiển thị danh sách tài khoản để lựa chọn
     provider.setCustomParameters({ prompt: 'select_account' });
 
-    // Dùng signInWithRedirect để ép chuyển trang, vượt qua mọi lớp chặn Pop-up của trình duyệt
-    auth.signInWithRedirect(provider);
+    auth.signInWithPopup(provider)
+        .then((result) => {
+            const user = result.user;
+            
+            // Bắn thông báo thành công màu xanh lá
+            const toastEl = document.getElementById('system-toast');
+            const toastMsg = document.getElementById('system-toast-msg');
+            if (toastEl && toastMsg) {
+                toastEl.classList.remove('bg-red-600');
+                toastEl.classList.add('bg-green-600'); // Đổi màu Toast sang Xanh Success
+                const icon = toastEl.querySelector('i');
+                if(icon) icon.className = 'fas fa-check-circle text-base';
+                toastMsg.innerText = "Xác thực Google thành công! Đang vào hệ thống...";
+                toastEl.classList.remove('opacity-0', 'pointer-events-none');
+                setTimeout(() => toastEl.classList.add('opacity-0', 'pointer-events-none'), 3000);
+            }
+
+            // Kiểm tra và khởi tạo dữ liệu Firestore nếu là người mới
+            db.collection("users").doc(user.uid).get().then((docSnap) => {
+                if (!docSnap.exists) {
+                    db.collection("users").doc(user.uid).set({
+                        name: user.displayName || "Học viên",
+                        role: "student", 
+                        pinnedFolders: [],
+                        plan: "basic" 
+                    }).then(() => {
+                        // Gọi hàm chuyển màn hình trực tiếp
+                        if(typeof switchScreen === 'function') switchScreen('home'); 
+                    });
+                } else {
+                    // Đã có data, chuyển màn hình trực tiếp
+                    if(typeof switchScreen === 'function') switchScreen('home'); 
+                }
+            });
+        })
+        .catch((error) => {
+            console.error("Lỗi đăng nhập Google:", error);
+            
+            // Bắn thông báo lỗi màu đỏ
+            const toastEl = document.getElementById('system-toast');
+            const toastMsg = document.getElementById('system-toast-msg');
+            if (toastEl && toastMsg) {
+                toastEl.classList.remove('bg-green-600');
+                toastEl.classList.add('bg-red-600');
+                const icon = toastEl.querySelector('i');
+                if(icon) icon.className = 'fas fa-exclamation-triangle text-base';
+                toastMsg.innerText = "Đăng nhập thất bại: " + error.message;
+                toastEl.classList.remove('opacity-0', 'pointer-events-none');
+                setTimeout(() => toastEl.classList.add('opacity-0', 'pointer-events-none'), 4000);
+            }
+        });
 }
