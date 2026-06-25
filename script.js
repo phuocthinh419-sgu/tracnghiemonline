@@ -1245,6 +1245,10 @@ function toggleFlag() {
     saveProgressLocally(); 
 }
 
+// =========================================================================
+// [VIP SAAS] TRÁI TIM HỆ THỐNG: ĐỘNG CƠ RENDER ĐA CẤU TRÚC (THPTQG 2025)
+// =========================================================================
+
 function loadQuestion(index) {
     if(index < 0 || index >= activeQuiz.questions.length) return;
     currentQuestionIndex = index;
@@ -1276,73 +1280,178 @@ function loadQuestion(index) {
         }
     }
     
-    const optionsContainer = document.getElementById('options-container');
-    if(optionsContainer) {
-        optionsContainer.innerHTML = ''; 
-        const labels = ['A', 'B', 'C', 'D'];
+    const answerContainer = document.getElementById('dynamic-answer-container');
+    if(answerContainer) {
+        answerContainer.innerHTML = ''; 
         const isAnswerRevealed = isReviewMode || (isPracticeMode && userAnswers[index] !== null);
-        
         const hasExplanationAccess = checkFeatureAccess('explanation', true);
 
-        q.options.forEach((optText, optIndex) => {
-            const btn = document.createElement('button');
-            let optExpText = (q.optionExplanations && q.optionExplanations[optIndex]) ? q.optionExplanations[optIndex] : "";
+        // --- NHÁNH 1: TRẮC NGHIỆM ĐA LỰA CHỌN (4 CHỌN 1) ---
+        if (!q.type || q.type === "mcq") {
+            const labels = ['A', 'B', 'C', 'D'];
+            const gridOpts = document.createElement('div');
+            gridOpts.className = "grid grid-cols-1 gap-3.5";
+
+            q.options.forEach((optText, optIndex) => {
+                const btn = document.createElement('button');
+                let optExpText = (q.optionExplanations && q.optionExplanations[optIndex]) ? q.optionExplanations[optIndex] : "";
+                if (!hasExplanationAccess) optExpText = ""; 
+
+                let expBlock = ''; let labelBg = 'bg-gray-100'; let labelText = 'text-gray-500';
+                let btnBorder = 'border-gray-200 dark:border-gray-600'; let btnBg = 'bg-white dark:bg-gray-800';
+
+                if (isAnswerRevealed) {
+                    btn.style.pointerEvents = 'none';
+                    if (optIndex === q.correctAnswer) {
+                        btnBorder = 'border-green-500'; btnBg = 'bg-green-50 dark:bg-green-900/20'; labelBg = 'bg-green-500'; labelText = 'text-white';
+                        if (optExpText) {
+                            expBlock = `<div class="mt-3 pl-11 sm:pl-14 text-sm text-green-700 dark:text-green-400 text-left"><div class="font-bold mb-1"><i class="fas fa-check mr-1"></i> Chính xác</div><div class="font-academic leading-relaxed opacity-90">${optExpText}</div></div>`;
+                        }
+                    } else if (optIndex === userAnswers[index]) {
+                        btnBorder = 'border-red-500'; btnBg = 'bg-red-50 dark:bg-red-900/20'; labelBg = 'bg-red-500'; labelText = 'text-white';
+                        if (optExpText) {
+                            expBlock = `<div class="mt-3 pl-11 sm:pl-14 text-sm text-red-700 dark:text-red-400 text-left"><div class="font-bold mb-1"><i class="fas fa-times mr-1"></i> Sai</div><div class="font-academic leading-relaxed opacity-90">${optExpText}</div></div>`;
+                        }
+                    }
+                } else {
+                    if (userAnswers[index] === optIndex) {
+                        btnBorder = 'border-blue-600'; btnBg = 'bg-blue-50 dark:bg-blue-900/30'; btn.classList.add('ring-4', 'ring-blue-100'); labelBg = 'bg-blue-600'; labelText = 'text-white';
+                    }
+                    btn.onclick = () => { 
+                        userAnswers[currentQuestionIndex] = optIndex; 
+                        loadQuestion(currentQuestionIndex); 
+                        saveProgressLocally(); 
+                    };
+
+                    btn.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        if(!checkFeatureAccess('crossout', true)) return;
+                        if(btn.classList.contains('opacity-30')) {
+                            btn.classList.remove('opacity-30', 'line-through', 'grayscale');
+                        } else {
+                            btn.classList.add('opacity-30', 'line-through', 'grayscale');
+                        }
+                    });
+                }
+
+                btn.className = `option-btn text-left p-3 sm:p-4 rounded-xl flex flex-col border-2 transition-all w-full ${btnBorder} ${btnBg} ${isAnswerRevealed ? 'cursor-default' : 'cursor-pointer hover:border-blue-400 dark:hover:border-blue-500'}`;
+                btn.innerHTML = `<div class="flex items-center gap-3 sm:gap-4 w-full"><span class="option-label w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${labelBg} font-bold ${labelText} shrink-0 text-sm sm:text-base transition-colors shadow-sm">${labels[optIndex]}</span><span class="text-base sm:text-lg font-academic dark:text-gray-200">${optText}</span></div>${expBlock}`;
+                gridOpts.appendChild(btn);
+            });
+            answerContainer.appendChild(gridOpts);
+        }
+        
+        // --- NHÁNH 2: TRẮC NGHIỆM ĐÚNG/SAI ---
+        else if (q.type === "tf") {
+            const labels = ['a', 'b', 'c', 'd'];
+            const wrapper = document.createElement('div');
+            wrapper.className = "flex flex-col gap-4";
             
-            if (!hasExplanationAccess) optExpText = ""; 
+            // Đảm bảo mảng userAnswers cho câu này là một mảng 4 phần tử [null, null, null, null]
+            if (!Array.isArray(userAnswers[index])) userAnswers[index] = [null, null, null, null];
 
-            let expBlock = ''; let labelBg = 'bg-gray-100'; let labelText = 'text-gray-500';
-            let btnBorder = 'border-gray-200 dark:border-gray-600'; let btnBg = 'bg-white dark:bg-gray-800';
+            q.options.forEach((optText, optIndex) => {
+                const row = document.createElement('div');
+                row.className = "flex flex-col sm:flex-row gap-3 sm:gap-5 justify-between items-start sm:items-center p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700";
+                
+                const textCol = document.createElement('div');
+                textCol.className = "flex gap-3 text-base dark:text-gray-200";
+                textCol.innerHTML = `<span class="font-bold text-gray-400">${labels[optIndex]}.</span> <span>${optText}</span>`;
+                
+                const btnCol = document.createElement('div');
+                btnCol.className = "flex gap-2 w-full sm:w-auto mt-2 sm:mt-0";
+                
+                const btnTrue = document.createElement('button');
+                btnTrue.innerText = "ĐÚNG";
+                
+                const btnFalse = document.createElement('button');
+                btnFalse.innerText = "SAI";
+                
+                let baseBtnClass = "flex-1 sm:flex-none px-4 py-2 rounded-lg font-bold text-sm border-2 transition-all ";
+                let trueBg = "bg-white text-gray-500 border-gray-200 hover:border-green-400";
+                let falseBg = "bg-white text-gray-500 border-gray-200 hover:border-red-400";
 
-            if (isAnswerRevealed) {
-                btn.style.pointerEvents = 'none';
-                if (optIndex === q.correctAnswer) {
-                    btnBorder = 'border-green-500'; btnBg = 'bg-green-50 dark:bg-green-900/20'; labelBg = 'bg-green-500'; labelText = 'text-white';
-                    if (optExpText) {
-                        expBlock = `<div class="mt-3 pl-11 sm:pl-14 text-sm text-green-700 dark:text-green-400 text-left">
-                            <div class="font-bold mb-1"><i class="fas fa-check mr-1"></i> Chính xác</div>
-                            <div class="font-academic leading-relaxed opacity-90">${optExpText}</div>
-                        </div>`;
+                if (isAnswerRevealed) {
+                    btnTrue.style.pointerEvents = 'none'; btnFalse.style.pointerEvents = 'none';
+                    let correctVal = q.correctAnswers[optIndex]; // Mảng boolean [true, false, true, false]
+                    let userVal = userAnswers[index][optIndex];
+                    
+                    if (userVal === true) {
+                        if (correctVal === true) { trueBg = "bg-green-500 text-white border-green-500"; }
+                        else { trueBg = "bg-red-500 text-white border-red-500"; }
+                    } else if (userVal === false) {
+                        if (correctVal === false) { falseBg = "bg-green-500 text-white border-green-500"; }
+                        else { falseBg = "bg-red-500 text-white border-red-500"; }
                     }
-                } else if (optIndex === userAnswers[index]) {
-                    btnBorder = 'border-red-500'; btnBg = 'bg-red-50 dark:bg-red-900/20'; labelBg = 'bg-red-500'; labelText = 'text-white';
-                    if (optExpText) {
-                        expBlock = `<div class="mt-3 pl-11 sm:pl-14 text-sm text-red-700 dark:text-red-400 text-left">
-                            <div class="font-bold mb-1"><i class="fas fa-times mr-1"></i> Sai</div>
-                            <div class="font-academic leading-relaxed opacity-90">${optExpText}</div>
-                        </div>`;
-                    }
+                    
+                    // Highlight đáp án đúng nếu user chọn sai hoặc không chọn
+                    if (correctVal === true && userVal !== true) { trueBg = "bg-green-100 text-green-700 border-green-500 border-dashed"; }
+                    if (correctVal === false && userVal !== false) { falseBg = "bg-green-100 text-green-700 border-green-500 border-dashed"; }
+
+                } else {
+                    if (userAnswers[index][optIndex] === true) { trueBg = "bg-blue-600 text-white border-blue-600 ring-2 ring-blue-200"; }
+                    if (userAnswers[index][optIndex] === false) { falseBg = "bg-gray-600 text-white border-gray-600 ring-2 ring-gray-200"; }
+                    
+                    btnTrue.onclick = () => {
+                        userAnswers[currentQuestionIndex][optIndex] = true;
+                        loadQuestion(currentQuestionIndex); saveProgressLocally();
+                    };
+                    btnFalse.onclick = () => {
+                        userAnswers[currentQuestionIndex][optIndex] = false;
+                        loadQuestion(currentQuestionIndex); saveProgressLocally();
+                    };
                 }
-            } else {
-                if (userAnswers[index] === optIndex) {
-                    btnBorder = 'border-blue-600'; btnBg = 'bg-blue-50 dark:bg-blue-900/30'; btn.classList.add('ring-4', 'ring-blue-100'); labelBg = 'bg-blue-600'; labelText = 'text-white';
-                }
-                btn.onclick = () => { 
-                    userAnswers[currentQuestionIndex] = optIndex; 
-                    loadQuestion(currentQuestionIndex); 
-                    saveProgressLocally(); 
-                };
 
-                btn.addEventListener('contextmenu', (e) => {
-                    e.preventDefault();
-                    if(!checkFeatureAccess('crossout')) return;
-                    if(btn.classList.contains('opacity-30')) {
-                        btn.classList.remove('opacity-30', 'line-through', 'grayscale');
-                    } else {
-                        btn.classList.add('opacity-30', 'line-through', 'grayscale');
-                    }
-                });
+                btnTrue.className = baseBtnClass + trueBg;
+                btnFalse.className = baseBtnClass + falseBg;
+                
+                btnCol.appendChild(btnTrue); btnCol.appendChild(btnFalse);
+                row.appendChild(textCol); row.appendChild(btnCol);
+                wrapper.appendChild(row);
+            });
+            answerContainer.appendChild(wrapper);
+        }
+
+        // --- NHÁNH 3: TRẢ LỜI NGẮN ---
+        else if (q.type === "sa") {
+            const wrapper = document.createElement('div');
+            wrapper.className = "flex flex-col gap-3";
+            
+            const inputEl = document.createElement('input');
+            inputEl.type = "text";
+            inputEl.placeholder = "Nhập đáp án của bạn vào đây...";
+            inputEl.className = "w-full p-4 border-2 border-blue-200 focus:border-blue-500 rounded-xl text-lg font-bold text-gray-800 dark:bg-gray-800 dark:text-white outline-none shadow-inner transition-colors";
+            
+            if (userAnswers[index] !== null) {
+                inputEl.value = userAnswers[index];
             }
 
-            btn.className = `option-btn text-left p-3 sm:p-4 rounded-xl flex flex-col border-2 transition-all w-full ${btnBorder} ${btnBg} ${isAnswerRevealed ? 'cursor-default' : 'cursor-pointer hover:border-blue-400 dark:hover:border-blue-500'}`;
-            btn.innerHTML = `
-                <div class="flex items-center gap-3 sm:gap-4 w-full">
-                    <span class="option-label w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${labelBg} font-bold ${labelText} shrink-0 text-sm sm:text-base transition-colors shadow-sm">${labels[optIndex]}</span>
-                    <span class="text-base sm:text-lg font-academic dark:text-gray-200">${optText}</span>
-                </div>
-                ${expBlock}
-            `;
-            optionsContainer.appendChild(btn);
-        });
+            if (isAnswerRevealed) {
+                inputEl.readOnly = true;
+                const userAnsStr = (userAnswers[index] || "").toString().trim().toLowerCase();
+                const correctAnsStr = (q.correctAnswer || "").toString().trim().toLowerCase();
+                
+                if (userAnsStr === correctAnsStr) {
+                    inputEl.className += " border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700";
+                } else {
+                    inputEl.className += " border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700";
+                    const corrBadge = document.createElement('div');
+                    corrBadge.className = "mt-2 text-sm text-green-600 font-bold bg-green-50 px-3 py-2 rounded-lg border border-green-200";
+                    corrBadge.innerHTML = `<i class="fas fa-check-circle mr-1"></i> Đáp án đúng: ${q.correctAnswer}`;
+                    wrapper.appendChild(corrBadge);
+                }
+            } else {
+                inputEl.oninput = (e) => {
+                    userAnswers[currentQuestionIndex] = e.target.value.trim() === "" ? null : e.target.value;
+                    saveProgressLocally();
+                    // Render navigator tĩnh để đổi màu nút lưới tọa độ
+                    renderNavigator();
+                };
+            }
+            
+            wrapper.insertBefore(inputEl, wrapper.firstChild);
+            answerContainer.appendChild(wrapper);
+        }
     }
 
     const hintBtn = document.getElementById('btn-hint'); const hintBox = document.getElementById('hint-box');
@@ -1352,7 +1461,6 @@ function loadQuestion(index) {
         else hintBtn.classList.add('hidden');
     }
 
-   // [VIP] Ẩn/hiện nút dựa trên bộ lọc, thay vì chỉ đếm chay tới câu cuối
     const prevIdx = getFilteredIndex(-1);
     const nextIdx = getFilteredIndex(1);
     
@@ -1369,7 +1477,6 @@ function loadQuestion(index) {
     if (explanationBox) {
         const eText = document.getElementById('explanation-text');
         if (isAnswerRevealed && q.explanation && q.explanation !== "Tạo tự động từ dữ liệu văn bản." && q.explanation !== "Chưa có giải thích.") {
-            
             if(!checkFeatureAccess('explanation', true)) {
                 if(eText) eText.innerHTML = `<span class="text-gray-500 italic"><i class="fas fa-lock"></i> Chi tiết giải thích yêu cầu tài khoản nâng cấp. <a href="#" onclick="switchScreen('pricing')" class="text-blue-600 font-bold underline">Xem các gói cước</a>.</span>`;
                 explanationBox.classList.remove('hidden');
@@ -1412,7 +1519,7 @@ function handleVisibilityChange() {
     }
 }
 
-// [VIP CẤP CỨU] Hàm Nộp Bài bọc thép - Loại bỏ hoàn toàn mảng độc 'undefined' để Firebase không đá văng bài thi
+// [VIP CẤP CỨU] Thuật Toán Chấm Điểm Lũy Tiến Toàn Cục THPTQG 2025
 function submitQuiz(force) {
     const timeUsed = activeQuiz.timeLimit - (timeLeft > 0 ? timeLeft : 0);
     const minimumTime = Math.floor(activeQuiz.timeLimit / 2);
@@ -1427,23 +1534,54 @@ function submitQuiz(force) {
         exitFullscreen();
         localStorage.removeItem('quizProgress_' + activeQuiz.id);
 
-        let correctCount = userAnswers.filter((ans, i) => ans === activeQuiz.questions[i].correctAnswer).length;
+        let totalScore = 0; // Tính theo thang điểm 10
+
+        activeQuiz.questions.forEach((q, i) => {
+            const uAns = userAnswers[i];
+            if (!q.type || q.type === "mcq") {
+                // Trắc nghiệm 4 chọn 1: 0.25 điểm / câu
+                if (uAns !== null && uAns === q.correctAnswer) totalScore += 0.25;
+            } 
+            else if (q.type === "tf") {
+                // Trắc nghiệm Đ/S: Tính lũy tiến
+                if (Array.isArray(uAns)) {
+                    let matchCount = 0;
+                    for(let j=0; j<4; j++) {
+                        if (uAns[j] !== null && uAns[j] === q.correctAnswers[j]) matchCount++;
+                    }
+                    if (matchCount === 1) totalScore += 0.1;
+                    else if (matchCount === 2) totalScore += 0.25;
+                    else if (matchCount === 3) totalScore += 0.5;
+                    else if (matchCount === 4) totalScore += 1.0;
+                }
+            }
+            else if (q.type === "sa") {
+                // Trả lời ngắn: 0.25 điểm / câu (hoặc 0.5 tùy cấu hình, mặc định để 0.25)
+                if (uAns !== null && uAns.toString().trim().toLowerCase() === q.correctAnswer.toString().trim().toLowerCase()) {
+                    totalScore += 0.25;
+                }
+            }
+        });
+
+        // Quy đổi thành Percentage
+        let maxPossibleScore = activeQuiz.questions.length * 0.25; // Cái này cần tính toán chính xác tổng điểm trần của đề
+        // Logic tính Max Score chuẩn THPTQG
+        maxPossibleScore = activeQuiz.questions.reduce((acc, q) => {
+            if (q.type === "tf") return acc + 1.0;
+            return acc + 0.25;
+        }, 0);
+
+        let percent = maxPossibleScore > 0 ? Math.round((totalScore / maxPossibleScore) * 100) : 0;
+
         const finalTimeUsed = activeQuiz.timeLimit - (timeLeft > 0 ? timeLeft : 0);
         const timeUsedStr = `${Math.floor(finalTimeUsed / 60).toString().padStart(2, '0')}:${(finalTimeUsed % 60).toString().padStart(2, '0')}`;
         
-        let percent = 0;
-        if (activeQuiz.questions && activeQuiz.questions.length > 0) {
-            percent = Math.round((correctCount / activeQuiz.questions.length) * 100);
-        }
-
         switchScreen('result');
-        const sc = document.getElementById('result-score'); if(sc) sc.innerText = `${correctCount}/${activeQuiz.questions.length}`;
+        const sc = document.getElementById('result-score'); if(sc) sc.innerText = `${totalScore.toFixed(2)}/${maxPossibleScore.toFixed(2)}`;
         const pc = document.getElementById('result-percent'); if(pc) pc.innerText = `${percent}%`;
         const tc = document.getElementById('result-time'); 
         if(tc) tc.innerText = isPracticeMode ? "Không giới hạn" : timeUsedStr;
 
-       
-        // THUẬT TOÁN ĐÓNG GÓI - Chặn tuyệt đối giá trị "undefined" làm kẹt Firebase
         const rawPayload = {
             quizId: activeQuiz.id || "UNKNOWN", 
             quizTitle: activeQuiz.title || "Chưa đặt tên", 
@@ -1451,7 +1589,7 @@ function submitQuiz(force) {
             studentName: studentName || "Ẩn danh", 
             email: auth.currentUser ? auth.currentUser.email : "Ẩn danh",
             uid: auth.currentUser ? auth.currentUser.uid : "UNKNOWN",
-            score: `${correctCount}/${activeQuiz.questions.length}`, 
+            score: `${totalScore.toFixed(2)}/${maxPossibleScore.toFixed(2)}`, 
             percentage: percent, 
             timeUsed: isPracticeMode ? "Luyện tập" : timeUsedStr,
             teacherId: activeQuiz.authorId || "GUEST", 
@@ -1459,11 +1597,9 @@ function submitQuiz(force) {
             quizQuestionsSnapshot: activeQuiz.questions || []
         };
 
-        // Ép sang chuẩn JSON để tự động bốc hơi mọi trường 'undefined' lỗi
         const cleanPayload = JSON.parse(JSON.stringify(rawPayload));
         cleanPayload.timestamp = firebase.firestore.FieldValue.serverTimestamp();
 
-        // [ĐÃ VÁ] Đẩy thẳng lên đám mây, đám mây sẽ tự động gọi hệ thống nạp lại Lịch sử
         db.collection("results").add(cleanPayload).catch(err => {
             console.error("Lỗi cập nhật điểm: ", err);
             showToast("Lỗi hệ thống: Không thể kết nối với máy chủ đám mây", true);
@@ -1687,95 +1823,144 @@ function saveSmartQuiz() {
     }).catch(err => { statusDiv.innerText = "Lỗi đường truyền: " + err; statusDiv.className = "mt-4 text-center font-bold text-red-600 text-sm"; });
 }
 
-function addManualQuestionForm(existingData = null) {
+// =========================================================================
+// [VIP SAAS] ADMIN ZONE: ĐỘNG CƠ NHẬP LIỆU ĐA CẤU TRÚC (THPTQG 2025)
+// =========================================================================
+window.addManualQuestionForm = function(existingData = null) {
     const container = document.getElementById('manual-questions-container'); if(!container) return;
-    const qDiv = document.createElement('div'); qDiv.className = 'manual-q-block p-4 sm:p-6 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl relative';
-    
-    let exp0 = existingData && existingData.optionExplanations && existingData.optionExplanations[0] ? " :: " + existingData.optionExplanations[0] : "";
-    let exp1 = existingData && existingData.optionExplanations && existingData.optionExplanations[1] ? " :: " + existingData.optionExplanations[1] : "";
-    let exp2 = existingData && existingData.optionExplanations && existingData.optionExplanations[2] ? " :: " + existingData.optionExplanations[2] : "";
-    let exp3 = existingData && existingData.optionExplanations && existingData.optionExplanations[3] ? " :: " + existingData.optionExplanations[3] : "";
+    const qDiv = document.createElement('div'); qDiv.className = 'manual-q-block p-4 sm:p-6 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl relative';
 
+    let qType = existingData && existingData.type ? existingData.type : "mcq";
     let pass = existingData && existingData.passage ? existingData.passage : "";
     let cont = existingData && existingData.content ? existingData.content : "";
-    
-    let opt0 = ((existingData && existingData.options && existingData.options[0]) ? existingData.options[0] : "") + exp0;
-    let opt1 = ((existingData && existingData.options && existingData.options[1]) ? existingData.options[1] : "") + exp1;
-    let opt2 = ((existingData && existingData.options && existingData.options[2]) ? existingData.options[2] : "") + exp2;
-    let opt3 = ((existingData && existingData.options && existingData.options[3]) ? existingData.options[3] : "") + exp3;
-    
-    opt0 = opt0.replace(/"/g, '&quot;');
-    opt1 = opt1.replace(/"/g, '&quot;');
-    opt2 = opt2.replace(/"/g, '&quot;');
-    opt3 = opt3.replace(/"/g, '&quot;');
-
-    let corr = existingData && existingData.correctAnswer !== undefined ? existingData.correctAnswer : 0;
     let expl = existingData && existingData.explanation ? existingData.explanation.replace(/"/g, '&quot;') : "";
 
+    // Phân rã dữ liệu cũ (nếu có)
+    let opts = ["", "", "", ""];
+    let tfAnswers = [true, false, true, false]; 
+    let saAnswer = "";
+    let mcqAnswer = 0;
+
+    if (existingData) {
+        if (qType === "mcq" && existingData.options) opts = existingData.options;
+        if (qType === "tf" && existingData.options) {
+            opts = existingData.options;
+            if (existingData.correctAnswers) tfAnswers = existingData.correctAnswers;
+        }
+        if (qType === "sa") saAnswer = existingData.correctAnswer || "";
+        if (qType === "mcq" && existingData.correctAnswer !== undefined) mcqAnswer = existingData.correctAnswer;
+    }
+
     qDiv.innerHTML = `
-        <button onclick="this.parentElement.remove()" class="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-red-500 transition-colors"><i class="fas fa-times text-lg sm:text-xl"></i></button>
-        <h4 class="font-bold mb-3 sm:mb-4 dark:text-white text-blue-600 text-sm sm:text-base">Nội dung câu hỏi</h4>
-        <div class="mb-3 sm:mb-4">
-            <label class="text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-400">Đoạn văn (Bỏ trống nếu không có):</label>
-            <textarea placeholder="Nội dung bài đọc..." class="q-passage w-full p-2 sm:p-3 mt-1 border rounded outline-none focus:border-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 text-sm sm:text-base" rows="3">${pass}</textarea>
-        </div>
-        <textarea placeholder="Nội dung câu hỏi chính..." class="q-content w-full p-2 sm:p-3 mb-3 sm:mb-4 border rounded outline-none focus:border-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 text-sm sm:text-base" rows="2">${cont}</textarea>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
-            <input type="text" placeholder="Lựa chọn A" class="q-opt-0 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none text-sm sm:text-base" value="${opt0}">
-            <input type="text" placeholder="Lựa chọn B" class="q-opt-1 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none text-sm sm:text-base" value="${opt1}">
-            <input type="text" placeholder="Lựa chọn C" class="q-opt-2 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none text-sm sm:text-base" value="${opt2}">
-            <input type="text" placeholder="Lựa chọn D" class="q-opt-3 p-2 border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600 outline-none text-sm sm:text-base" value="${opt3}">
-        </div>
-        <div class="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center">
-            <label class="font-bold dark:text-gray-300 text-sm sm:text-base">Đáp án đúng:</label>
-            <select class="q-correct p-2 border rounded outline-none dark:bg-gray-800 dark:text-white dark:border-gray-600 w-full sm:w-auto text-sm sm:text-base">
-                <option value="0" ${corr === 0 ? 'selected' : ''}>A</option>
-                <option value="1" ${corr === 1 ? 'selected' : ''}>B</option>
-                <option value="2" ${corr === 2 ? 'selected' : ''}>C</option>
-                <option value="3" ${corr === 3 ? 'selected' : ''}>D</option>
+        <button onclick="this.parentElement.remove()" class="absolute top-3 right-3 sm:top-4 sm:right-4 text-slate-400 hover:text-red-500 transition-colors"><i class="fas fa-times text-lg sm:text-xl"></i></button>
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+            <h4 class="font-bold dark:text-white text-blue-600 text-sm sm:text-base"><i class="fas fa-cube mr-1"></i> Khối Câu Hỏi</h4>
+            <select class="q-type-select p-2 border rounded outline-none dark:bg-slate-900 dark:text-white dark:border-slate-600 text-xs font-bold bg-white text-slate-700 shadow-sm cursor-pointer border-slate-300">
+                <option value="mcq" ${qType === 'mcq' ? 'selected' : ''}>Trắc nghiệm 4 chọn 1</option>
+                <option value="tf" ${qType === 'tf' ? 'selected' : ''}>Trắc nghiệm Đúng/Sai</option>
+                <option value="sa" ${qType === 'sa' ? 'selected' : ''}>Trả lời ngắn (Điền từ)</option>
             </select>
         </div>
-        <input type="text" placeholder="Giải thích chi tiết (Tùy chọn)..." class="q-expl w-full p-2 mt-3 sm:mt-4 border rounded outline-none dark:bg-gray-800 dark:text-white dark:border-gray-600 text-sm sm:text-base" value="${expl}">
+        
+        <div class="mb-3 sm:mb-4">
+            <textarea placeholder="Đoạn văn dùng chung (Bỏ trống nếu không có)..." class="q-passage w-full p-2 sm:p-3 border rounded outline-none focus:border-blue-500 dark:bg-slate-900 dark:text-white dark:border-slate-700 text-sm" rows="2">${pass}</textarea>
+        </div>
+        <textarea placeholder="Nội dung câu hỏi chính..." class="q-content w-full p-2 sm:p-3 mb-3 sm:mb-4 border rounded outline-none focus:border-blue-500 dark:bg-slate-900 dark:text-white dark:border-slate-700 text-sm font-bold shadow-inner" rows="2">${cont}</textarea>
+        
+        <div class="type-zone mcq-zone ${qType === 'mcq' ? '' : 'hidden'}">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                <input type="text" placeholder="Lựa chọn A" class="q-opt-mcq-0 p-2 border rounded dark:bg-slate-900 dark:text-white dark:border-slate-700 outline-none text-sm" value="${opts[0].replace(/"/g, '&quot;')}">
+                <input type="text" placeholder="Lựa chọn B" class="q-opt-mcq-1 p-2 border rounded dark:bg-slate-900 dark:text-white dark:border-slate-700 outline-none text-sm" value="${opts[1].replace(/"/g, '&quot;')}">
+                <input type="text" placeholder="Lựa chọn C" class="q-opt-mcq-2 p-2 border rounded dark:bg-slate-900 dark:text-white dark:border-slate-700 outline-none text-sm" value="${opts[2].replace(/"/g, '&quot;')}">
+                <input type="text" placeholder="Lựa chọn D" class="q-opt-mcq-3 p-2 border rounded dark:bg-slate-900 dark:text-white dark:border-slate-700 outline-none text-sm" value="${opts[3].replace(/"/g, '&quot;')}">
+            </div>
+            <div class="flex items-center gap-3">
+                <label class="font-bold text-sm dark:text-slate-300">Đáp án đúng:</label>
+                <select class="q-correct-mcq p-1.5 border rounded outline-none dark:bg-slate-900 dark:text-white dark:border-slate-700 text-sm font-bold bg-white">
+                    <option value="0" ${mcqAnswer === 0 ? 'selected' : ''}>A</option>
+                    <option value="1" ${mcqAnswer === 1 ? 'selected' : ''}>B</option>
+                    <option value="2" ${mcqAnswer === 2 ? 'selected' : ''}>C</option>
+                    <option value="3" ${mcqAnswer === 3 ? 'selected' : ''}>D</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="type-zone tf-zone ${qType === 'tf' ? '' : 'hidden'} bg-blue-50/50 dark:bg-slate-900/50 p-4 rounded-xl border border-blue-100 dark:border-slate-700">
+            <label class="block text-xs font-bold text-blue-600 dark:text-blue-400 mb-2 uppercase tracking-wider">Nhập 4 luận điểm Đ/S:</label>
+            <div class="flex flex-col gap-2 mb-2">
+                ${[0,1,2,3].map(i => `
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold w-4 text-slate-500 uppercase">${['a','b','c','d'][i]}.</span>
+                        <input type="text" placeholder="Ý ${['a','b','c','d'][i]}" class="q-opt-tf-${i} flex-1 p-2 border rounded dark:bg-slate-800 dark:text-white dark:border-slate-600 outline-none text-sm" value="${opts[i].replace(/"/g, '&quot;')}">
+                        <select class="q-correct-tf-${i} p-2 border rounded dark:bg-slate-800 dark:text-white dark:border-slate-600 outline-none text-sm font-bold bg-white cursor-pointer">
+                            <option value="true" ${tfAnswers[i] === true ? 'selected' : ''}>Đúng</option>
+                            <option value="false" ${tfAnswers[i] === false ? 'selected' : ''}>Sai</option>
+                        </select>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+
+        <div class="type-zone sa-zone ${qType === 'sa' ? '' : 'hidden'}">
+            <input type="text" placeholder="Nhập đáp án chính xác (ví dụ: 15.5, Dien Bien Phu)..." class="q-correct-sa w-full p-3 border-2 border-green-300 focus:border-green-500 rounded outline-none dark:bg-slate-900 dark:text-white dark:border-green-800/50 text-sm font-bold mb-3 shadow-inner bg-green-50/30 dark:bg-green-900/10" value="${saAnswer.replace(/"/g, '&quot;')}">
+            <p class="text-[10px] italic text-slate-400"><i class="fas fa-info-circle"></i> Máy chủ sẽ tự động chuẩn hóa chữ hoa/thường và bỏ khoảng trắng dư thừa khi học sinh nộp bài.</p>
+        </div>
+
+        <textarea placeholder="Giải thích chi tiết (Tùy chọn)..." class="q-expl w-full p-2 mt-4 border rounded outline-none dark:bg-slate-900 dark:text-white dark:border-slate-700 text-sm" rows="1">${expl}</textarea>
     `;
+
+    // Lắng nghe sự kiện đổi loại câu hỏi để Render Form
+    const selectType = qDiv.querySelector('.q-type-select');
+    selectType.addEventListener('change', function() {
+        qDiv.querySelectorAll('.type-zone').forEach(z => z.classList.add('hidden'));
+        qDiv.querySelector('.' + this.value + '-zone').classList.remove('hidden');
+    });
+
     container.appendChild(qDiv);
 }
 
-function saveManualQuiz() {
+window.saveManualQuiz = function() {
     const titleEl = document.getElementById('manual-title'); const catEl = document.getElementById('manual-category'); const timeEl = document.getElementById('manual-time'); const testEl = document.getElementById('manual-test-only');
     const title = titleEl ? titleEl.value.trim() : ""; const category = catEl ? catEl.value.trim() : "";
     const manualMinutes = timeEl ? timeEl.value : ""; const timeLimit = parseInt(manualMinutes) * 60; const isTestOnly = testEl ? testEl.checked : false; 
+    
     if (!title || !category || isNaN(timeLimit) || timeLimit <= 0) return alert("Vui lòng điền đủ Tên đề, Môn học và Thời gian quy định.");
     const qBlocks = document.querySelectorAll('.manual-q-block'); if (qBlocks.length === 0) return alert("Vui lòng tạo ít nhất 1 câu hỏi.");
 
     let questions = []; let isValid = true;
+    
     qBlocks.forEach(block => {
-        const passage = block.querySelector('.q-passage').value.trim(); const content = block.querySelector('.q-content').value.trim();
+        const qType = block.querySelector('.q-type-select').value;
+        const passage = block.querySelector('.q-passage').value.trim(); 
+        const content = block.querySelector('.q-content').value.trim();
+        const expl = block.querySelector('.q-expl').value.trim() || "Chưa có giải thích.";
         
-        let rawA = block.querySelector('.q-opt-0').value.trim();
-        let rawB = block.querySelector('.q-opt-1').value.trim();
-        let rawC = block.querySelector('.q-opt-2').value.trim();
-        let rawD = block.querySelector('.q-opt-3').value.trim();
-        
-        if (!content || rawA === "" || rawB === "" || rawC === "" || rawD === "") isValid = false;
-        
-        let splitA = rawA.split('::'); let optA = splitA[0].trim(); let expA = splitA[1] ? splitA[1].trim() : "";
-        let splitB = rawB.split('::'); let optB = splitB[0].trim(); let expB = splitB[1] ? splitB[1].trim() : "";
-        let splitC = rawC.split('::'); let optC = splitC[0].trim(); let expC = splitC[1] ? splitC[1].trim() : "";
-        let splitD = rawD.split('::'); let optD = splitD[0].trim(); let expD = splitD[1] ? splitD[1].trim() : "";
-        
-        const correct = parseInt(block.querySelector('.q-correct').value); const expl = block.querySelector('.q-expl').value.trim() || "Chưa có giải thích.";
-        
-        questions.push({ 
-            passage: passage, 
-            content: content, 
-            options: [optA, optB, optC, optD], 
-            optionExplanations: [expA, expB, expC, expD], 
-            correctAnswer: correct, 
-            explanation: expl 
-        });
+        if (!content) isValid = false;
+
+        if (qType === "mcq") {
+            let rawA = block.querySelector('.q-opt-mcq-0').value.trim(); let rawB = block.querySelector('.q-opt-mcq-1').value.trim(); let rawC = block.querySelector('.q-opt-mcq-2').value.trim(); let rawD = block.querySelector('.q-opt-mcq-3').value.trim();
+            if (rawA === "" || rawB === "" || rawC === "" || rawD === "") isValid = false;
+            const correct = parseInt(block.querySelector('.q-correct-mcq').value);
+            questions.push({ type: "mcq", passage: passage, content: content, options: [rawA, rawB, rawC, rawD], correctAnswer: correct, explanation: expl });
+        } 
+        else if (qType === "tf") {
+            let opts = []; let corrs = [];
+            for(let i=0; i<4; i++) {
+                let o = block.querySelector(`.q-opt-tf-${i}`).value.trim();
+                if(o === "") isValid = false;
+                opts.push(o);
+                corrs.push(block.querySelector(`.q-correct-tf-${i}`).value === "true");
+            }
+            questions.push({ type: "tf", passage: passage, content: content, options: opts, correctAnswers: corrs, explanation: expl });
+        }
+        else if (qType === "sa") {
+            let ans = block.querySelector('.q-correct-sa').value.trim();
+            if(ans === "") isValid = false;
+            questions.push({ type: "sa", passage: passage, content: content, correctAnswer: ans, explanation: expl });
+        }
     });
 
-    if (!isValid) return alert("Vui lòng hoàn thiện nội dung câu hỏi và 4 lựa chọn.");
+    if (!isValid) return alert("Hành động bị từ chối! Bệ hạ chưa điền đủ Nội dung câu hỏi và Đáp án cho tất cả các khối.");
     
     const targetQuizId = editingQuizId ? editingQuizId : "QZ-MANUAL-" + Date.now();
     const newQuiz = { id: targetQuizId, title: title, category: category, timeLimit: timeLimit, questions: questions, isTestOnly: isTestOnly, authorId: auth.currentUser ? auth.currentUser.uid : "GUEST" };
@@ -1788,8 +1973,6 @@ function saveManualQuiz() {
         window.history.pushState({}, '', window.location.pathname); switchScreen('home'); 
     }).catch(err => alert("Lỗi hệ thống: " + err.message));
 }
-
-let currentSelectionRange = null;
 
 function setupHighlighting() {
     document.addEventListener('mouseup', (e) => {
@@ -2519,4 +2702,43 @@ function loginWithGoogle() {
                 setTimeout(() => toastEl.classList.add('opacity-0', 'pointer-events-none'), 4000);
             }
         });
+}
+
+// =========================================================================
+// [VIP SAAS] TRẬN PHÁP CHỐNG GIAN LẬN: CẢNH BÁO CHUYỂN TAB / ĐỔI CỬA SỔ
+// =========================================================================
+let cheatViolationCount = 0; // Bộ đếm số lần vi phạm
+
+document.addEventListener("visibilitychange", () => {
+    const quizScreen = document.getElementById("quiz-screen");
+    
+    // Chỉ theo dõi và bắt lỗi nếu học viên đang ở bên trong phòng thi (quiz-screen không bị ẩn)
+    if (quizScreen && !quizScreen.classList.contains("hidden")) {
+        
+        // Trạng thái 'hidden' nghĩa là người dùng vừa lướt sang Tab khác hoặc thu nhỏ trình duyệt
+        if (document.visibilityState === "hidden") {
+            cheatViolationCount++;
+            
+            if (cheatViolationCount === 1) {
+                // Vi phạm lần 1: Đình chỉ tạm thời bằng Alert để chặn thao tác, cảnh cáo thép
+                alert("CẢNH BÁO VI PHẠM (1/2): Hệ thống phát hiện ngài vừa chuyển đổi cửa sổ/Tab trình duyệt!\n\nChiếu theo quy chế, nếu tái phạm lần 2, hệ thống sẽ tự động khóa và nộp bài thi ngay lập tức.");
+            } 
+            else if (cheatViolationCount >= 2) {
+                // Vi phạm lần 2: Trảm! Tự động nộp bài
+                alert("ĐÌNH CHỈ THI (2/2): Đã vi phạm quy chế lần 2!\n\nHệ thống đang tiến hành khóa dữ liệu và tự động nộp bài...");
+                
+                // Móc trực tiếp vào ID của nút "Khóa & Nộp Bài" để kích hoạt lệnh nộp y như người dùng tự bấm
+                const btnSubmit = document.getElementById("btn-submit");
+                if (btnSubmit) {
+                    btnSubmit.click();
+                }
+            }
+        }
+    }
+});
+
+// [QUAN TRỌNG] Hàm để reset bộ đếm về 0 mỗi khi bắt đầu một lượt thi mới
+// Bệ hạ cần chèn dòng: resetAntiCheat(); vào bên trong hàm bắt đầu thi của ngài (ví dụ hàm startQuiz hoặc tương đương)
+function resetAntiCheat() {
+    cheatViolationCount = 0;
 }
