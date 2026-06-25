@@ -1651,8 +1651,12 @@ function fetchResultsFromFirebase() {
 }
 
 let currentSmartQuestions = [];
-function processSmartText() {
-    let text = document.getElementById('smart-input-area').value; text = text.replace(/[\u00A0\u200B-\u200D\uFEFF]/g, ' ');
+// [VIP] CẬP NHẬT LÕI NHẬN DIỆN THÔNG MINH CHO THPTQG 2025
+window.processSmartText = function() {
+    let text = document.getElementById('smart-input-area').value;
+    text = text.replace(/[\u00A0\u200B-\u200D\uFEFF]/g, ' ');
+    
+    // Thuật toán tách Block bằng Regex
     const regex = /(?=\[Bài đọc\]|\[Hết bài đọc\]|Câu \d+[:.])/i;
     const blocks = text.split(regex).filter(q => q.trim().length > 0);
     
@@ -1660,90 +1664,53 @@ function processSmartText() {
     
     blocks.forEach((block) => {
         let trimmed = block.trim();
-        if (trimmed.match(/^\[Bài đọc\]/i)) { currentPassage = trimmed.replace(/^\[Bài đọc\]/i, '').trim(); } 
-        else if (trimmed.match(/^\[Hết bài đọc\]/i)) { currentPassage = ""; } 
-        else if (trimmed.match(/^Câu \d+[:.]/i)) {
-            let parseRegex = /([\s\S]*?)(?:^|\s+)([*#]*)[Aa]\s*[.)\-:/]([\s\S]*?)(?:^|\s+)([*#]*)[Bb]\s*[.)\-:/]([\s\S]*?)(?:^|\s+)([*#]*)[Cc]\s*[.)\-:/]([\s\S]*?)(?:^|\s+)([*#]*)[Dd]\s*[.)\-:/]([\s\S]*)/i;
-            let match = trimmed.match(parseRegex);
+        if (trimmed.match(/^\[Bài đọc\]/i)) { 
+            currentPassage = trimmed.replace(/^\[Bài đọc\]/i, '').trim(); 
+        } else if (trimmed.match(/^\[Hết bài đọc\]/i)) { 
+            currentPassage = ""; 
+        } else if (trimmed.match(/^Câu \d+[:.]/i)) {
+            let content = trimmed.split('\n')[0].replace(/^Câu \d+[:.]/i, '').trim();
+            let body = trimmed.substring(trimmed.indexOf('\n') + 1);
 
-            if (match) {
-                let content = match[1].replace(/^Câu \d+[:.]/i, '').trim();
-                let optA = match[3].trim(); let optB = match[5].trim(); let optC = match[7].trim(); 
-                let rawOptD = match[9].trim();
-                
-                let correctIndex = 0; 
-                if (match[2].includes('*') || match[2].includes('#')) correctIndex = 0;
-                if (match[4].includes('*') || match[4].includes('#')) correctIndex = 1;
-                if (match[6].includes('*') || match[6].includes('#')) correctIndex = 2;
-                if (match[8].includes('*') || match[8].includes('#')) correctIndex = 3;
-
-                let globalExpl = "Tạo tự động từ dữ liệu văn bản.";
-                
-                let explRegex = /(?:\n|\s|^)(?:giải thích|lời giải|hd|hướng dẫn)[\s]*:(.*)/is;
-                let explMatch = rawOptD.match(explRegex);
-                if (explMatch) {
-                    globalExpl = explMatch[1].trim(); 
-                    rawOptD = rawOptD.replace(explMatch[0], '').trim(); 
-                }
-
-                let ansRegex = /(?:\n|\s|^)(?:đáp án)[\s]*:(.*)/is;
-                let ansMatch = rawOptD.match(ansRegex);
-                if (ansMatch) {
-                    let ansChar = ansMatch[1].trim().charAt(0).toUpperCase();
-                    if (ansChar === 'A') correctIndex = 0;
-                    else if (ansChar === 'B') correctIndex = 1;
-                    else if (ansChar === 'C') correctIndex = 2;
-                    else if (ansChar === 'D') correctIndex = 3;
-                    
-                    rawOptD = rawOptD.replace(ansMatch[0], '').trim();
-                } else if (rawOptD.toLowerCase().includes("đáp án")) {
-                    rawOptD = rawOptD.split(/đáp án/i)[0].trim();
-                }
-
-                let splitA = optA.split('::'); optA = splitA[0].trim(); let expA = splitA[1] ? splitA[1].trim() : "";
-                let splitB = optB.split('::'); optB = splitB[0].trim(); let expB = splitB[1] ? splitB[1].trim() : "";
-                let splitC = optC.split('::'); optC = splitC[0].trim(); let expC = splitC[1] ? splitC[1].trim() : "";
-                let splitD = rawOptD.split('::'); let optD = splitD[0].trim(); let expD = splitD[1] ? splitD[1].trim() : "";
-
-                currentSmartQuestions.push({
-                    content: content, options: [optA, optB, optC, optD], optionExplanations: [expA, expB, expC, expD],
-                    correctAnswer: correctIndex, explanation: globalExpl, passage: currentPassage 
+            // --- LOẠI 1: TRẮC NGHIỆM ĐÚNG/SAI (TF) ---
+            if (body.toLowerCase().includes("đúng") || body.toLowerCase().includes("sai")) {
+                let options = []; let correctAnswers = [];
+                let lines = body.split('\n').filter(l => l.trim().length > 0);
+                lines.forEach(line => {
+                    if (options.length < 4) {
+                        options.push(line.replace(/^[a-d]\.\s*/i, '').trim());
+                        correctAnswers.push(line.toLowerCase().includes("đúng"));
+                    }
                 });
-                
-                const labels = ['A', 'B', 'C', 'D'];
-                
-                let previewExplHTML = (globalExpl !== "Tạo tự động từ dữ liệu văn bản.") ? 
-                    `<div class="mt-2 text-[0.7rem] text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-gray-800 p-2 rounded"><i class="fas fa-info-circle"></i> <b>Giải thích chung:</b> ${globalExpl}</div>` : '';
-
-                previewHTML += `
-                    <div class="p-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm">
-                        <p class="font-bold text-sm text-gray-800 dark:text-white mb-2">Câu ${currentSmartQuestions.length}: ${content}</p>
-                        <div class="grid grid-cols-1 gap-1">
-                            ${[optA, optB, optC, optD].map((opt, i) => `
-                                <div class="text-xs p-1.5 rounded flex items-start gap-1 ${i === correctIndex ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 font-bold border border-green-200' : 'text-gray-600 dark:text-gray-300'}">
-                                    <span class="font-bold w-4">${labels[i]}.</span> 
-                                    <div class="flex flex-col">
-                                        <span>${opt}</span>
-                                        ${[expA, expB, expC, expD][i] ? `<span class="text-[0.65rem] italic mt-0.5 text-gray-500 dark:text-gray-400">Giải thích riêng: ${[expA, expB, expC, expD][i]}</span>` : ''}
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                        ${previewExplHTML}
-                    </div>`;
-            } else {
-                let c = trimmed.substring(0, 40).replace(/\n/g, ' ') + "...";
-                previewHTML += `<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg text-red-600 dark:text-red-400 text-xs font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> Không thể nhận diện định dạng tại: "${c}"</div>`;
+                if (options.length === 4) {
+                    currentSmartQuestions.push({ type: "tf", content, options, correctAnswers, passage: currentPassage });
+                }
+            }
+            // --- LOẠI 2: TRẢ LỜI NGẮN (SA) ---
+            else if (body.toLowerCase().includes("đáp án:")) {
+                let ans = body.split(/đáp án:/i)[1].trim();
+                currentSmartQuestions.push({ type: "sa", content, correctAnswer: ans, passage: currentPassage });
+            }
+            // --- LOẠI 3: TRẮC NGHIỆM 4 CHỌN 1 (MCQ) ---
+            else {
+                let parseRegex = /([*#]*)[Aa]\s*[.)\-:/]([\s\S]*?)([*#]*)[Bb]\s*[.)\-:/]([\s\S]*?)([*#]*)[Cc]\s*[.)\-:/]([\s\S]*?)([*#]*)[Dd]\s*[.)\-:/]([\s\S]*)/i;
+                let match = body.match(parseRegex);
+                if (match) {
+                    let opts = [match[2].trim(), match[4].trim(), match[6].trim(), match[8].trim()];
+                    let correctIndex = 0;
+                    if (match[1] || match[2].includes('*')) correctIndex = 0;
+                    else if (match[3] || match[4].includes('*')) correctIndex = 1;
+                    else if (match[5] || match[6].includes('*')) correctIndex = 2;
+                    else if (match[7] || match[8].includes('*')) correctIndex = 3;
+                    currentSmartQuestions.push({ type: "mcq", content, options: opts, correctAnswer: correctIndex, passage: currentPassage });
+                }
             }
         }
     });
 
-    const sqc = document.getElementById('smart-question-count'); if (sqc) sqc.innerText = `Đã nhận diện: ${currentSmartQuestions.length} câu`;
-    const spb = document.getElementById('smart-preview-box');
-    if (spb) {
-        if (previewHTML === "") spb.innerHTML = `<p class="text-sm text-gray-400 text-center mt-10 italic">Bản xem trước dữ liệu sẽ hiển thị tại đây.</p>`;
-        else spb.innerHTML = previewHTML;
-    }
+    // Cập nhật giao diện Preview
+    const sqc = document.getElementById('smart-question-count'); 
+    if (sqc) sqc.innerText = `Đã nhận diện: ${currentSmartQuestions.length} câu`;
 }
 
 function saveSmartQuiz() {
