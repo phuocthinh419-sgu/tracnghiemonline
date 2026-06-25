@@ -1726,13 +1726,11 @@ window.processSmartText = function() {
                 }
             }
             // --- NHÁNH 2: TRẮC NGHIỆM ĐÚNG/SAI (TF) ---
-            // [VÁ LỖI TỬ HUYỆT]: Đã xóa sạch chữ 'i'. BẮT BUỘC phải dùng a, b, c, d thường!
             else if (body.match(/^[a-d]\.\s/m) && (body.toLowerCase().includes(":: đúng") || body.toLowerCase().includes(":: sai") || body.toLowerCase().includes("::đúng") || body.toLowerCase().includes("::sai"))) {
                 let options = []; let correctAnswers = []; let explanations = [];
                 let lines = body.split('\n').filter(l => l.trim().length > 0);
                 
                 lines.forEach(line => {
-                    // CŨNG XÓA CHỮ 'i' Ở ĐÂY LUN
                     if (options.length < 4 && line.match(/^[a-d]\.\s/)) {
                         let parts = line.replace(/^[a-d]\.\s*/, '').split('::');
                         let textOnly = parts[0].trim();
@@ -1781,7 +1779,8 @@ window.processSmartText = function() {
             }
             // --- NHÁNH 3: TRẮC NGHIỆM 4 CHỌN 1 (MCQ) ---
             else {
-                let parseRegex = /([*#]*)[Aa]\s*[.)\-:/]([\s\S]*?)([*#]*)[Bb]\s*[.)\-:/]([\s\S]*?)([*#]*)[Cc]\s*[.)\-:/]([\s\S]*?)([*#]*)[Dd]\s*[.)\-:/]([\s\S]*)/i;
+                // [VÁ LỖI CỰC MẠNH] Thêm (?:^|\n)\s* để BẮT BUỘC A, B, C, D phải nằm ở ĐẦU DÒNG (ngăn chặn lỗi "Tire-d::")
+                let parseRegex = /(?:^|\n)\s*([*#]*)[Aa]\s*[.)\-:/]([\s\S]*?)(?:^|\n)\s*([*#]*)[Bb]\s*[.)\-:/]([\s\S]*?)(?:^|\n)\s*([*#]*)[Cc]\s*[.)\-:/]([\s\S]*?)(?:^|\n)\s*([*#]*)[Dd]\s*[.)\-:/]([\s\S]*)/i;
                 let match = body.match(parseRegex);
                 if (match) {
                     let rawOpts = [match[2], match[4], match[6], match[8]];
@@ -1793,12 +1792,13 @@ window.processSmartText = function() {
                         opts.push(p[0].trim());
                         let exp = p[1] ? p[1].trim() : "";
                         exps.push(exp);
-                        if (o.includes('*') || exp.toLowerCase().startsWith("đúng")) {
+                        
+                        // match[1] là đánh dấu A, match[3] là B, match[5] là C, match[7] là D
+                        if (match[idx * 2 + 1].includes('*') || exp.toLowerCase().startsWith("đúng")) {
                             correctIndex = idx;
                         }
                     });
                     
-                    if (correctIndex === -1) correctIndex = match[1] || match[2].includes('*') ? 0 : (match[3] || match[4].includes('*') ? 1 : (match[5] || match[6].includes('*') ? 2 : 3));
                     if (correctIndex === -1) correctIndex = 0; 
 
                     currentSmartQuestions.push({ type: "mcq", content, options: opts, optionExplanations: exps, correctAnswer: correctIndex, passage: currentPassage });
