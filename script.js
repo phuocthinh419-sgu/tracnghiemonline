@@ -1486,6 +1486,7 @@ function handleVisibilityChange() {
     }
 }
 
+// [VIP CẤP CỨU] Thuật Toán Chấm Điểm Lũy Tiến Toàn Cục THPTQG 2025
 function submitQuiz(force) {
     const timeUsed = activeQuiz.timeLimit - (timeLeft > 0 ? timeLeft : 0);
     const minimumTime = Math.floor(activeQuiz.timeLimit / 2);
@@ -1502,9 +1503,12 @@ function submitQuiz(force) {
         let totalScore = 0; 
         activeQuiz.questions.forEach((q, i) => {
             const uAns = userAnswers[i];
+            
+            // PHẦN I: Trắc nghiệm (0.25đ / câu)
             if (!q.type || q.type === "mcq") {
                 if (uAns !== null && uAns === q.correctAnswer) totalScore += 0.25;
             } 
+            // PHẦN II: Đúng/Sai (Tính điểm lũy tiến 0.1 - 0.25 - 0.5 - 1.0)
             else if (q.type === "tf") {
                 if (Array.isArray(uAns)) {
                     let matchCount = 0;
@@ -1517,15 +1521,18 @@ function submitQuiz(force) {
                     else if (matchCount === 4) totalScore += 1.0;
                 }
             }
+            // PHẦN III: Trả lời ngắn (0.5đ / câu)
             else if (q.type === "sa") {
                 if (uAns !== null && uAns.toString().trim().toLowerCase() === q.correctAnswer.toString().trim().toLowerCase()) {
-                    totalScore += 0.25;
+                    totalScore += 0.5; // Đã nâng lên 0.5 điểm theo đúng quy định
                 }
             }
         });
 
+        // TÍNH TOÁN ĐIỂM TRẦN (MAX SCORE) DỰA TRÊN CẤU TRÚC ĐỀ
         let maxPossibleScore = activeQuiz.questions.reduce((acc, q) => {
             if (q.type === "tf") return acc + 1.0;
+            if (q.type === "sa") return acc + 0.5; // Trần điểm câu SA cũng được nâng lên 0.5
             return acc + 0.25;
         }, 0);
 
@@ -1534,13 +1541,14 @@ function submitQuiz(force) {
         const timeUsedStr = `${Math.floor(finalTimeUsed / 60).toString().padStart(2, '0')}:${(finalTimeUsed % 60).toString().padStart(2, '0')}`;
         
         switchScreen('result');
+        // Ép định dạng 2 chữ số thập phân (VD: 8.50 / 10.00)
         const sc = document.getElementById('result-score'); if(sc) sc.innerText = `${totalScore.toFixed(2)}/${maxPossibleScore.toFixed(2)}`;
         const pc = document.getElementById('result-percent'); if(pc) pc.innerText = `${percent}%`;
-        const tc = document.getElementById('result-time'); if(tc) tc.innerText = isPracticeMode ? "Luyen tap" : timeUsedStr;
+        const tc = document.getElementById('result-time'); if(tc) tc.innerText = isPracticeMode ? "Luyện tập" : timeUsedStr;
 
         const rawPayload = {
-            quizId: activeQuiz.id || "UNKNOWN", quizTitle: activeQuiz.title || "Chua dat ten", category: activeQuiz.category || "Chua phan loai",
-            studentName: studentName || "An danh", email: auth.currentUser ? auth.currentUser.email : "An danh", uid: auth.currentUser ? auth.currentUser.uid : "UNKNOWN",
+            quizId: activeQuiz.id || "UNKNOWN", quizTitle: activeQuiz.title || "Chưa đặt tên", category: activeQuiz.category || "Chưa phân loại",
+            studentName: studentName || "Ẩn danh", email: auth.currentUser ? auth.currentUser.email : "Ẩn danh", uid: auth.currentUser ? auth.currentUser.uid : "UNKNOWN",
             score: `${totalScore.toFixed(2)}/${maxPossibleScore.toFixed(2)}`, percentage: percent, timeUsed: isPracticeMode ? "Luyện tập" : timeUsedStr,
             teacherId: activeQuiz.authorId || "GUEST", userAnswers: userAnswers || [], quizQuestionsSnapshot: activeQuiz.questions || []
         };
