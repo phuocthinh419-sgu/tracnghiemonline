@@ -1711,6 +1711,7 @@ window.processSmartText = function() {
             let content = trimmed.split('\n')[0].replace(/^Câu \d+[:.]/i, '').trim();
             let body = trimmed.substring(trimmed.indexOf('\n') + 1).trim();
 
+            // --- NHÁNH 1: TRẢ LỜI NGẮN (SA) ---
             if (body.match(/^(Đáp án|Đ\/a)[:\-]/i)) {
                 let parts = body.replace(/^(Đáp án|Đ\/a)[:\-]/i, '').split('::');
                 let ans = parts[0].trim();
@@ -1724,13 +1725,14 @@ window.processSmartText = function() {
                         </div>`;
                 }
             }
-            // [VÁ LỖI TỬ HUYỆT]: Đã xóa chữ 'i' ở /^[a-d]\.\s/m. Bắt buộc phải là a, b, c, d thường thì mới cho vào nhánh Đúng/Sai!
+            // --- NHÁNH 2: TRẮC NGHIỆM ĐÚNG/SAI (TF) ---
+            // [VÁ LỖI TỬ HUYỆT]: Đã xóa sạch chữ 'i'. BẮT BUỘC phải dùng a, b, c, d thường!
             else if (body.match(/^[a-d]\.\s/m) && (body.toLowerCase().includes(":: đúng") || body.toLowerCase().includes(":: sai") || body.toLowerCase().includes("::đúng") || body.toLowerCase().includes("::sai"))) {
                 let options = []; let correctAnswers = []; let explanations = [];
                 let lines = body.split('\n').filter(l => l.trim().length > 0);
                 
                 lines.forEach(line => {
-                    // [VÁ LỖI TỬ HUYỆT]: Xóa chữ 'i' ở /^[a-d]\.\s/
+                    // CŨNG XÓA CHỮ 'i' Ở ĐÂY LUN
                     if (options.length < 4 && line.match(/^[a-d]\.\s/)) {
                         let parts = line.replace(/^[a-d]\.\s*/, '').split('::');
                         let textOnly = parts[0].trim();
@@ -1772,8 +1774,12 @@ window.processSmartText = function() {
                                 ${optsHTML}
                             </div>
                         </div>`;
+                } else {
+                    let c = content.substring(0, 40) + "...";
+                    previewHTML += `<div class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900 rounded-xl text-sm text-red-600 dark:text-red-400 mb-4 shadow-sm font-bold"><i class="fas fa-exclamation-triangle mr-2 text-lg"></i> Lỗi định dạng Đ/S tại: ${c} (Không tìm đủ 4 ý a, b, c, d thường)</div>`;
                 }
             }
+            // --- NHÁNH 3: TRẮC NGHIỆM 4 CHỌN 1 (MCQ) ---
             else {
                 let parseRegex = /([*#]*)[Aa]\s*[.)\-:/]([\s\S]*?)([*#]*)[Bb]\s*[.)\-:/]([\s\S]*?)([*#]*)[Cc]\s*[.)\-:/]([\s\S]*?)([*#]*)[Dd]\s*[.)\-:/]([\s\S]*)/i;
                 let match = body.match(parseRegex);
