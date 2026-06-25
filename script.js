@@ -1248,23 +1248,22 @@ function toggleFlag() {
 // =========================================================================
 // [VIP SAAS] TRÁI TIM HỆ THỐNG: ĐỘNG CƠ RENDER ĐA CẤU TRÚC (THPTQG 2025)
 // =========================================================================
-
 function loadQuestion(index) {
     if(index < 0 || index >= activeQuiz.questions.length) return;
     currentQuestionIndex = index;
     const q = activeQuiz.questions[index];
     
-    const counter = document.getElementById('question-counter'); if(counter) counter.innerText = `Câu ${index + 1} / ${activeQuiz.questions.length}`;
+    const counter = document.getElementById('question-counter'); if(counter) counter.innerText = `CÂU ${index + 1} / ${activeQuiz.questions.length}`;
     const content = document.getElementById('question-content'); if(content) content.innerHTML = q.content;
     const passageContainer = document.getElementById('passage-container');
     const questionWrapper = document.getElementById('question-wrapper'); const passageText = document.getElementById('passage-text');
 
     if (q.passage && q.passage.trim() !== "") {
-        if(passageContainer) passageContainer.classList.remove('hidden');
+        if(passageContainer) { passageContainer.classList.remove('hidden'); passageContainer.classList.add('flex'); }
         if(questionWrapper) questionWrapper.classList.replace('w-full', 'md:w-1/2');
         if(passageText) passageText.innerHTML = q.passage;
     } else {
-        if(passageContainer) passageContainer.classList.add('hidden');
+        if(passageContainer) { passageContainer.classList.add('hidden'); passageContainer.classList.remove('flex'); }
         if(questionWrapper) questionWrapper.classList.replace('md:w-1/2', 'w-full');
         if(passageText) passageText.innerHTML = "";
     }
@@ -1272,11 +1271,11 @@ function loadQuestion(index) {
     const btnFlag = document.getElementById('btn-flag');
     if (btnFlag) {
         if (flaggedQuestions[index]) {
-            btnFlag.className = 'flex-1 sm:flex-none justify-center flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-yellow-400 text-yellow-900 rounded-lg font-bold transition-colors border border-yellow-500 text-xs sm:text-sm';
-            btnFlag.innerHTML = `<i class="fas fa-flag"></i> <span class="hidden sm:inline">Đang</span> Phân vân`;
+            btnFlag.className = 'flex-1 sm:flex-none justify-center flex items-center gap-2 px-4 py-2 bg-yellow-400 text-slate-900 border border-yellow-500 rounded-lg font-bold text-xs shadow-sm';
+            btnFlag.innerHTML = `<i class="fas fa-flag text-[10px]"></i> Đang Phân Vân`;
         } else {
-            btnFlag.className = 'flex-1 sm:flex-none justify-center flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-400 rounded-lg font-bold hover:bg-yellow-200 transition-colors border border-yellow-300 dark:border-yellow-700 text-xs sm:text-sm';
-            btnFlag.innerHTML = `<i class="far fa-flag"></i> <span class="hidden sm:inline">Đánh dấu</span> Phân vân`;
+            btnFlag.className = 'flex-1 sm:flex-none justify-center flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-xs hover:bg-slate-50 hover:border-amber-200 transition-colors shadow-sm';
+            btnFlag.innerHTML = `<i class="far fa-flag text-[10px]"></i> Cần Cân Nhắc`;
         }
     }
     
@@ -1297,25 +1296,25 @@ function loadQuestion(index) {
                 let optExpText = (q.optionExplanations && q.optionExplanations[optIndex]) ? q.optionExplanations[optIndex] : "";
                 if (!hasExplanationAccess) optExpText = ""; 
 
-                let expBlock = ''; let labelBg = 'bg-gray-100'; let labelText = 'text-gray-500';
-                let btnBorder = 'border-gray-200 dark:border-gray-600'; let btnBg = 'bg-white dark:bg-gray-800';
+                let expBlock = ''; let labelBg = 'bg-slate-100 dark:bg-slate-800'; let labelText = 'text-slate-500 dark:text-slate-400';
+                let btnBorder = 'border-slate-200 dark:border-slate-700/60'; let btnBg = 'bg-white dark:bg-[#1E293B]';
 
                 if (isAnswerRevealed) {
                     btn.style.pointerEvents = 'none';
                     if (optIndex === q.correctAnswer) {
-                        btnBorder = 'border-green-500'; btnBg = 'bg-green-50 dark:bg-green-900/20'; labelBg = 'bg-green-500'; labelText = 'text-white';
+                        btnBorder = 'border-green-500 dark:border-green-500'; btnBg = 'bg-green-50/50 dark:bg-green-950/20'; labelBg = 'bg-green-500'; labelText = 'text-white';
                         if (optExpText) {
-                            expBlock = `<div class="mt-3 pl-11 sm:pl-14 text-sm text-green-700 dark:text-green-400 text-left"><div class="font-bold mb-1"><i class="fas fa-check mr-1"></i> Chính xác</div><div class="font-academic leading-relaxed opacity-90">${optExpText}</div></div>`;
+                            expBlock = `<div class="mt-3 pl-14 text-xs sm:text-sm text-green-700 dark:text-green-400 text-left font-semibold"><i class="fas fa-check-circle mr-1"></i> ${optExpText}</div>`;
                         }
                     } else if (optIndex === userAnswers[index]) {
-                        btnBorder = 'border-red-500'; btnBg = 'bg-red-50 dark:bg-red-900/20'; labelBg = 'bg-red-500'; labelText = 'text-white';
+                        btnBorder = 'border-red-500 dark:border-red-500'; btnBg = 'bg-red-50/50 dark:bg-red-950/20'; labelBg = 'bg-red-500'; labelText = 'text-white';
                         if (optExpText) {
-                            expBlock = `<div class="mt-3 pl-11 sm:pl-14 text-sm text-red-700 dark:text-red-400 text-left"><div class="font-bold mb-1"><i class="fas fa-times mr-1"></i> Sai</div><div class="font-academic leading-relaxed opacity-90">${optExpText}</div></div>`;
+                            expBlock = `<div class="mt-3 pl-14 text-xs sm:text-sm text-red-700 dark:text-red-400 text-left font-semibold"><i class="fas fa-times-circle mr-1"></i> ${optExpText}</div>`;
                         }
                     }
                 } else {
                     if (userAnswers[index] === optIndex) {
-                        btnBorder = 'border-blue-600'; btnBg = 'bg-blue-50 dark:bg-blue-900/30'; btn.classList.add('ring-4', 'ring-blue-100'); labelBg = 'bg-blue-600'; labelText = 'text-white';
+                        btnBorder = 'border-blue-600 dark:border-blue-500'; btnBg = 'bg-blue-50/40 dark:bg-blue-900/20'; btn.classList.add('ring-2', 'ring-blue-600/20'); labelBg = 'bg-blue-600 dark:bg-blue-500'; labelText = 'text-white';
                     }
                     btn.onclick = () => { 
                         userAnswers[currentQuestionIndex] = optIndex; 
@@ -1325,86 +1324,66 @@ function loadQuestion(index) {
 
                     btn.addEventListener('contextmenu', (e) => {
                         e.preventDefault();
-                        if(!checkFeatureAccess('crossout', true)) return;
-                        if(btn.classList.contains('opacity-30')) {
-                            btn.classList.remove('opacity-30', 'line-through', 'grayscale');
-                        } else {
-                            btn.classList.add('opacity-30', 'line-through', 'grayscale');
-                        }
+                        if(!checkFeatureAccess('crossout')) return;
+                        btn.classList.toggle('opacity-30'); btn.classList.toggle('line-through'); btn.classList.toggle('grayscale');
                     });
                 }
 
-                btn.className = `option-btn text-left p-3 sm:p-4 rounded-xl flex flex-col border-2 transition-all w-full ${btnBorder} ${btnBg} ${isAnswerRevealed ? 'cursor-default' : 'cursor-pointer hover:border-blue-400 dark:hover:border-blue-500'}`;
-                btn.innerHTML = `<div class="flex items-center gap-3 sm:gap-4 w-full"><span class="option-label w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${labelBg} font-bold ${labelText} shrink-0 text-sm sm:text-base transition-colors shadow-sm">${labels[optIndex]}</span><span class="text-base sm:text-lg font-academic dark:text-gray-200">${optText}</span></div>${expBlock}`;
+                btn.className = `option-btn text-left p-4 rounded-xl flex flex-col border transition-all w-full shadow-sm ${btnBorder} ${btnBg} ${isAnswerRevealed ? 'cursor-default' : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50'}`;
+                btn.innerHTML = `<div class="flex items-center gap-4 w-full"><span class="w-10 h-10 flex items-center justify-center rounded-lg ${labelBg} font-mono font-bold ${labelText} shrink-0 text-base shadow-sm">${labels[optIndex]}</span><span class="text-base font-medium text-slate-800 dark:text-slate-200">${optText}</span></div>${expBlock}`;
                 gridOpts.appendChild(btn);
             });
             answerContainer.appendChild(gridOpts);
         }
         
-        // --- NHÁNH 2: TRẮC NGHIỆM ĐÚNG/SAI ---
+        // --- NHÁNH 2: TRẮC NGHIỆM ĐÚNG/SAI ĐỘC LẬP ---
         else if (q.type === "tf") {
-            const labels = ['a', 'b', 'c', 'd'];
+            const labels = ['A', 'B', 'C', 'D'];
             const wrapper = document.createElement('div');
-            wrapper.className = "flex flex-col gap-4";
+            wrapper.className = "flex flex-col gap-3.5";
             
-            // Đảm bảo mảng userAnswers cho câu này là một mảng 4 phần tử [null, null, null, null]
             if (!Array.isArray(userAnswers[index])) userAnswers[index] = [null, null, null, null];
 
             q.options.forEach((optText, optIndex) => {
                 const row = document.createElement('div');
-                row.className = "flex flex-col sm:flex-row gap-3 sm:gap-5 justify-between items-start sm:items-center p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700";
+                row.className = "flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm";
                 
                 const textCol = document.createElement('div');
-                textCol.className = "flex gap-3 text-base dark:text-gray-200";
-                textCol.innerHTML = `<span class="font-bold text-gray-400">${labels[optIndex]}.</span> <span>${optText}</span>`;
+                textCol.className = "flex gap-3.5 text-base font-medium text-slate-800 dark:text-slate-200 flex-1";
+                textCol.innerHTML = `<span class="font-mono font-bold text-slate-400">${labels[optIndex]}.</span> <span>${optText}</span>`;
                 
                 const btnCol = document.createElement('div');
-                btnCol.className = "flex gap-2 w-full sm:w-auto mt-2 sm:mt-0";
+                btnCol.className = "flex gap-2 shrink-0";
                 
-                const btnTrue = document.createElement('button');
-                btnTrue.innerText = "ĐÚNG";
+                const btnTrue = document.createElement('button'); btnTrue.innerText = "ĐÚNG";
+                const btnFalse = document.createElement('button'); btnFalse.innerText = "SAI";
                 
-                const btnFalse = document.createElement('button');
-                btnFalse.innerText = "SAI";
-                
-                let baseBtnClass = "flex-1 sm:flex-none px-4 py-2 rounded-lg font-bold text-sm border-2 transition-all ";
-                let trueBg = "bg-white text-gray-500 border-gray-200 hover:border-green-400";
-                let falseBg = "bg-white text-gray-500 border-gray-200 hover:border-red-400";
+                let baseBtnClass = "px-5 py-2 rounded-lg font-bold text-xs border transition-all shadow-sm flex-1 sm:flex-none ";
+                let trueBg = "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-green-500";
+                let falseBg = "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-red-500";
 
                 if (isAnswerRevealed) {
                     btnTrue.style.pointerEvents = 'none'; btnFalse.style.pointerEvents = 'none';
-                    let correctVal = q.correctAnswers[optIndex]; // Mảng boolean [true, false, true, false]
+                    let correctVal = q.correctAnswers[optIndex]; 
                     let userVal = userAnswers[index][optIndex];
                     
                     if (userVal === true) {
-                        if (correctVal === true) { trueBg = "bg-green-500 text-white border-green-500"; }
-                        else { trueBg = "bg-red-500 text-white border-red-500"; }
+                        trueBg = correctVal === true ? "bg-green-500 text-white border-green-500" : "bg-red-500 text-white border-red-500";
                     } else if (userVal === false) {
-                        if (correctVal === false) { falseBg = "bg-green-500 text-white border-green-500"; }
-                        else { falseBg = "bg-red-500 text-white border-red-500"; }
+                        falseBg = correctVal === false ? "bg-green-500 text-white border-green-500" : "bg-red-500 text-white border-red-500";
                     }
                     
-                    // Highlight đáp án đúng nếu user chọn sai hoặc không chọn
-                    if (correctVal === true && userVal !== true) { trueBg = "bg-green-100 text-green-700 border-green-500 border-dashed"; }
-                    if (correctVal === false && userVal !== false) { falseBg = "bg-green-100 text-green-700 border-green-500 border-dashed"; }
-
+                    if (correctVal === true && userVal !== true) trueBg = "bg-green-100 dark:bg-green-950/30 text-green-600 dark:text-green-400 border-green-500 border-dashed animate-pulse";
+                    if (correctVal === false && userVal !== false) falseBg = "bg-green-100 dark:bg-green-950/30 text-green-600 dark:text-green-400 border-green-500 border-dashed animate-pulse";
                 } else {
-                    if (userAnswers[index][optIndex] === true) { trueBg = "bg-blue-600 text-white border-blue-600 ring-2 ring-blue-200"; }
-                    if (userAnswers[index][optIndex] === false) { falseBg = "bg-gray-600 text-white border-gray-600 ring-2 ring-gray-200"; }
+                    if (userAnswers[index][optIndex] === true) trueBg = "bg-green-600 text-white border-green-600 ring-2 ring-green-100 dark:ring-green-900/30";
+                    if (userAnswers[index][optIndex] === false) falseBg = "bg-red-600 text-white border-red-600 ring-2 ring-red-100 dark:ring-red-900/30";
                     
-                    btnTrue.onclick = () => {
-                        userAnswers[currentQuestionIndex][optIndex] = true;
-                        loadQuestion(currentQuestionIndex); saveProgressLocally();
-                    };
-                    btnFalse.onclick = () => {
-                        userAnswers[currentQuestionIndex][optIndex] = false;
-                        loadQuestion(currentQuestionIndex); saveProgressLocally();
-                    };
+                    btnTrue.onclick = () => { userAnswers[currentQuestionIndex][optIndex] = true; loadQuestion(currentQuestionIndex); saveProgressLocally(); };
+                    btnFalse.onclick = () => { userAnswers[currentQuestionIndex][optIndex] = false; loadQuestion(currentQuestionIndex); saveProgressLocally(); };
                 }
 
-                btnTrue.className = baseBtnClass + trueBg;
-                btnFalse.className = baseBtnClass + falseBg;
-                
+                btnTrue.className = baseBtnClass + trueBg; btnFalse.className = baseBtnClass + falseBg;
                 btnCol.appendChild(btnTrue); btnCol.appendChild(btnFalse);
                 row.appendChild(textCol); row.appendChild(btnCol);
                 wrapper.appendChild(row);
@@ -1412,19 +1391,17 @@ function loadQuestion(index) {
             answerContainer.appendChild(wrapper);
         }
 
-        // --- NHÁNH 3: TRẢ LỜI NGẮN ---
+        // --- NHÁNH 3: TRẢ LỜI NGẮN (TỰ LUẬN ĐIỀN SỐ/CHỮ) ---
         else if (q.type === "sa") {
             const wrapper = document.createElement('div');
-            wrapper.className = "flex flex-col gap-3";
+            wrapper.className = "flex flex-col gap-4";
             
             const inputEl = document.createElement('input');
             inputEl.type = "text";
-            inputEl.placeholder = "Nhập đáp án của bạn vào đây...";
-            inputEl.className = "w-full p-4 border-2 border-blue-200 focus:border-blue-500 rounded-xl text-lg font-bold text-gray-800 dark:bg-gray-800 dark:text-white outline-none shadow-inner transition-colors";
+            inputEl.placeholder = "Nhập câu trả lời ngắn của bạn vào đây...";
+            inputEl.className = "w-full p-4 border rounded-xl text-lg font-bold text-slate-800 dark:text-white dark:bg-slate-900 outline-none shadow-inner border-slate-200 dark:border-slate-800 focus:border-blue-500 dark:focus:border-blue-400 transition-all";
             
-            if (userAnswers[index] !== null) {
-                inputEl.value = userAnswers[index];
-            }
+            if (userAnswers[index] !== null) inputEl.value = userAnswers[index];
 
             if (isAnswerRevealed) {
                 inputEl.readOnly = true;
@@ -1432,23 +1409,20 @@ function loadQuestion(index) {
                 const correctAnsStr = (q.correctAnswer || "").toString().trim().toLowerCase();
                 
                 if (userAnsStr === correctAnsStr) {
-                    inputEl.className += " border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700";
+                    inputEl.className += " border-green-500 bg-green-50/50 dark:bg-green-950/20 text-green-600 dark:text-green-400";
                 } else {
-                    inputEl.className += " border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700";
+                    inputEl.className += " border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-600 dark:text-red-400";
                     const corrBadge = document.createElement('div');
-                    corrBadge.className = "mt-2 text-sm text-green-600 font-bold bg-green-50 px-3 py-2 rounded-lg border border-green-200";
-                    corrBadge.innerHTML = `<i class="fas fa-check-circle mr-1"></i> Đáp án đúng: ${q.correctAnswer}`;
+                    corrBadge.className = "text-sm text-green-700 dark:text-green-400 font-bold bg-green-50 dark:bg-green-950/20 px-4 py-3 rounded-xl border border-green-200 dark:border-green-900/40 flex items-center gap-2";
+                    corrBadge.innerHTML = `<i class="fas fa-check-circle"></i> Hệ thống đối soát đáp án chuẩn: <span class="font-mono underline">${q.correctAnswer}</span>`;
                     wrapper.appendChild(corrBadge);
                 }
             } else {
                 inputEl.oninput = (e) => {
                     userAnswers[currentQuestionIndex] = e.target.value.trim() === "" ? null : e.target.value;
-                    saveProgressLocally();
-                    // Render navigator tĩnh để đổi màu nút lưới tọa độ
-                    renderNavigator();
+                    saveProgressLocally(); renderNavigator();
                 };
             }
-            
             wrapper.insertBefore(inputEl, wrapper.firstChild);
             answerContainer.appendChild(wrapper);
         }
@@ -1461,16 +1435,10 @@ function loadQuestion(index) {
         else hintBtn.classList.add('hidden');
     }
 
-    const prevIdx = getFilteredIndex(-1);
-    const nextIdx = getFilteredIndex(1);
-    
+    const prevIdx = getFilteredIndex(-1); const nextIdx = getFilteredIndex(1);
     const bPrev = document.getElementById('btn-prev'); if(bPrev) bPrev.disabled = prevIdx === -1;
     const bNext = document.getElementById('btn-next'); if(bNext) bNext.classList.toggle('hidden', nextIdx === -1);
-    
-    const bSub = document.getElementById('btn-submit'); 
-    if(bSub) {
-        bSub.classList.toggle('hidden', nextIdx !== -1 || isReviewMode);
-    }
+    const bSub = document.getElementById('btn-submit'); if(bSub) bSub.classList.toggle('hidden', nextIdx !== -1 || isReviewMode);
 
     const explanationBox = document.getElementById('explanation-box');
     const isAnswerRevealed = isReviewMode || (isPracticeMode && userAnswers[index] !== null);
@@ -1478,7 +1446,7 @@ function loadQuestion(index) {
         const eText = document.getElementById('explanation-text');
         if (isAnswerRevealed && q.explanation && q.explanation !== "Tạo tự động từ dữ liệu văn bản." && q.explanation !== "Chưa có giải thích.") {
             if(!checkFeatureAccess('explanation', true)) {
-                if(eText) eText.innerHTML = `<span class="text-gray-500 italic"><i class="fas fa-lock"></i> Chi tiết giải thích yêu cầu tài khoản nâng cấp. <a href="#" onclick="switchScreen('pricing')" class="text-blue-600 font-bold underline">Xem các gói cước</a>.</span>`;
+                if(eText) eText.innerHTML = `<span class="text-slate-400 italic"><i class="fas fa-lock text-amber-500"></i> Xem phân tích giải nghĩa chi tiết yêu cầu kích hoạt gói cước. <a href="#" onclick="switchScreen('pricing')" class="text-blue-500 font-bold underline">Nâng cấp gói</a>.</span>`;
                 explanationBox.classList.remove('hidden');
             } else {
                 if(eText) eText.innerText = q.explanation;
@@ -1488,7 +1456,6 @@ function loadQuestion(index) {
             explanationBox.classList.add('hidden');
         }
     }
-    
     renderNavigator(); 
 }
 
@@ -1519,31 +1486,26 @@ function handleVisibilityChange() {
     }
 }
 
-// [VIP CẤP CỨU] Thuật Toán Chấm Điểm Lũy Tiến Toàn Cục THPTQG 2025
 function submitQuiz(force) {
     const timeUsed = activeQuiz.timeLimit - (timeLeft > 0 ? timeLeft : 0);
     const minimumTime = Math.floor(activeQuiz.timeLimit / 2);
 
     if (!force && timeUsed < minimumTime && !isPracticeMode) {
-        showToast("Hệ thống từ chối nộp bài. Vui lòng làm bài ít nhất 50% thời gian quy định.", true);
+        showToast("Hệ thống khóa lệnh nộp bài sớm. Vui lòng làm bài tối thiểu 50% thời gian quy định.", true);
         return; 
     }
 
-    if (force || confirm("Xác nhận nộp bài thi?")) {
-        clearInterval(timerInterval);
-        exitFullscreen();
+    if (force || confirm("Xác nhận nộp bài khảo thí? Dữ liệu điểm số sẽ được đồng bộ lên máy chủ.")) {
+        clearInterval(timerInterval); exitFullscreen();
         localStorage.removeItem('quizProgress_' + activeQuiz.id);
 
-        let totalScore = 0; // Tính theo thang điểm 10
-
+        let totalScore = 0; 
         activeQuiz.questions.forEach((q, i) => {
             const uAns = userAnswers[i];
             if (!q.type || q.type === "mcq") {
-                // Trắc nghiệm 4 chọn 1: 0.25 điểm / câu
                 if (uAns !== null && uAns === q.correctAnswer) totalScore += 0.25;
             } 
             else if (q.type === "tf") {
-                // Trắc nghiệm Đ/S: Tính lũy tiến
                 if (Array.isArray(uAns)) {
                     let matchCount = 0;
                     for(let j=0; j<4; j++) {
@@ -1556,53 +1518,39 @@ function submitQuiz(force) {
                 }
             }
             else if (q.type === "sa") {
-                // Trả lời ngắn: 0.25 điểm / câu (hoặc 0.5 tùy cấu hình, mặc định để 0.25)
                 if (uAns !== null && uAns.toString().trim().toLowerCase() === q.correctAnswer.toString().trim().toLowerCase()) {
                     totalScore += 0.25;
                 }
             }
         });
 
-        // Quy đổi thành Percentage
-        let maxPossibleScore = activeQuiz.questions.length * 0.25; // Cái này cần tính toán chính xác tổng điểm trần của đề
-        // Logic tính Max Score chuẩn THPTQG
-        maxPossibleScore = activeQuiz.questions.reduce((acc, q) => {
+        let maxPossibleScore = activeQuiz.questions.reduce((acc, q) => {
             if (q.type === "tf") return acc + 1.0;
             return acc + 0.25;
         }, 0);
 
         let percent = maxPossibleScore > 0 ? Math.round((totalScore / maxPossibleScore) * 100) : 0;
-
         const finalTimeUsed = activeQuiz.timeLimit - (timeLeft > 0 ? timeLeft : 0);
         const timeUsedStr = `${Math.floor(finalTimeUsed / 60).toString().padStart(2, '0')}:${(finalTimeUsed % 60).toString().padStart(2, '0')}`;
         
         switchScreen('result');
         const sc = document.getElementById('result-score'); if(sc) sc.innerText = `${totalScore.toFixed(2)}/${maxPossibleScore.toFixed(2)}`;
         const pc = document.getElementById('result-percent'); if(pc) pc.innerText = `${percent}%`;
-        const tc = document.getElementById('result-time'); 
-        if(tc) tc.innerText = isPracticeMode ? "Không giới hạn" : timeUsedStr;
+        const tc = document.getElementById('result-time'); if(tc) tc.innerText = isPracticeMode ? "Luyen tap" : timeUsedStr;
 
         const rawPayload = {
-            quizId: activeQuiz.id || "UNKNOWN", 
-            quizTitle: activeQuiz.title || "Chưa đặt tên", 
-            category: activeQuiz.category || "Chưa phân loại",
-            studentName: studentName || "Ẩn danh", 
-            email: auth.currentUser ? auth.currentUser.email : "Ẩn danh",
-            uid: auth.currentUser ? auth.currentUser.uid : "UNKNOWN",
-            score: `${totalScore.toFixed(2)}/${maxPossibleScore.toFixed(2)}`, 
-            percentage: percent, 
-            timeUsed: isPracticeMode ? "Luyện tập" : timeUsedStr,
-            teacherId: activeQuiz.authorId || "GUEST", 
-            userAnswers: userAnswers || [], 
-            quizQuestionsSnapshot: activeQuiz.questions || []
+            quizId: activeQuiz.id || "UNKNOWN", quizTitle: activeQuiz.title || "Chua dat ten", category: activeQuiz.category || "Chua phan loai",
+            studentName: studentName || "An danh", email: auth.currentUser ? auth.currentUser.email : "An danh", uid: auth.currentUser ? auth.currentUser.uid : "UNKNOWN",
+            score: `${totalScore.toFixed(2)}/${maxPossibleScore.toFixed(2)}`, percentage: percent, timeUsed: isPracticeMode ? "Luyện tập" : timeUsedStr,
+            teacherId: activeQuiz.authorId || "GUEST", userAnswers: userAnswers || [], quizQuestionsSnapshot: activeQuiz.questions || []
         };
 
         const cleanPayload = JSON.parse(JSON.stringify(rawPayload));
         cleanPayload.timestamp = firebase.firestore.FieldValue.serverTimestamp();
 
         db.collection("results").add(cleanPayload).catch(err => {
-            console.error("Lỗi cập nhật điểm: ", err);
-            showToast("Lỗi hệ thống: Không thể kết nối với máy chủ đám mây", true);
+            console.error("Lỗi cập nhật đám mây: ", err);
+            showToast("Lỗi đồng bộ: Không thể kết nối với Firestore đám mây", true);
         });
     }
 }
