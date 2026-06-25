@@ -1689,21 +1689,19 @@ window.processSmartText = function() {
                 let exp = parts[1] ? parts[1].trim() : "Chưa có giải thích.";
                 if (ans) {
                     currentSmartQuestions.push({ type: "sa", content, correctAnswer: ans, explanation: exp, passage: currentPassage });
-                    previewHTML += `
-                        <div class="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/40 rounded-lg text-xs font-bold text-green-700 dark:text-green-400 mb-2">
-                            Câu ${currentSmartQuestions.length} (Điền từ): ${content} <br>
-                            <span class="opacity-70 font-normal"><i class="fas fa-check mr-1"></i>Đáp án: ${ans} | <i class="fas fa-info-circle mr-1"></i>Giải thích: ${exp}</span>
-                        </div>`;
+                    previewHTML += `<div class="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-sm text-green-800 dark:text-green-300 mb-3 shadow-sm"><span class="font-bold">Câu ${currentSmartQuestions.length} (Điền từ):</span> ${content}<br><span class="text-xs opacity-80 mt-1 inline-block"><i class="fas fa-check"></i> Đáp án: ${ans}</span></div>`;
                 }
             }
             // --- NHÁNH 2: TRẮC NGHIỆM ĐÚNG/SAI (TF) ---
-            else if (body.match(/^[a-d]\.\s/im) && (body.toLowerCase().includes(":: đúng") || body.toLowerCase().includes(":: sai") || body.toLowerCase().includes("::đúng") || body.toLowerCase().includes("::sai"))) {
+            // Bỏ cờ 'i' (case-insensitive). CHỈ bắt a, b, c, d CHỮ THƯỜNG để tránh nhầm lẫn với MCQ!
+            else if (body.match(/^[a-d]\.\s/m) && (body.toLowerCase().includes(":: đúng") || body.toLowerCase().includes(":: sai") || body.toLowerCase().includes("::đúng") || body.toLowerCase().includes("::sai"))) {
                 let options = []; let correctAnswers = []; let explanations = [];
                 let lines = body.split('\n').filter(l => l.trim().length > 0);
                 
                 lines.forEach(line => {
-                    if (options.length < 4 && line.match(/^[a-d]\.\s/i)) {
-                        let parts = line.replace(/^[a-d]\.\s*/i, '').split('::');
+                    // Chỉ lấy các dòng bắt đầu bằng a. b. c. d. chữ thường
+                    if (options.length < 4 && line.match(/^[a-d]\.\s/)) {
+                        let parts = line.replace(/^[a-d]\.\s*/, '').split('::');
                         let textOnly = parts[0].trim();
                         let truthValue = false;
                         let exp = "Chưa có giải thích.";
@@ -1727,7 +1725,9 @@ window.processSmartText = function() {
                 
                 if (options.length === 4) {
                     currentSmartQuestions.push({ type: "tf", content, options, correctAnswers, explanations, passage: currentPassage });
-                    previewHTML += `<div class="p-3 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-bold text-indigo-700 dark:text-indigo-400 mb-2">Câu ${currentSmartQuestions.length} (Đ/S): ${content} (Đã nhận diện đủ 4 ý)</div>`;
+                    previewHTML += `<div class="p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg text-sm text-indigo-800 dark:text-indigo-300 mb-3 shadow-sm"><span class="font-bold">Câu ${currentSmartQuestions.length} (Đ/S):</span> ${content}</div>`;
+                } else {
+                    previewHTML += `<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900 rounded-lg text-sm text-red-600 dark:text-red-400 mb-3 shadow-sm font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> Lỗi Đ/S: Cần đúng 4 ý a, b, c, d chữ thường ở Câu ${currentSmartQuestions.length + 1}!</div>`;
                 }
             }
             // --- NHÁNH 3: TRẮC NGHIỆM 4 CHỌN 1 (MCQ) ---
@@ -1744,19 +1744,21 @@ window.processSmartText = function() {
                         opts.push(p[0].trim());
                         let exp = p[1] ? p[1].trim() : "";
                         exps.push(exp);
+                        
+                        // Nếu đánh dấu * HOẶC chữ đầu tiên của giải thích là "Đúng"
                         if (o.includes('*') || exp.toLowerCase().startsWith("đúng")) {
                             correctIndex = idx;
                         }
                     });
                     
                     if (correctIndex === -1) correctIndex = match[1] || match[2].includes('*') ? 0 : (match[3] || match[4].includes('*') ? 1 : (match[5] || match[6].includes('*') ? 2 : 3));
-                    if (correctIndex === -1) correctIndex = 0; 
+                    if (correctIndex === -1) correctIndex = 0; // Backup an toàn
 
                     currentSmartQuestions.push({ type: "mcq", content, options: opts, optionExplanations: exps, correctAnswer: correctIndex, passage: currentPassage });
-                    previewHTML += `<div class="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Câu ${currentSmartQuestions.length} (4 chọn 1): ${content}</div>`;
+                    previewHTML += `<div class="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-200 mb-3 shadow-sm"><span class="font-bold">Câu ${currentSmartQuestions.length} (MCQ):</span> ${content}</div>`;
                 } else {
-                    let c = content.substring(0, 30) + "...";
-                    previewHTML += `<div class="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg text-xs font-bold text-red-600 dark:text-red-400 mb-2"><i class="fas fa-exclamation-triangle"></i> Phát hiện dòng lỗi định dạng gần: "${c}"</div>`;
+                    let c = content.substring(0, 40) + "...";
+                    previewHTML += `<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900 rounded-lg text-sm text-red-600 dark:text-red-400 mb-3 shadow-sm font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> Sai định dạng tại: ${c}</div>`;
                 }
             }
         }
@@ -1766,7 +1768,13 @@ window.processSmartText = function() {
     if (sqc) sqc.innerText = `Đã nhận diện: ${currentSmartQuestions.length} câu`;
     
     const spb = document.getElementById('smart-preview-box');
-    if (spb) spb.innerHTML = previewHTML || `<p class="text-sm text-slate-400 text-center mt-12 italic font-medium">Khung xem trước cấu trúc hệ thống sẽ hiển thị theo thời gian thực...</p>`;
+    if (spb) {
+        if (previewHTML === "") {
+            spb.innerHTML = `<p class="text-sm text-slate-400 text-center mt-12 italic font-medium">Khung xem trước cấu trúc hệ thống sẽ hiển thị theo thời gian thực...</p>`;
+        } else {
+            spb.innerHTML = previewHTML;
+        }
+    }
 }
 
 function saveSmartQuiz() {
