@@ -1724,13 +1724,15 @@ window.processSmartText = function() {
                         </div>`;
                 }
             }
-            else if (body.match(/^[a-d]\.\s/im) && (body.toLowerCase().includes(":: đúng") || body.toLowerCase().includes(":: sai") || body.toLowerCase().includes("::đúng") || body.toLowerCase().includes("::sai"))) {
+            // [VÁ LỖI TỬ HUYỆT]: Đã xóa chữ 'i' ở /^[a-d]\.\s/m. Bắt buộc phải là a, b, c, d thường thì mới cho vào nhánh Đúng/Sai!
+            else if (body.match(/^[a-d]\.\s/m) && (body.toLowerCase().includes(":: đúng") || body.toLowerCase().includes(":: sai") || body.toLowerCase().includes("::đúng") || body.toLowerCase().includes("::sai"))) {
                 let options = []; let correctAnswers = []; let explanations = [];
                 let lines = body.split('\n').filter(l => l.trim().length > 0);
                 
                 lines.forEach(line => {
-                    if (options.length < 4 && line.match(/^[a-d]\.\s/i)) {
-                        let parts = line.replace(/^[a-d]\.\s*/i, '').split('::');
+                    // [VÁ LỖI TỬ HUYỆT]: Xóa chữ 'i' ở /^[a-d]\.\s/
+                    if (options.length < 4 && line.match(/^[a-d]\.\s/)) {
+                        let parts = line.replace(/^[a-d]\.\s*/, '').split('::');
                         let textOnly = parts[0].trim();
                         let truthValue = false;
                         let exp = "";
