@@ -1517,7 +1517,7 @@ function handleVisibilityChange() {
     }
 }
 
-// [VIP CẤP CỨU] Thuật Toán Chấm Điểm Lũy Tiến Toàn Cục THPTQG 2025
+// [VIP CẤP CỨU] Thuật Toán Chấm Điểm Lũy Tiến Toàn Cục & Quy Đổi Thang 10 (THPTQG 2025)
 function submitQuiz(force) {
     const timeUsed = activeQuiz.timeLimit - (timeLeft > 0 ? timeLeft : 0);
     const minimumTime = Math.floor(activeQuiz.timeLimit / 2);
@@ -1531,56 +1531,59 @@ function submitQuiz(force) {
         clearInterval(timerInterval); exitFullscreen();
         localStorage.removeItem('quizProgress_' + activeQuiz.id);
 
-        let totalScore = 0; 
+        let totalRawScore = 0; // Điểm thô cộng dồn
         activeQuiz.questions.forEach((q, i) => {
             const uAns = userAnswers[i];
             
-            // PHẦN I: Trắc nghiệm (0.25đ / câu)
+            // PHẦN I: Trắc nghiệm (0.25đ / câu thô)
             if (!q.type || q.type === "mcq") {
-                if (uAns !== null && uAns === q.correctAnswer) totalScore += 0.25;
+                if (uAns !== null && uAns === q.correctAnswer) totalRawScore += 0.25;
             } 
-            // PHẦN II: Đúng/Sai (Tính điểm lũy tiến 0.1 - 0.25 - 0.5 - 1.0)
+            // PHẦN II: Đúng/Sai (0.1 - 0.25 - 0.5 - 1.0 thô)
             else if (q.type === "tf") {
                 if (Array.isArray(uAns)) {
                     let matchCount = 0;
                     for(let j=0; j<4; j++) {
                         if (uAns[j] !== null && uAns[j] === q.correctAnswers[j]) matchCount++;
                     }
-                    if (matchCount === 1) totalScore += 0.1;
-                    else if (matchCount === 2) totalScore += 0.25;
-                    else if (matchCount === 3) totalScore += 0.5;
-                    else if (matchCount === 4) totalScore += 1.0;
+                    if (matchCount === 1) totalRawScore += 0.1;
+                    else if (matchCount === 2) totalRawScore += 0.25;
+                    else if (matchCount === 3) totalRawScore += 0.5;
+                    else if (matchCount === 4) totalRawScore += 1.0;
                 }
             }
-            // PHẦN III: Trả lời ngắn (0.5đ / câu)
+            // PHẦN III: Trả lời ngắn (0.5đ / câu thô)
             else if (q.type === "sa") {
                 if (uAns !== null && uAns.toString().trim().toLowerCase() === q.correctAnswer.toString().trim().toLowerCase()) {
-                    totalScore += 0.5; // Đã nâng lên 0.5 điểm theo đúng quy định
+                    totalRawScore += 0.5;
                 }
             }
         });
 
-        // TÍNH TOÁN ĐIỂM TRẦN (MAX SCORE) DỰA TRÊN CẤU TRÚC ĐỀ
-        let maxPossibleScore = activeQuiz.questions.reduce((acc, q) => {
+        // TÍNH TOÁN ĐIỂM TRẦN THÔ DỰA TRÊN CẤU TRÚC ĐỀ
+        let maxRawScore = activeQuiz.questions.reduce((acc, q) => {
             if (q.type === "tf") return acc + 1.0;
-            if (q.type === "sa") return acc + 0.5; // Trần điểm câu SA cũng được nâng lên 0.5
+            if (q.type === "sa") return acc + 0.5;
             return acc + 0.25;
         }, 0);
 
-        let percent = maxPossibleScore > 0 ? Math.round((totalScore / maxPossibleScore) * 100) : 0;
+        // [QUAN TRỌNG] QUY ĐỔI VỀ THANG ĐIỂM 10 CHUẨN
+        let percent = maxRawScore > 0 ? Math.round((totalRawScore / maxRawScore) * 100) : 0;
+        let finalScore10 = maxRawScore > 0 ? (totalRawScore / maxRawScore) * 10 : 0;
+        let scoreDisplay = `${finalScore10.toFixed(2)}/10`; // Format đẹp: 8.50/10 hoặc 9.25/10
+
         const finalTimeUsed = activeQuiz.timeLimit - (timeLeft > 0 ? timeLeft : 0);
         const timeUsedStr = `${Math.floor(finalTimeUsed / 60).toString().padStart(2, '0')}:${(finalTimeUsed % 60).toString().padStart(2, '0')}`;
         
         switchScreen('result');
-        // Ép định dạng 2 chữ số thập phân (VD: 8.50 / 10.00)
-        const sc = document.getElementById('result-score'); if(sc) sc.innerText = `${totalScore.toFixed(2)}/${maxPossibleScore.toFixed(2)}`;
+        const sc = document.getElementById('result-score'); if(sc) sc.innerText = scoreDisplay;
         const pc = document.getElementById('result-percent'); if(pc) pc.innerText = `${percent}%`;
         const tc = document.getElementById('result-time'); if(tc) tc.innerText = isPracticeMode ? "Luyện tập" : timeUsedStr;
 
         const rawPayload = {
             quizId: activeQuiz.id || "UNKNOWN", quizTitle: activeQuiz.title || "Chưa đặt tên", category: activeQuiz.category || "Chưa phân loại",
             studentName: studentName || "Ẩn danh", email: auth.currentUser ? auth.currentUser.email : "Ẩn danh", uid: auth.currentUser ? auth.currentUser.uid : "UNKNOWN",
-            score: `${totalScore.toFixed(2)}/${maxPossibleScore.toFixed(2)}`, percentage: percent, timeUsed: isPracticeMode ? "Luyện tập" : timeUsedStr,
+            score: scoreDisplay, percentage: percent, timeUsed: isPracticeMode ? "Luyện tập" : timeUsedStr,
             teacherId: activeQuiz.authorId || "GUEST", userAnswers: userAnswers || [], quizQuestionsSnapshot: activeQuiz.questions || []
         };
 
