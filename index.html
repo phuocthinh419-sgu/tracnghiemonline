@@ -650,7 +650,7 @@ Câu 3: Câu hỏi lẻ (Không có đoạn văn)...
                     </div>
                 </div>
 
-                <div class="shrink-0 bg-white dark:bg-[#1E293B] relative z-20">
+                <div class="shrink-0 bg-white dark:bg-[#1E293B] relative z-20 pb-[50px] lg:pb-0">
                     <div id="energy-bar-container" class="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden mt-2 shadow-inner"><div id="energy-fill" class="h-full bg-blue-600 transition-all duration-300 rounded-full" style="width: 100%;"></div></div>
                     
                     <div class="px-6 sm:px-8 py-4 sm:py-5 border-t border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
@@ -663,23 +663,29 @@ Câu 3: Câu hỏi lẻ (Không có đoạn văn)...
                 </div>
             </div>
 
-            <div class="w-full lg:w-1/4 max-h-[40vh] lg:max-h-full bg-slate-50/50 dark:bg-[#1E293B] p-5 sm:p-6 flex flex-col min-h-0 order-2 z-10 border-l border-white/20">
-                <h3 class="font-extrabold text-[11px] uppercase tracking-widest text-slate-400 mb-4 text-center pb-3 flex items-center justify-center gap-2 shrink-0"><i class="fas fa-th text-xs"></i> Lưới Tọa Độ</h3>
-                
-                <div id="filter-tabs-practice" class="grid grid-cols-4 lg:grid-cols-2 gap-2 mb-4 text-[10px] sm:text-xs font-bold shrink-0">
-                    <button onclick="setFilter('all', this)" class="filter-btn ring-2 ring-blue-600/30 py-2.5 px-1 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-center shadow-sm transition-all">Toàn bộ</button>
-                    <button onclick="setFilter('pending', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-transparent text-slate-500 border border-slate-200 dark:border-slate-700 text-center hover:bg-white transition-all">Chưa xử lý</button>
-                    <button onclick="setFilter('done', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800/50 text-center transition-all">Đã điền</button>
-                    <button onclick="setFilter('flagged', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-900/20 dark:border-amber-800/50 text-center transition-all">Phân vân</button>
+            <div id="mobile-grid-panel" class="w-full lg:w-1/4 bg-white/95 dark:bg-[#1E293B]/95 backdrop-blur-xl lg:bg-slate-50/50 lg:dark:bg-[#1E293B] flex flex-col order-2 lg:order-none absolute lg:relative bottom-0 left-0 lg:bottom-auto lg:left-auto h-[60vh] lg:h-full z-50 lg:z-10 border-t border-slate-200 dark:border-slate-700 lg:border-t-0 lg:border-l lg:border-white/20 shadow-[0_-15px_40px_rgba(0,0,0,0.15)] lg:shadow-none transition-transform duration-300 transform translate-y-[calc(100%-50px)] lg:translate-y-0 rounded-t-[24px] lg:rounded-none">
+                <div onclick="toggleMobileGrid()" class="h-[50px] flex items-center justify-center cursor-pointer lg:cursor-default shrink-0 relative hover:bg-slate-50 dark:hover:bg-slate-800 lg:hover:bg-transparent transition-colors rounded-t-[24px] lg:rounded-none">
+                    <div class="w-10 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full absolute top-2.5 lg:hidden"></div>
+                    <h3 class="font-extrabold text-[11px] uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-3 lg:mt-0 flex items-center justify-center gap-2">
+                        <i class="fas fa-th text-xs"></i> Lưới Tọa Độ <i id="grid-chevron" class="fas fa-chevron-up ml-1 lg:hidden"></i>
+                    </h3>
                 </div>
+                <div class="flex-1 min-h-0 flex flex-col px-5 pb-5 lg:px-6 lg:pb-6 lg:pt-6">
+                    <div id="filter-tabs-practice" class="grid grid-cols-4 lg:grid-cols-2 gap-2 mb-4 text-[10px] sm:text-xs font-bold shrink-0">
+                        <button onclick="setFilter('all', this)" class="filter-btn ring-2 ring-blue-600/30 py-2.5 px-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white text-center shadow-sm transition-all">Toàn bộ</button>
+                        <button onclick="setFilter('pending', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-transparent text-slate-500 border border-slate-200 dark:border-slate-700 text-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">Chưa xử lý</button>
+                        <button onclick="setFilter('done', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800/50 text-center transition-all">Đã điền</button>
+                        <button onclick="setFilter('flagged', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-900/20 dark:border-amber-800/50 text-center transition-all">Phân vân</button>
+                    </div>
 
-                <div id="filter-tabs-review" class="hidden grid-cols-3 gap-2 mb-4 text-[10px] sm:text-xs font-bold shrink-0">
-                    <button onclick="setFilter('all', this)" class="filter-btn ring-2 ring-blue-600/30 py-2.5 px-1 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-center shadow-sm transition-all">Toàn bộ</button>
-                    <button onclick="setFilter('correct', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-green-50 text-green-700 border border-green-100 dark:bg-green-900/20 dark:border-green-800/50 text-center transition-all">Chuẩn xác</button>
-                    <button onclick="setFilter('wrong', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:border-red-800/50 text-center transition-all">Cần sửa</button>
+                    <div id="filter-tabs-review" class="hidden grid-cols-3 gap-2 mb-4 text-[10px] sm:text-xs font-bold shrink-0">
+                        <button onclick="setFilter('all', this)" class="filter-btn ring-2 ring-blue-600/30 py-2.5 px-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white text-center shadow-sm transition-all">Toàn bộ</button>
+                        <button onclick="setFilter('correct', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-green-50 text-green-700 border border-green-100 dark:bg-green-900/20 dark:border-green-800/50 text-center transition-all">Chuẩn xác</button>
+                        <button onclick="setFilter('wrong', this)" class="filter-btn py-2.5 px-1 rounded-xl bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:border-red-800/50 text-center transition-all">Cần sửa</button>
+                    </div>
+
+                    <div id="navigator-grid" class="flex-1 min-h-0 overflow-y-auto custom-scrollbar grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-4 gap-2.5 content-start pr-2 pb-4"></div>
                 </div>
-
-                <div id="navigator-grid" class="flex-1 min-h-0 overflow-y-auto custom-scrollbar grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-4 gap-2.5 content-start pr-2 pb-4"></div>
             </div>
         </div>
 
@@ -750,6 +756,31 @@ Câu 3: Câu hỏi lẻ (Không có đoạn văn)...
     </div>
 
     <script>
+        let isGridOpen = false;
+        
+        function toggleMobileGrid() {
+            if (window.innerWidth >= 1024) return;
+            const panel = document.getElementById('mobile-grid-panel');
+            const chevron = document.getElementById('grid-chevron');
+            isGridOpen = !isGridOpen;
+            
+            if (isGridOpen) {
+                panel.classList.remove('translate-y-[calc(100%-50px)]');
+                panel.classList.add('translate-y-0');
+                chevron.classList.replace('fa-chevron-up', 'fa-chevron-down');
+            } else {
+                panel.classList.add('translate-y-[calc(100%-50px)]');
+                panel.classList.remove('translate-y-0');
+                chevron.classList.replace('fa-chevron-down', 'fa-chevron-up');
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            if (window.innerWidth < 1024 && isGridOpen && e.target.closest('#navigator-grid button')) {
+                toggleMobileGrid();
+            }
+        });
+
         function openPaymentModal(imgSrc, tierName, amount) {
             document.getElementById('payment-qr-img').src = imgSrc;
             document.getElementById('pay-tier-name').innerText = tierName;
@@ -765,4 +796,3 @@ Câu 3: Câu hỏi lẻ (Không có đoạn văn)...
     <script src="script.js"></script>
 </body>
 </html>
-
