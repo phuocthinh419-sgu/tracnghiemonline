@@ -338,17 +338,29 @@ function loadSharedFolder(category, teacherId) {
     showToast("Đang tải dữ liệu môn học...", false);
     isSharedMode = true; 
     
+    // [VÁ LỖI]: Bốc dữ liệu từ RAM ngay lập tức nếu đã có, không đợi đám mây!
+    let cachedFolder = quizDatabase.filter(q => q.category === category && q.authorId === teacherId);
+    if (cachedFolder.length > 0) {
+        currentSelectedCategory = category;
+        switchScreen('subjectDetail'); 
+        showToast(`Đã tải thành công thư mục: ${category}`, false);
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+    }
+    
+    // [VÁ LỖI]: Tối ưu truy vấn Firebase, chỉ tải đúng môn học cần thiết thay vì tải toàn bộ
     db.collection("quizzes")
       .where("authorId", "==", teacherId)
+      .where("category", "==", category) 
       .get().then(snapshot => {
-          quizDatabase = []; 
           snapshot.forEach(doc => { 
-              if (doc.data().category === category) {
+              // Tránh trùng lặp nếu đã có trong mảng
+              if (!quizDatabase.some(q => q.id === doc.id)) {
                   quizDatabase.push(doc.data()); 
               }
           });
           
-          if(quizDatabase.length === 0) {
+          if(snapshot.empty && cachedFolder.length === 0) {
               showToast("Thư mục này hiện tại không có dữ liệu.", true);
               switchScreen('home');
               return;
@@ -369,7 +381,6 @@ function loadSharedFolder(category, teacherId) {
           currentSelectedCategory = category;
           switchScreen('subjectDetail'); 
           showToast(`Đã tải thành công thư mục: ${category}`, false);
-          
           window.history.replaceState({}, document.title, window.location.pathname);
       }).catch(err => {
           showToast("Lỗi khi tải thư mục: " + err.message, true);
@@ -786,24 +797,25 @@ function renderHomeQuizList() {
 function renderSubjectDetailView(category) {
     const titleEl = document.getElementById('subject-detail-title'); if(titleEl) titleEl.innerText = category;
     const container = document.getElementById('chapter-list-container'); if(!container) return;
+    
+    // Xóa rỗng container
     container.innerHTML = '';
 
     const searchEl = document.getElementById('search-chapter-input');
     const keyword = searchEl ? searchEl.value.trim().toLowerCase() : "";
 
     let quizzesInFolder = quizDatabase.filter(q => q.category === category);
-    
-    if (keyword) {
-        quizzesInFolder = quizzesInFolder.filter(quiz => quiz.title.toLowerCase().includes(keyword));
-    }
+    if (keyword) quizzesInFolder = quizzesInFolder.filter(quiz => quiz.title.toLowerCase().includes(keyword));
 
     if(quizzesInFolder.length === 0) {
         container.innerHTML = '<p class="col-span-full text-center text-slate-400 font-medium py-10">Không tìm thấy tài nguyên nào.</p>'; return;
     }
 
+    // [VÁ LỖI]: Dùng DocumentFragment để gom tất cả thẻ HTML lại rồi mới ném ra màn hình 1 lần duy nhất (Nhanh x10 lần)
+    const fragment = document.createDocumentFragment();
+
     quizzesInFolder.forEach(quiz => {
         const card = document.createElement('div');
-        // Quiz Card: Tối giản, tập trung vào Typography
         card.className = 'relative p-5 sm:p-6 bg-white dark:bg-[#1E293B] border border-slate-200/60 dark:border-slate-700/60 rounded-[20px] shadow-sm hover:shadow-[0_8px_20px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-slate-600 transition-all group flex flex-col';
         
         let actionBtnsHTML = '';
@@ -831,8 +843,10 @@ function renderSubjectDetailView(category) {
                 <span><i class="fas fa-layer-group mr-1 text-slate-300"></i>${quiz.questions.length} câu</span>
             </div>
         `;
-        container.appendChild(card);
+        fragment.appendChild(card);
     });
+    
+    container.appendChild(fragment);
 }
   
 function redoQuizFromHistory(quizId) {
