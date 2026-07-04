@@ -12,6 +12,13 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
+// [VIP TỐI ƯU HIỆU NĂNG] Kích hoạt bộ nhớ đệm (Cache) để tải chớp nhoáng
+firebase.firestore().enablePersistence({
+    synchronizeTabs: true
+}).catch(function(err) {
+    console.warn("Lỗi Cache: ", err.code);
+});
+
 // =========================================================================
 // QUẢN TRỊ VIÊN HỆ THỐNG
 // =========================================================================
@@ -76,12 +83,18 @@ document.addEventListener("DOMContentLoaded", () => {
             if (user.displayName) {
                 const nameEl = document.getElementById('student-name');
                 if(nameEl) nameEl.value = user.displayName;
-            }
+           }
             setRole('student');
             
-            fetchQuizzesFromFirebase(); 
-            fetchHistoryFromFirebase(); 
-
+            // [VÁ LỖI CẤP TỐC] Ngăn máy chủ tải toàn bộ dữ liệu nếu đang mở link chia sẻ
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('quiz') || (urlParams.get('folder') && urlParams.get('t'))) {
+                isSharedMode = true; // Khóa ngay lập tức việc tải dữ liệu nền
+            } else {
+                fetchQuizzesFromFirebase(); 
+            }
+            fetchHistoryFromFirebase();
+            
             db.collection("users").doc(user.uid).onSnapshot(doc => {
                 if(doc.exists) {
                    currentPlan = doc.data().plan || 'basic';
@@ -324,14 +337,24 @@ function fetchHistoryFromFirebase() {
 
 function checkUrlForSharedQuiz(quizId) {
     isSharedMode = true; 
+    
+    // Hiển thị trạng thái đang tải cực đẹp để tránh màn hình đen
+    const appDiv = document.getElementById('app');
+    if(appDiv) appDiv.insertAdjacentHTML('afterbegin', '<div id="global-loader" class="fixed inset-0 bg-[#0F172A] z-[9999] flex flex-col items-center justify-center"><i class="fas fa-circle-notch fa-spin text-4xl text-blue-500 mb-4"></i><p class="text-white font-bold tracking-widest animate-pulse">ĐANG TẢI DỮ LIỆU...</p></div>');
+
     db.collection("quizzes").doc(quizId).get().then((doc) => {
+        const loader = document.getElementById('global-loader'); if(loader) loader.remove();
+        
         if (doc.exists) {
             activeQuiz = doc.data(); prepareWelcomeScreen();
         } else {
             showToast("Đề thi này không tồn tại hoặc đã bị gỡ bỏ khỏi hệ thống.", true); switchScreen('home');
         }
         window.history.replaceState({}, document.title, window.location.pathname);
-    }).catch(err => { console.error("Lỗi đường dẫn: ", err); switchScreen('home'); });
+    }).catch(err => { 
+        const loader = document.getElementById('global-loader'); if(loader) loader.remove();
+        console.error("Lỗi đường dẫn: ", err); switchScreen('home'); 
+    });
 }
 
 function loadSharedFolder(category, teacherId) {
