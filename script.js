@@ -1651,12 +1651,19 @@ function submitQuiz(force) {
             console.error("Lỗi cập nhật đám mây: ", err);
             showToast("Lỗi đồng bộ: Không thể kết nối với Firestore đám mây", true);
         });
-        // [VIP] CỘNG ĐIỂM UY TÍN CHO THƯ VIỆN CỘNG ĐỒNG KHI NỘP BÀI THÀNH CÔNG
-        if (!isPracticeMode && isSharedMode && activeQuiz.authorId) {
-            const folderId = `${activeQuiz.authorId}_${activeQuiz.category}`.replace(/\s+/g, '_');
-            db.collection("community_folders").doc(folderId).update({
-                completionCount: firebase.firestore.FieldValue.increment(1)
-            }).catch(e => console.warn("Bỏ qua cộng điểm (Không phải thư mục Public)"));
+        // [VIP VÁ LỖI] CỘNG ĐIỂM UY TÍN CHO THƯ VIỆN CỘNG ĐỒNG
+        if (!isPracticeMode && isSharedMode) {
+            // Thuật toán truy vết chính xác Tác giả gốc (Khắc phục lỗi Mock Test nhận nhầm ID học sinh)
+            let originalAuthorId = activeQuiz.authorId;
+            const originalQuiz = quizDatabase.find(q => q.category === activeQuiz.category && q.authorId !== auth.currentUser.uid);
+            if (originalQuiz) originalAuthorId = originalQuiz.authorId;
+
+            if (originalAuthorId) {
+                const folderId = `${originalAuthorId}_${activeQuiz.category}`.replace(/\s+/g, '_');
+                db.collection("community_folders").doc(folderId).update({
+                    completionCount: firebase.firestore.FieldValue.increment(1)
+                }).catch(e => console.warn("Lỗi cộng điểm: ", e));
+            }
         }
     }
 }
