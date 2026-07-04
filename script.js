@@ -818,6 +818,7 @@ function renderHomeQuizList() {
 // [VIP SAAS] HIỂN THỊ CHI TIẾT MÔN HỌC & ĐỀ THI
 function renderSubjectDetailView(category) {
     const titleEl = document.getElementById('subject-detail-title'); if(titleEl) titleEl.innerText = category;
+    checkFolderPublishStatus(category); // Lệnh gọi bộ định vị trạng thái Cộng Đồng
     const container = document.getElementById('chapter-list-container'); if(!container) return;
     
     // Xóa rỗng container
@@ -2809,4 +2810,88 @@ document.addEventListener("visibilitychange", () => {
 
 window.resetAntiCheat = function() {
     cheatViolationCount = 0;
+}
+
+// =========================================================================
+// [VIP SAAS] TẦNG QUẢN TRỊ THƯ VIỆN CỘNG ĐỒNG (COMMUNITY LIBRARY)
+// =========================================================================
+
+// Hàm 1: Kiểm tra trạng thái Public của Thư mục hiện tại
+function checkFolderPublishStatus(category) {
+    const container = document.getElementById('publish-folder-container');
+    const toggleBtn = document.getElementById('toggle-publish-folder');
+    const statusText = document.getElementById('publish-status-text');
+    
+    if (!container) return;
+
+    // Chỉ Tác giả gốc mới được quyền thấy và gạt nút này
+    if (currentRole === 'teacher' && !isSharedMode) {
+        container.classList.remove('hidden');
+        container.classList.add('flex');
+        
+        // Truy vấn mỏng lên Firestore để xem trạng thái
+        const folderId = `${auth.currentUser.uid}_${category}`.replace(/\s+/g, '_'); // Tạo ID chống trùng lặp
+        
+        db.collection("community_folders").doc(folderId).get().then(doc => {
+            if (doc.exists && doc.data().isPublic) {
+                toggleBtn.checked = true;
+                statusText.innerText = "Đã xuất bản (Công khai)";
+                statusText.className = "text-[10px] font-bold text-blue-600 dark:text-blue-400";
+            } else {
+                toggleBtn.checked = false;
+                statusText.innerText = "Đang ẩn (Chỉ mình tôi)";
+                statusText.className = "text-[10px] font-medium text-slate-400";
+            }
+        }).catch(err => console.error("Lỗi đồng bộ danh bạ cộng đồng: ", err));
+    } else {
+        // Nếu là học sinh đang xem, giấu cái nút này đi
+        container.classList.add('hidden');
+        container.classList.remove('flex');
+    }
+}
+
+// Hàm 2: Xử lý khi Bệ hạ click gạt nút On/Off
+window.toggleFolderVisibility = function(isPublic) {
+    if (!currentSelectedCategory) return;
+    
+    const statusText = document.getElementById('publish-status-text');
+    const folderId = `${auth.currentUser.uid}_${currentSelectedCategory}`.replace(/\s+/g, '_');
+    
+    if (isPublic) {
+        statusText.innerText = "Đang đồng bộ...";
+        
+        const folderData = {
+            id: folderId,
+            authorId: auth.currentUser.uid,
+            authorName: auth.currentUser.displayName || "Giảng viên",
+            category: currentSelectedCategory,
+            isPublic: true,
+            completionCount: firebase.firestore.FieldValue.increment(0), // Chuẩn bị sẵn biến đếm lượt làm
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        db.collection("community_folders").doc(folderId).set(folderData, { merge: true }).then(() => {
+            showToast(`Đã xuất bản môn "${currentSelectedCategory}" lên Thư Viện Cộng Đồng!`, false);
+            statusText.innerText = "Đã xuất bản (Công khai)";
+            statusText.className = "text-[10px] font-bold text-blue-600 dark:text-blue-400";
+        }).catch(err => {
+            showToast("Lỗi xuất bản: " + err.message, true);
+            document.getElementById('toggle-publish-folder').checked = false;
+        });
+        
+    } else {
+        statusText.innerText = "Đang gỡ xuống...";
+        
+        db.collection("community_folders").doc(folderId).update({
+            isPublic: false,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            showToast(`Đã gỡ môn "${currentSelectedCategory}" khỏi Thư Viện Cộng Đồng!`, false);
+            statusText.innerText = "Đang ẩn (Chỉ mình tôi)";
+            statusText.className = "text-[10px] font-medium text-slate-400";
+        }).catch(err => {
+            showToast("Lỗi thu hồi: " + err.message, true);
+            document.getElementById('toggle-publish-folder').checked = true;
+        });
+    }
 }
