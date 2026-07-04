@@ -592,16 +592,29 @@ function switchStudentTab(tab) {
     currentStudentTab = tab;
     const btnBrowse = document.getElementById('btn-tab-browse');
     const btnHistory = document.getElementById('btn-tab-history');
+    const btnCommunity = document.getElementById('btn-tab-community');
     
-    // Style mới: Nút bo tròn (Pill), màu sắc tinh giản
-    if (tab === 'browse') {
-        btnBrowse.className = "px-5 py-2 font-bold rounded-full text-xs sm:text-sm transition-all bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md";
-        btnHistory.className = "px-5 py-2 font-bold rounded-full text-xs sm:text-sm transition-all text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5";
-    } else {
-        btnBrowse.className = "px-5 py-2 font-bold rounded-full text-xs sm:text-sm transition-all text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800";
-        btnHistory.className = "px-5 py-2 font-bold rounded-full text-xs sm:text-sm transition-all bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md flex items-center gap-1.5";
+    const inactiveClass = "px-5 py-2 font-bold rounded-full text-xs sm:text-sm transition-all text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5";
+    const activeClass = "px-5 py-2 font-bold rounded-full text-xs sm:text-sm transition-all bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md flex items-center gap-1.5";
+    
+    if(btnBrowse) btnBrowse.className = inactiveClass;
+    if(btnHistory) btnHistory.className = inactiveClass;
+    if(btnCommunity) btnCommunity.className = "px-5 py-2 font-bold rounded-full text-xs sm:text-sm flex items-center gap-1.5 transition-all bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700";
+
+    if (tab === 'browse' && btnBrowse) {
+        btnBrowse.className = activeClass;
+    } else if (tab === 'history' && btnHistory) {
+        btnHistory.className = activeClass;
+    } else if (tab === 'community' && btnCommunity) {
+        btnCommunity.className = "px-5 py-2 font-bold rounded-full text-xs sm:text-sm flex items-center gap-1.5 transition-all bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transform scale-105";
     }
-    renderHomeQuizList();
+    
+    // Điều hướng luồng Render
+    if (tab === 'community') {
+        fetchAndRenderCommunity();
+    } else {
+        renderHomeQuizList();
+    }
 }
 
 function toggleDarkMode() {
@@ -1631,6 +1644,13 @@ function submitQuiz(force) {
             console.error("Lỗi cập nhật đám mây: ", err);
             showToast("Lỗi đồng bộ: Không thể kết nối với Firestore đám mây", true);
         });
+        // [VIP] CỘNG ĐIỂM UY TÍN CHO THƯ VIỆN CỘNG ĐỒNG KHI NỘP BÀI THÀNH CÔNG
+        if (!isPracticeMode && isSharedMode && activeQuiz.authorId) {
+            const folderId = `${activeQuiz.authorId}_${activeQuiz.category}`.replace(/\s+/g, '_');
+            db.collection("community_folders").doc(folderId).update({
+                completionCount: firebase.firestore.FieldValue.increment(1)
+            }).catch(e => console.warn("Bỏ qua cộng điểm (Không phải thư mục Public)"));
+        }
     }
 }
 
@@ -2894,4 +2914,69 @@ window.toggleFolderVisibility = function(isPublic) {
             document.getElementById('toggle-publish-folder').checked = true;
         });
     }
+}
+
+// [VIP SAAS] HIỂN THỊ CHỢ THƯ VIỆN CỘNG ĐỒNG
+window.fetchAndRenderCommunity = function() {
+    const container = document.getElementById('quiz-list-container');
+    const searchEl = document.getElementById('search-folder-input');
+    const keyword = searchEl ? searchEl.value.trim().toLowerCase() : "";
+    
+    container.innerHTML = '<div class="col-span-full flex justify-center py-16"><i class="fas fa-circle-notch fa-spin text-blue-500 text-4xl"></i></div>';
+    
+    // Truy vấn dữ liệu: Lấy Folder Public, xếp hạng theo Lượt Test giảm dần
+    let query = db.collection("community_folders").where("isPublic", "==", true).orderBy("completionCount", "desc").limit(50);
+    
+    query.get().then(snapshot => {
+        container.innerHTML = '';
+        if (snapshot.empty) {
+            container.innerHTML = '<div class="col-span-full text-center py-16 text-slate-400"><i class="fas fa-wind text-5xl mb-4 opacity-20"></i><p class="font-medium">Thư viện hiện tại chưa có giáo trình nào được xuất bản.</p></div>';
+            return;
+        }
+        
+        let folders = [];
+        snapshot.forEach(doc => folders.push(doc.data()));
+        
+        // Lọc theo từ khóa tìm kiếm (nếu có)
+        if (keyword) {
+            folders = folders.filter(f => f.category.toLowerCase().includes(keyword) || f.authorName.toLowerCase().includes(keyword));
+        }
+        
+        if (folders.length === 0) {
+            container.innerHTML = '<p class="col-span-full text-center py-12 text-slate-400 font-medium">Không tìm thấy giáo trình phù hợp.</p>';
+            return;
+        }
+        
+        folders.forEach(folder => {
+            const card = document.createElement('div');
+            card.className = 'relative p-5 sm:p-6 bg-white dark:bg-[#1E293B] border border-slate-200/60 dark:border-slate-700/60 rounded-[24px] hover:-translate-y-1.5 hover:shadow-[0_15px_40px_-10px_rgba(37,99,235,0.15)] hover:border-blue-300 dark:hover:border-blue-800 transition-all duration-300 cursor-pointer group flex flex-col justify-between min-h-[140px] overflow-hidden';
+            
+            card.innerHTML = `
+                <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-bl-full pointer-events-none transition-all duration-500 group-hover:scale-125"></div>
+                <div class="flex items-start w-full min-w-0 mb-4 z-10 relative">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800 text-blue-600 dark:text-blue-400 rounded-[14px] flex items-center justify-center text-xl shadow-sm border border-blue-100/50 dark:border-slate-700 shrink-0 mr-4 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+                        <i class="fas fa-globe-asia"></i>
+                    </div>
+                    <div class="flex-1 min-w-0 pt-0.5">
+                        <h3 class="text-lg font-extrabold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-tight tracking-tight line-clamp-2" title="${folder.category}">${folder.category}</h3>
+                        <p class="text-[11px] text-slate-400 mt-2 font-bold uppercase tracking-wider"><i class="fas fa-user-edit mr-1 opacity-70"></i> ${folder.authorName}</p>
+                    </div>
+                </div>
+                <div class="mt-auto pt-4 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between z-10 relative">
+                    <span class="text-[10px] font-extrabold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800/30 shadow-inner flex items-center gap-1.5">
+                        <i class="fas fa-fire text-orange-500"></i>${folder.completionCount || 0} Lượt
+                    </span>
+                    <span class="text-xs font-bold text-blue-500 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-0 -translate-x-2">Truy cập <i class="fas fa-arrow-right ml-1"></i></span>
+                </div>
+            `;
+            
+            // Cơ chế Reference: Bấm vào là nạp thẳng đề gốc của tác giả lên học tạm
+            card.onclick = () => {
+                loadSharedFolder(folder.category, folder.authorId);
+            };
+            container.appendChild(card);
+        });
+    }).catch(err => {
+        container.innerHTML = `<p class="col-span-full text-center text-red-500 py-12 font-bold"><i class="fas fa-exclamation-triangle mr-2"></i>Lỗi kết nối Thư viện: ${err.message}</p>`;
+    });
 }
