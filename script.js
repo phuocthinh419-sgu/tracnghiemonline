@@ -1760,22 +1760,23 @@ window.applyStatsFilter = function() {
     renderStatsDashboard(filteredResults);
 }
 
-// Cỗ máy tính toán vẽ biểu đồ và bảng
+// Cỗ máy tính toán vẽ biểu đồ và bảng (Bản vá lỗi phòng thủ tuyệt đối)
 function renderStatsDashboard(results) {
     const tableBody = document.getElementById('stats-table-body');
-    const overviewDiv = document.getElementById('teacher-overview-stats');
+    // Hỗ trợ quét cả 2 ID phòng trường hợp file HTML bị trùng lặp
+    const overviewDiv = document.getElementById('teacher-overview-stats') || document.getElementById('admin-stat-overview');
     const unitDiv = document.getElementById('teacher-unit-stats');
     const questionDiv = document.getElementById('teacher-question-stats');
 
     if (results.length === 0) { 
         if(tableBody) tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-slate-400 font-medium">Môn học này chưa có dữ liệu nộp bài.</td></tr>'; 
         if(overviewDiv) overviewDiv.innerHTML = '<div class="col-span-full text-center text-slate-500 font-bold mt-4">Chưa đủ dữ liệu phân tích</div>'; 
-        if(unitDiv) unitDiv.innerHTML = ''; 
-        if(questionDiv) questionDiv.innerHTML = '';
+        if(unitDiv) unitDiv.innerHTML = '<p class="text-slate-400 text-sm">Trống</p>'; 
+        if(questionDiv) questionDiv.innerHTML = '<p class="text-slate-400 text-sm">Trống</p>';
         return; 
     }
 
-    tableBody.innerHTML = '';
+    if(tableBody) tableBody.innerHTML = '';
     let totalScore = 0; let minScore = 101; let maxScore = -1; let totalSeconds = 0;
     let unitStats = {}; let questionStats = {};
 
@@ -1790,39 +1791,42 @@ function renderStatsDashboard(results) {
             if (parts.length === 2) totalSeconds += (parseInt(parts[0]) * 60 + parseInt(parts[1]));
         }
 
-        // [VIP] PHÂN TÍCH THEO UNIT (Lấy Tên Bài Thi làm lõi)
+        // [VIP] PHÂN TÍCH THEO UNIT
         let unitName = res.quizTitle || "Đề thi khác";
         if (!unitStats[unitName]) unitStats[unitName] = { sum: 0, count: 0 };
         unitStats[unitName].sum += pct;
         unitStats[unitName].count++;
 
-        // CHẨN ĐOÁN CÂU HỎI
+        // CHẨN ĐOÁN CÂU HỎI (Bọc try...catch chống sập toàn hệ thống)
         if (res.quizQuestionsSnapshot && res.userAnswers) {
-            res.quizQuestionsSnapshot.forEach((q, idx) => {
-                let qTextRaw = q.content.replace(/<[^>]*>?/gm, ''); 
-                let qText = qTextRaw.length > 60 ? qTextRaw.substring(0, 60) + "..." : qTextRaw;
-                if (qText.trim() === "") qText = "[Câu hỏi hình ảnh/âm thanh]";
+            try {
+                res.quizQuestionsSnapshot.forEach((q, idx) => {
+                    let rawContent = q.content || "";
+                    let qTextRaw = rawContent.replace(/<[^>]*>?/gm, ''); 
+                    let qText = qTextRaw.length > 60 ? qTextRaw.substring(0, 60) + "..." : qTextRaw;
+                    if (qText.trim() === "") qText = "[Câu hỏi hình ảnh/âm thanh]";
 
-                if (!questionStats[qText]) questionStats[qText] = { correct: 0, total: 0 };
-                questionStats[qText].total++;
+                    if (!questionStats[qText]) questionStats[qText] = { correct: 0, total: 0 };
+                    questionStats[qText].total++;
 
-                let uAns = res.userAnswers[idx];
-                let isCorrect = false;
+                    let uAns = res.userAnswers[idx];
+                    let isCorrect = false;
 
-                if (!q.type || q.type === 'mcq') {
-                    isCorrect = (uAns === q.correctAnswer);
-                } else if (q.type === 'sa') {
-                    isCorrect = (uAns !== null && uAns.toString().trim().toLowerCase() === q.correctAnswer.toString().trim().toLowerCase());
-                } else if (q.type === 'tf') {
-                    if (Array.isArray(uAns)) {
-                        let match = 0;
-                        for(let k=0; k<4; k++) if(uAns[k] === q.correctAnswers[k]) match++;
-                        isCorrect = (match === 4); 
+                    if (!q.type || q.type === 'mcq') {
+                        isCorrect = (uAns === q.correctAnswer);
+                    } else if (q.type === 'sa') {
+                        isCorrect = (uAns !== null && uAns.toString().trim().toLowerCase() === (q.correctAnswer||"").toString().trim().toLowerCase());
+                    } else if (q.type === 'tf') {
+                        if (Array.isArray(uAns) && q.correctAnswers) {
+                            let match = 0;
+                            for(let k=0; k<4; k++) if(uAns[k] === q.correctAnswers[k]) match++;
+                            isCorrect = (match === 4); 
+                        }
                     }
-                }
 
-                if (isCorrect) questionStats[qText].correct++;
-            });
+                    if (isCorrect) questionStats[qText].correct++;
+                });
+            } catch(e) { console.warn("Lỗi phân tích câu hỏi (Đã bỏ qua để không sập trang):", e); }
         }
     });
 
@@ -1851,7 +1855,7 @@ function renderStatsDashboard(results) {
             </div>
         `;
     });
-    if(unitDiv) unitDiv.innerHTML = unitHtml;
+    if(unitDiv) unitDiv.innerHTML = unitHtml || '<p class="text-slate-400 text-sm">Chưa có dữ liệu Unit</p>';
 
     // 3. RENDER CẢNH BÁO CÂU HỎI
     let qArr = Object.keys(questionStats).map(k => {
@@ -1866,9 +1870,7 @@ function renderStatsDashboard(results) {
         if(idx > 15) return; 
         let isHard = q.errorRate >= 70;
         let isEasy = q.errorRate <= 20;
-        
-        let statusBadge = isHard ? `<span class="text-rose-500 font-extrabold">TỈ LỆ SAI: ${q.errorRate}%</span>` : 
-                         (isEasy ? `<span class="text-blue-500 font-extrabold">TỈ LỆ SAI: ${q.errorRate}%</span>` : `<span class="text-slate-400 font-extrabold">TỈ LỆ SAI: ${q.errorRate}%</span>`);
+        let statusBadge = isHard ? `<span class="text-rose-500 font-extrabold">TỈ LỆ SAI: ${q.errorRate}%</span>` : (isEasy ? `<span class="text-blue-500 font-extrabold">TỈ LỆ SAI: ${q.errorRate}%</span>` : `<span class="text-slate-400 font-extrabold">TỈ LỆ SAI: ${q.errorRate}%</span>`);
 
         qHtml += `
             <div class="flex flex-col p-4 bg-slate-50 dark:bg-slate-800/30 rounded-xl border ${isHard ? 'border-rose-200 dark:border-rose-900/50 border-l-4 border-l-rose-500' : 'border-slate-100 dark:border-slate-700/50'}">
@@ -1880,7 +1882,7 @@ function renderStatsDashboard(results) {
             </div>
         `;
     });
-    if(questionDiv) questionDiv.innerHTML = qHtml;
+    if(questionDiv) questionDiv.innerHTML = qHtml || '<p class="text-slate-400 text-sm italic">Chưa có dữ liệu câu hỏi từ học viên.</p>';
 
     // 4. RENDER BẢNG NHẬT KÝ
     results.forEach((res) => {
