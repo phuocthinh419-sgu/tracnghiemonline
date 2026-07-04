@@ -830,9 +830,12 @@ function renderHomeQuizList() {
 
 // [VIP SAAS] HIỂN THỊ CHI TIẾT MÔN HỌC & ĐỀ THI
 function renderSubjectDetailView(category) {
-    const titleEl = document.getElementById('subject-detail-title'); if(titleEl) titleEl.innerText = category;
-    checkFolderPublishStatus(category); // Lệnh gọi bộ định vị trạng thái Cộng Đồng
+    const titleEl = document.getElementById('subject-detail-title'); 
+    if(titleEl) titleEl.innerText = category; // Hoặc "Môn học: " + category
+
+    // [VIP] GỌI LỆNH ĐÁNH THỨC NÚT GẠT XUẤT BẢN CỘNG ĐỒNG
     if (typeof checkFolderPublishStatus === 'function') checkFolderPublishStatus(category);
+
     const container = document.getElementById('chapter-list-container'); if(!container) return;
     
     // Xóa rỗng container
@@ -848,7 +851,6 @@ function renderSubjectDetailView(category) {
         container.innerHTML = '<p class="col-span-full text-center text-slate-400 font-medium py-10">Không tìm thấy tài nguyên nào.</p>'; return;
     }
 
-    // [VÁ LỖI]: Dùng DocumentFragment để gom tất cả thẻ HTML lại rồi mới ném ra màn hình 1 lần duy nhất (Nhanh x10 lần)
     const fragment = document.createDocumentFragment();
 
     quizzesInFolder.forEach(quiz => {
@@ -869,6 +871,10 @@ function renderSubjectDetailView(category) {
                     <button onclick="event.stopPropagation(); deleteQuiz('${quiz.id}')" class="text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg w-7 h-7 flex items-center justify-center transition-colors border border-slate-200 dark:border-slate-700" title="Xóa"><i class="fas fa-trash-alt text-[10px]"></i></button>
                 </div>
             `;
+        } else if (currentRole === 'student') {
+            const catQuiz = quizDatabase.find(q => q.category === category);
+            const tId = catQuiz ? catQuiz.authorId : '';
+            actionBtnsHTML = `<button onclick="event.stopPropagation(); unpinFolder('${category}', '${tId}')" class="absolute top-4 right-4 text-slate-400 hover:text-red-500 bg-slate-50 dark:bg-slate-800 rounded-full w-8 h-8 flex items-center justify-center transition-colors z-10" title="Bỏ ghim thư mục"><i class="fas fa-bookmark text-xs"></i></button>`;
         }
 
         card.innerHTML = `
