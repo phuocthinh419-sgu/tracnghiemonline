@@ -1700,15 +1700,15 @@ function switchAdminTab(tab) {
     if (tab === 'stats') fetchResultsFromFirebase();
 }
 
-// [VIP] THỐNG KÊ ĐIỂM GIÁO VIÊN - TẢI SIÊU TỐC 0MS VÀ CHỐNG TREO MÁY
+let adminFetchedResults = [];
+
+// [VIP] THỐNG KÊ ĐIỂM GIÁO VIÊN - PHÂN TÍCH CHUYÊN SÂU CHẤT LƯỢNG ĐỀ
 function fetchResultsFromFirebase() {
     const tableBody = document.getElementById('stats-table-body'); if(!tableBody) return;
     
-    // Hiệu ứng xoay vòng đẹp mắt trong lúc chờ (tối đa vài mili-giây)
-    tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-8"><i class="fas fa-spinner fa-spin text-blue-500 text-2xl mb-2"></i><br><span class="text-gray-500">Đang trích xuất sổ điểm...</span></td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-8"><i class="fas fa-spinner fa-spin text-blue-500 text-2xl mb-2"></i><br><span class="text-gray-500 text-sm">Đang trích xuất sổ điểm và phân tích chất lượng...</span></td></tr>';
     if (!auth.currentUser) return;
 
-    // [VIP] BẢO HIỂM CHỐNG ĐỨNG MÁY: Quá 5 giây mạng lag tự động ngắt!
     let isFetched = false;
     const timeoutId = setTimeout(() => {
         if (!isFetched) {
@@ -1716,51 +1716,223 @@ function fetchResultsFromFirebase() {
         }
     }, 5000);
 
-    // [VIP] THUẬT TOÁN RÚT GỌN: Chỉ lấy 100 bài nộp mới nhất để chống sập RAM
-    db.collection("results")
-      .where("teacherId", "==", auth.currentUser.uid)
-      .limit(100) 
+    // Mở rộng giới hạn lên 400 bài để lấy mẫu phân tích chính xác
+    db.collection("results").where("teacherId", "==", auth.currentUser.uid).limit(400) 
       .get().then((snapshot) => {
-        isFetched = true;
-        clearTimeout(timeoutId);
-        tableBody.innerHTML = '';
+        isFetched = true; clearTimeout(timeoutId);
         
-        if (snapshot.empty) { tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">Chưa có dữ liệu bài làm của học sinh.</td></tr>'; return; }
-
-        let results = []; 
-        snapshot.forEach(doc => results.push(doc.data()));
+        adminFetchedResults = [];
+        let categories = new Set();
         
-        // Sắp xếp bài mới nhất lên đầu
-        results.sort((a, b) => { 
-            let timeA = a.timestamp && a.timestamp.seconds ? a.timestamp.seconds : 0; 
-            let timeB = b.timestamp && b.timestamp.seconds ? b.timestamp.seconds : 0; 
-            return timeB - timeA; 
+        snapshot.forEach(doc => {
+            let data = doc.data();
+            adminFetchedResults.push(data);
+            if (data.category) categories.add(data.category);
         });
-
-        // Vẽ bảng điểm vinh danh
-        results.forEach((res) => {
-            const formatStr = (res.timestamp && res.timestamp.seconds) ? new Date(res.timestamp.seconds * 1000).toLocaleString('vi-VN') : "Vừa xong";
-            const row = document.createElement('tr'); 
-            row.className = 'border-b dark:border-gray-700 text-sm hover:bg-blue-50 dark:hover:bg-gray-700/50 transition-colors';
-            
-            row.innerHTML = `
-                <td class="p-3 sm:p-4 font-semibold text-gray-900 dark:text-gray-100">${res.studentName || "Ẩn danh"}</td>
-                <td class="p-3 sm:p-4 text-gray-600 dark:text-gray-400">
-                    <div class="font-bold text-blue-700 dark:text-blue-400 truncate max-w-[200px]" title="${res.quizTitle}">${res.quizTitle || "Bài thi"}</div>
-                    <div class="text-[0.65rem] sm:text-xs mt-1"><span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-600 rounded-md border dark:border-gray-500">${res.category || "Chưa phân loại"}</span></div>
-                </td>
-                <td class="p-3 sm:p-4 font-mono font-bold text-gray-800 dark:text-gray-200">${res.score || "0/0"}</td>
-                <td class="p-3 sm:p-4 font-bold ${res.percentage >= 50 ? 'text-green-600' : 'text-red-500'}">${res.percentage || 0}%</td>
-                <td class="p-3 sm:p-4 text-gray-500 dark:text-gray-400 font-mono">${res.timeUsed || "--:--"}</td>
-                <td class="p-3 sm:p-4 text-gray-400 text-xs">${formatStr}</td>
-            `;
-            tableBody.appendChild(row);
-        });
+        
+        // Tạo nút chọn Folder
+        const selectEl = document.getElementById('admin-stat-folder-select');
+        if (selectEl) {
+            const currentVal = selectEl.value;
+            let opts = '<option value="all">Tất cả môn học</option>';
+            categories.forEach(cat => { opts += `<option value="${cat}">${cat}</option>`; });
+            selectEl.innerHTML = opts;
+            if (categories.has(currentVal)) selectEl.value = currentVal;
+        }
+        
+        renderTeacherAnalytics(); // Kích hoạt bộ máy phân tích
     }).catch(err => { 
-        isFetched = true;
-        clearTimeout(timeoutId);
-        tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-red-500 font-bold"><i class="fas fa-exclamation-triangle mb-2 text-2xl"></i><br>Lỗi máy chủ Firebase.</td></tr>'; 
+        isFetched = true; clearTimeout(timeoutId);
+        tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-500 font-bold"><i class="fas fa-exclamation-triangle mb-2 text-2xl"></i><br>Lỗi máy chủ: ${err.message}</td></tr>`; 
     });
+}
+
+// [VIP] LÒ BÁT QUÁI PHÂN TÍCH CHẤT LƯỢNG
+window.renderTeacherAnalytics = function() {
+    const selectEl = document.getElementById('admin-stat-folder-select');
+    const selectedFolder = selectEl ? selectEl.value : 'all';
+    
+    let filteredData = adminFetchedResults;
+    if (selectedFolder !== 'all') {
+        filteredData = adminFetchedResults.filter(r => r.category === selectedFolder);
+    }
+    
+    // 1. ĐỔ DỮ LIỆU VÀO BẢNG NHẬT KÝ
+    const tableBody = document.getElementById('stats-table-body');
+    if (tableBody) {
+        tableBody.innerHTML = '';
+        if (filteredData.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">Chưa có dữ liệu bài làm của học sinh.</td></tr>';
+        } else {
+            let sortedData = [...filteredData].sort((a, b) => { 
+                let timeA = a.timestamp && a.timestamp.seconds ? a.timestamp.seconds : 0; 
+                let timeB = b.timestamp && b.timestamp.seconds ? b.timestamp.seconds : 0; 
+                return timeB - timeA; 
+            });
+            sortedData.forEach((res) => {
+                const formatStr = (res.timestamp && res.timestamp.seconds) ? new Date(res.timestamp.seconds * 1000).toLocaleString('vi-VN') : "Vừa xong";
+                const row = document.createElement('tr'); 
+                row.className = 'border-b dark:border-gray-700 text-sm hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors';
+                row.innerHTML = `
+                    <td class="p-3 sm:p-4 font-semibold text-slate-900 dark:text-slate-100">${res.studentName || "Ẩn danh"}</td>
+                    <td class="p-3 sm:p-4 text-slate-600 dark:text-slate-400">
+                        <div class="font-bold text-blue-600 dark:text-blue-400 truncate max-w-[200px]" title="${res.quizTitle}">${res.quizTitle || "Bài thi"}</div>
+                        <div class="text-[0.65rem] sm:text-xs mt-1"><span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded-md border border-slate-200/50 dark:border-slate-600">${res.category || "Chưa phân loại"}</span></div>
+                    </td>
+                    <td class="p-3 sm:p-4 font-mono font-bold text-slate-800 dark:text-slate-200">${res.score || "0/0"}</td>
+                    <td class="p-3 sm:p-4 font-bold ${res.percentage >= 50 ? 'text-green-600' : 'text-red-500'}">${res.percentage || 0}%</td>
+                    <td class="p-3 sm:p-4 text-slate-500 dark:text-slate-400 font-mono">${res.timeUsed || "--:--"}</td>
+                    <td class="p-3 sm:p-4 text-slate-400 text-xs">${formatStr}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+    }
+    
+    // 2. PHÂN TÍCH TỔNG QUAN, UNIT & CÂU HỎI
+    const overviewEl = document.getElementById('admin-stat-overview');
+    const unitsEl = document.getElementById('admin-stat-units');
+    const questionsEl = document.getElementById('admin-stat-questions');
+    
+    if (!overviewEl || !unitsEl || !questionsEl) return;
+    
+    if (filteredData.length === 0) {
+        overviewEl.innerHTML = `<div class="col-span-full text-center text-slate-400 py-4 text-sm font-medium">Chưa đủ dữ liệu để phân tích</div>`;
+        unitsEl.innerHTML = `<div class="text-center text-slate-400 py-12 text-sm font-medium"><i class="fas fa-folder-open text-4xl mb-3 opacity-20"></i><br>Chưa có số liệu Unit</div>`;
+        questionsEl.innerHTML = `<div class="text-center text-slate-400 py-12 text-sm font-medium"><i class="fas fa-question-circle text-4xl mb-3 opacity-20"></i><br>Chưa có số liệu Câu hỏi</div>`;
+        return;
+    }
+
+    let totalScore = 0; let maxScore = -1; let minScore = 101;
+    let totalSeconds = 0; let validTimeCount = 0;
+    
+    let unitStats = {}; 
+    let questionStats = {}; 
+
+    filteredData.forEach(res => {
+        let pct = res.percentage || 0;
+        totalScore += pct;
+        if (pct > maxScore) maxScore = pct;
+        if (pct < minScore) minScore = pct;
+        
+        // Đo thời gian trung bình
+        if (res.timeUsed && res.timeUsed !== "Luyện tập" && res.timeUsed.includes(':')) {
+            let parts = res.timeUsed.split(':');
+            if (parts.length === 2) {
+                totalSeconds += parseInt(parts[0]) * 60 + parseInt(parts[1]);
+                validTimeCount++;
+            }
+        }
+        
+        // Nhóm theo Unit (Đề thi)
+        let title = res.quizTitle || "Chưa đặt tên";
+        if (!unitStats[title]) unitStats[title] = { sum: 0, count: 0 };
+        unitStats[title].sum += pct;
+        unitStats[title].count++;
+        
+        // Phân rã theo Từng Câu Hỏi
+        if (res.userAnswers && res.quizQuestionsSnapshot) {
+            res.quizQuestionsSnapshot.forEach((q, idx) => {
+                let ans = res.userAnswers[idx];
+                let qText = q.content ? q.content.replace(/<[^>]+>/g, '').trim() : "Câu hỏi ẩn"; // Lọc bỏ HTML
+                
+                if (!questionStats[qText]) questionStats[qText] = { correct: 0, total: 0 };
+                questionStats[qText].total++;
+                
+                if (q.type === "tf") {
+                    let allCorrect = true;
+                    if (Array.isArray(ans)) {
+                        for(let j=0; j<4; j++) { if (ans[j] === null || ans[j] !== q.correctAnswers[j]) allCorrect = false; }
+                    } else { allCorrect = false; }
+                    if (allCorrect) questionStats[qText].correct++;
+                } else if (q.type === "sa") {
+                    if (ans !== null && ans.toString().trim().toLowerCase() === q.correctAnswer.toString().trim().toLowerCase()) questionStats[qText].correct++;
+                } else {
+                    if (ans !== null && ans === q.correctAnswer) questionStats[qText].correct++;
+                }
+            });
+        }
+    });
+
+    // Cập nhật Thẻ Tổng Quan
+    let avgScore = Math.round(totalScore / filteredData.length);
+    let avgTimeStr = "--:--";
+    if (validTimeCount > 0) {
+        let avgSec = Math.floor(totalSeconds / validTimeCount);
+        avgTimeStr = `${Math.floor(avgSec / 60).toString().padStart(2, '0')}:${(avgSec % 60).toString().padStart(2, '0')}`;
+    }
+    
+    overviewEl.innerHTML = `
+        <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-[16px] border border-blue-100 dark:border-blue-800/50">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Lượt Hoàn Thành</p>
+            <p class="text-2xl font-black text-blue-600 dark:text-blue-400 font-mono">${filteredData.length}</p>
+        </div>
+        <div class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-[16px] border border-indigo-100 dark:border-indigo-800/50">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Điểm Trung Bình</p>
+            <p class="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono">${avgScore}%</p>
+        </div>
+        <div class="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-[16px] border border-emerald-100 dark:border-emerald-800/50">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Cao Nhất</p>
+            <p class="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">${maxScore === -1 ? 0 : maxScore}%</p>
+        </div>
+        <div class="bg-red-50 dark:bg-red-900/20 p-4 rounded-[16px] border border-red-100 dark:border-red-800/50">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Thấp Nhất</p>
+            <p class="text-2xl font-black text-red-600 dark:text-red-400 font-mono">${minScore === 101 ? 0 : minScore}%</p>
+        </div>
+        <div class="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-[16px] border border-amber-100 dark:border-amber-800/50 hidden lg:block">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Thời Gian TB</p>
+            <p class="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">${avgTimeStr}</p>
+        </div>
+    `;
+    
+    // Cập nhật Danh sách Unit
+    let unitArr = Object.keys(unitStats).map(u => ({ name: u, avg: Math.round(unitStats[u].sum / unitStats[u].count) })).sort((a,b) => b.avg - a.avg);
+    
+    unitsEl.innerHTML = unitArr.map(u => `
+        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-xl border border-slate-100 dark:border-slate-700/50 transition-colors hover:border-blue-300">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate pr-4">${u.name}</span>
+            <span class="text-sm font-black font-mono px-2 py-1 rounded bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-700 ${u.avg >= 80 ? 'text-green-500' : (u.avg < 50 ? 'text-red-500' : 'text-amber-500')}">${u.avg}%</span>
+        </div>
+    `).join('');
+
+    // Cập nhật Báo động Câu hỏi
+    let qArr = Object.keys(questionStats).map(q => {
+        let s = questionStats[q];
+        let wrongPct = Math.round(((s.total - s.correct) / s.total) * 100);
+        return { text: q, wrongPct: wrongPct, total: s.total };
+    }).filter(q => q.total >= 3); // Lọc: Chỉ phân tích câu có ít nhất 3 người làm để có ý nghĩa thống kê
+    
+    qArr.sort((a, b) => b.wrongPct - a.wrongPct); // Bọn sai nhiều nhất nổi lên đầu
+    
+    let hardestQs = qArr.slice(0, 10); // Lấy top 10 Lỗ hổng
+    
+    if (hardestQs.length === 0) {
+        questionsEl.innerHTML = `<div class="text-center text-slate-400 py-12 text-sm font-medium">Cần tối thiểu 3 lượt làm bài để AI có thể phân tích tỉ lệ sai.</div>`;
+    } else {
+        questionsEl.innerHTML = hardestQs.map((q, idx) => `
+            <div class="flex flex-col bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-xl border ${q.wrongPct >= 70 ? 'border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/10' : 'border-slate-100 dark:border-slate-700/50'} shadow-sm">
+                <div class="flex justify-between items-start mb-1.5">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400">#${idx+1} Lỗ hổng kiến thức</span>
+                    <span class="text-[10px] font-extrabold uppercase ${q.wrongPct >= 70 ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'} px-2 py-0.5 rounded shadow-inner">Tỉ lệ sai: ${q.wrongPct}%</span>
+                </div>
+                <span class="text-sm font-semibold text-slate-800 dark:text-slate-200 line-clamp-2" title="${q.text}">${q.text}</span>
+            </div>
+        `).join('');
+        
+        // [Tặng kèm] Tìm ra Câu quá dễ để tác giả cân bằng
+        let easiest = qArr[qArr.length - 1];
+        if (easiest && easiest.wrongPct < 20) {
+            questionsEl.innerHTML += `
+            <div class="mt-5 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2"><i class="fas fa-lightbulb text-amber-400 mr-1"></i> Câu hỏi quá dễ (Mất tính phân loại)</p>
+                <div class="bg-green-50 dark:bg-green-900/20 p-3.5 rounded-xl border border-green-100 dark:border-green-800/30">
+                    <span class="text-sm font-semibold text-green-800 dark:text-green-300 line-clamp-2">${easiest.text}</span>
+                    <div class="mt-2 text-[11px] font-bold text-green-600 dark:text-green-400">${100 - easiest.wrongPct}% học viên trả lời đúng. Hãy xem xét tăng độ nhiễu.</div>
+                </div>
+            </div>
+            `;
+        }
+    }
 }
 
 let currentSmartQuestions = [];
