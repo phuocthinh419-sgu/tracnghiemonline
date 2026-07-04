@@ -136,7 +136,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
 
-            const urlParams = new URLSearchParams(window.location.search);
             const quizIdParam = urlParams.get('quiz');
             const folderParam = urlParams.get('folder');
             const teacherParam = urlParams.get('t');
