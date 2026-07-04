@@ -832,6 +832,7 @@ function renderHomeQuizList() {
 function renderSubjectDetailView(category) {
     const titleEl = document.getElementById('subject-detail-title'); if(titleEl) titleEl.innerText = category;
     checkFolderPublishStatus(category); // Lệnh gọi bộ định vị trạng thái Cộng Đồng
+    if (typeof checkFolderPublishStatus === 'function') checkFolderPublishStatus(category);
     const container = document.getElementById('chapter-list-container'); if(!container) return;
     
     // Xóa rỗng container
@@ -2850,17 +2851,17 @@ function checkFolderPublishStatus(category) {
         container.classList.add('flex');
         
         // Truy vấn mỏng lên Firestore để xem trạng thái
-        const folderId = `${auth.currentUser.uid}_${category}`.replace(/\s+/g, '_'); // Tạo ID chống trùng lặp
+        const folderId = `${auth.currentUser.uid}_${category}`.replace(/\s+/g, '_'); 
         
         db.collection("community_folders").doc(folderId).get().then(doc => {
             if (doc.exists && doc.data().isPublic) {
                 toggleBtn.checked = true;
                 statusText.innerText = "Đã xuất bản (Công khai)";
-                statusText.className = "text-[10px] font-bold text-blue-600 dark:text-blue-400";
+                statusText.className = "text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-0.5";
             } else {
                 toggleBtn.checked = false;
                 statusText.innerText = "Đang ẩn (Chỉ mình tôi)";
-                statusText.className = "text-[10px] font-medium text-slate-400";
+                statusText.className = "text-[10px] font-medium text-slate-400 mt-0.5";
             }
         }).catch(err => console.error("Lỗi đồng bộ danh bạ cộng đồng: ", err));
     } else {
@@ -2886,14 +2887,14 @@ window.toggleFolderVisibility = function(isPublic) {
             authorName: auth.currentUser.displayName || "Giảng viên",
             category: currentSelectedCategory,
             isPublic: true,
-            completionCount: firebase.firestore.FieldValue.increment(0), // Chuẩn bị sẵn biến đếm lượt làm
+            completionCount: firebase.firestore.FieldValue.increment(0), 
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         
         db.collection("community_folders").doc(folderId).set(folderData, { merge: true }).then(() => {
             showToast(`Đã xuất bản môn "${currentSelectedCategory}" lên Thư Viện Cộng Đồng!`, false);
             statusText.innerText = "Đã xuất bản (Công khai)";
-            statusText.className = "text-[10px] font-bold text-blue-600 dark:text-blue-400";
+            statusText.className = "text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-0.5";
         }).catch(err => {
             showToast("Lỗi xuất bản: " + err.message, true);
             document.getElementById('toggle-publish-folder').checked = false;
@@ -2908,7 +2909,7 @@ window.toggleFolderVisibility = function(isPublic) {
         }).then(() => {
             showToast(`Đã gỡ môn "${currentSelectedCategory}" khỏi Thư Viện Cộng Đồng!`, false);
             statusText.innerText = "Đang ẩn (Chỉ mình tôi)";
-            statusText.className = "text-[10px] font-medium text-slate-400";
+            statusText.className = "text-[10px] font-medium text-slate-400 mt-0.5";
         }).catch(err => {
             showToast("Lỗi thu hồi: " + err.message, true);
             document.getElementById('toggle-publish-folder').checked = true;
