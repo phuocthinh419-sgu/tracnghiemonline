@@ -2987,3 +2987,89 @@ window.fetchAndRenderCommunity = function() {
         container.innerHTML = `<p class="col-span-full text-center text-red-500 py-12 font-bold"><i class="fas fa-exclamation-triangle mr-2"></i>Lỗi kết nối Thư viện: ${err.message}</p>`;
     });
 }
+
+// =========================================================================
+// [VIP] CÁC HÀM XỬ LÝ THƯ VIỆN CỘNG ĐỒNG (DÁN DƯỚI CÙNG SCRIPT.JS)
+// =========================================================================
+
+// 1. Hàm kiểm tra quyền và hiển thị nút gạt
+function checkFolderPublishStatus(category) {
+    const container = document.getElementById('publish-folder-container');
+    const toggleBtn = document.getElementById('toggle-publish-folder');
+    const statusText = document.getElementById('publish-status-text');
+    
+    if (!container) return;
+
+    // Chỉ hiện nút gạt nếu đang ở quyền Giáo Viên và không phải đang xem link chia sẻ
+    if (currentRole === 'teacher' && !isSharedMode) {
+        container.classList.remove('hidden');
+        container.classList.add('flex');
+        
+        const folderId = `${auth.currentUser.uid}_${category}`.replace(/\s+/g, '_'); 
+        
+        db.collection("community_folders").doc(folderId).get().then(doc => {
+            if (doc.exists && doc.data().isPublic) {
+                toggleBtn.checked = true;
+                statusText.innerText = "Đã xuất bản (Công khai)";
+                statusText.className = "text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-0.5";
+            } else {
+                toggleBtn.checked = false;
+                statusText.innerText = "Đang ẩn (Chỉ mình tôi)";
+                statusText.className = "text-[10px] font-medium text-slate-400 mt-0.5";
+            }
+        }).catch(err => console.error("Lỗi đồng bộ danh bạ cộng đồng: ", err));
+    } else {
+        container.classList.add('hidden');
+        container.classList.remove('flex');
+    }
+}
+
+// 2. Hàm xử lý khi Bệ hạ click gạt nút On/Off
+window.toggleFolderVisibility = function(isPublic) {
+    if (!currentSelectedCategory) return;
+    
+    const statusText = document.getElementById('publish-status-text');
+    const folderId = `${auth.currentUser.uid}_${currentSelectedCategory}`.replace(/\s+/g, '_');
+    
+    if (isPublic) {
+        statusText.innerText = "Đang đồng bộ...";
+        const folderData = {
+            id: folderId,
+            authorId: auth.currentUser.uid,
+            authorName: auth.currentUser.displayName || "Giảng viên",
+            category: currentSelectedCategory,
+            isPublic: true,
+            completionCount: firebase.firestore.FieldValue.increment(0), 
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        db.collection("community_folders").doc(folderId).set(folderData, { merge: true }).then(() => {
+            showToast(`Đã xuất bản môn "${currentSelectedCategory}" lên Thư Viện Cộng Đồng!`, false);
+            statusText.innerText = "Đã xuất bản (Công khai)";
+            statusText.className = "text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-0.5";
+        }).catch(err => {
+            showToast("Lỗi xuất bản: " + err.message, true);
+            document.getElementById('toggle-publish-folder').checked = false;
+        });
+    } else {
+        statusText.innerText = "Đang gỡ xuống...";
+        db.collection("community_folders").doc(folderId).update({
+            isPublic: false,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            showToast(`Đã gỡ môn "${currentSelectedCategory}" khỏi Thư Viện Cộng Đồng!`, false);
+            statusText.innerText = "Đang ẩn (Chỉ mình tôi)";
+            statusText.className = "text-[10px] font-medium text-slate-400 mt-0.5";
+        }).catch(err => {
+            showToast("Lỗi thu hồi: " + err.message, true);
+            document.getElementById('toggle-publish-folder').checked = true;
+        });
+    }
+}
+
+// 3. Tiêm mã cưỡng chế hiển thị nút vào luồng tải môn học
+const magicRenderSubjectDetailView = renderSubjectDetailView;
+renderSubjectDetailView = function(category) {
+    magicRenderSubjectDetailView(category); // Chạy các lệnh cũ
+    checkFolderPublishStatus(category);     // Đánh thức nút gạt
+}
