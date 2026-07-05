@@ -115,6 +115,7 @@
 
     <div id="app" class="w-full max-w-[1400px] h-screen p-0 sm:p-4 lg:p-6 flex flex-col justify-center relative">
         
+        <!-- MÀN HÌNH ĐĂNG NHẬP -->
         <div id="auth-screen" class="hidden w-full max-w-md mx-auto p-8 bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-xl py-12 relative z-10">
             <div class="mb-6 flex justify-center">
                 <div class="w-12 h-12 bg-blue-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400 text-xl shadow-inner border border-blue-100 dark:border-slate-700">
@@ -157,6 +158,7 @@
             </div>
         </div>
 
+        <!-- MÀN HÌNH TRANG CHỦ -->
         <div id="home-screen" class="hidden bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-xl p-6 sm:p-8 lg:p-10 relative overflow-hidden max-h-full overflow-y-auto custom-scrollbar">
             <div class="flex flex-col lg:flex-row justify-between items-center mb-12 gap-5 border-b border-slate-100 dark:border-slate-700/60 pb-6 relative z-10">
                 <div class="flex items-center gap-3 w-full lg:w-auto">
@@ -217,6 +219,7 @@
             <div id="quiz-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-10"></div>
         </div>
 
+        <!-- MÀN HÌNH NÂNG CẤP GÓI -->
         <div id="pricing-screen" class="hidden bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-xl p-6 sm:p-10 h-[90vh] overflow-y-auto custom-scrollbar relative">
             <button onclick="switchScreen('home')" class="mb-8 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors text-xs sm:text-sm font-bold flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 w-max hover:shadow-sm">
                 <i class="fas fa-arrow-left"></i> Về Trang Chủ
@@ -243,7 +246,7 @@
                         <li class="flex items-start gap-3 text-xs sm:text-sm font-bold text-slate-900 dark:text-white"><i class="fas fa-check-circle text-green-500 mt-0.5"></i> Giới hạn: 3 lượt tạo đề/tháng</li>
                         <li class="flex items-start gap-3 text-xs sm:text-sm font-medium text-slate-400 dark:text-slate-500 opacity-60"><i class="fas fa-times-circle mt-0.5"></i> Xem giải thích lời giải chi tiết</li>
                         <li class="flex items-start gap-3 text-xs sm:text-sm font-medium text-slate-400 dark:text-slate-500 opacity-60"><i class="fas fa-times-circle mt-0.5"></i> Thống kê năng lực đa chiều</li>
-                        <li class="flex items-start gap-3 text-xs sm:text-sm font-medium text-slate-400 dark:text-slate-500 opacity-60"><i class="fas fa-times-circle mt-0.5"></i> Trộn đề ôn tập từ câu làm sai</li>
+                        <li class="flex items-start gap-3 text-xs sm:text-sm font-medium text-slate-400 dark:text-slate-500 opacity-60"><i class="fas fa-times-circle mt-0.5"></i> Trộn đề ôn tập từ câu sai</li>
                     </ul>
                     <button class="w-full py-3.5 mt-auto rounded-xl font-bold text-sm bg-slate-50 text-slate-400 dark:bg-slate-800/50 dark:text-slate-500 cursor-not-allowed text-center border border-slate-200 dark:border-slate-700 transition-colors">Đang Sử Dụng</button>
                 </div>
@@ -312,6 +315,7 @@
             </div>
         </div>
 
+        <!-- MÀN HÌNH CHI TIẾT MÔN HỌC -->
         <div id="subject-detail-screen" class="hidden bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-xl p-6 sm:p-8 lg:p-10 h-[90vh] overflow-y-auto custom-scrollbar">
             <button id="btn-back-to-home" class="mb-8 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors text-xs sm:text-sm font-bold flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 w-max hover:shadow-sm">
                 <i class="fas fa-arrow-left"></i>Quay lại Trang Chủ
@@ -447,6 +451,7 @@
             </div>
         </div>
 
+        <!-- MÀN HÌNH BẢNG QUẢN TRỊ ADMIN -->
         <div id="admin-zone" class="hidden bg-white dark:bg-[#1E293B] rounded-[24px] border border-slate-200/60 dark:border-slate-700/60 shadow-xl p-6 sm:p-8 lg:p-10 dark:text-white h-[90vh] overflow-y-auto custom-scrollbar">
             <button onclick="switchScreen('home')" class="mb-8 text-slate-500 hover:text-slate-900 dark:hover:text-white text-xs sm:text-sm font-bold flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 w-max hover:shadow-sm"><i class="fas fa-arrow-left"></i> Về Trang chủ</button>
             
@@ -463,6 +468,7 @@
                 </div>
             </div>
 
+            <!-- TAB 1: NHẬP LIỆU THÔNG MINH -->
             <div id="panel-smart" class="block w-full max-w-6xl mx-auto">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
                     <div>
@@ -524,6 +530,7 @@ Câu 3: Câu hỏi lẻ (Không có đoạn văn)...
                 <div id="smart-status" class="mt-4 text-center font-bold text-sm hidden"></div>
             </div>
 
+            <!-- TAB 2: NHẬP THỦ CÔNG -->
             <div id="panel-manual" class="hidden max-w-4xl mx-auto">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
                     <div>
@@ -554,55 +561,63 @@ Câu 3: Câu hỏi lẻ (Không có đoạn văn)...
                 </div>
             </div>
 
-           <div id="panel-stats" class="hidden w-full max-w-6xl mx-auto">
+            <!-- [VIP SAAS] TAB 3: THỐNG KÊ TỔNG QUAN (ĐÃ ĐƯỢC CHUẨN HÓA VÀ DỌN RÁC) -->
+            <div id="panel-stats" class="hidden w-full max-w-6xl mx-auto">
+                <!-- Header: Dropdown Môn Học & Nút Đồng Bộ -->
                 <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
                     <div class="flex items-center gap-4">
                         <h2 class="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight"><i class="fas fa-radar text-blue-600 mr-2"></i>Trung Tâm Phân Tích</h2>
-                        
-                        <!-- [VIP] BỘ LỌC TÁCH MÔN HỌC -->
-                        <select id="stats-subject-filter" onchange="applyStatsFilter()" class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500/20">
+                        <select id="stats-subject-filter" onchange="applyStatsFilter()" class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500/20 shadow-sm">
                             <option value="all">Tất cả môn học</option>
                         </select>
                     </div>
                     <button onclick="fetchResultsFromFirebase()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center gap-2 shrink-0"><i class="fas fa-sync-alt"></i>Đồng bộ dữ liệu</button>
                 </div>
 
-                <!-- Bảng Thống Kê Tổng Quan -->
-                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-8" id="admin-stat-overview">
-                    <!-- Javascript sẽ tự động điền số liệu vào đây -->
+                <!-- 1. KHỐI TỔNG QUAN (Chứa 5 ô chỉ số: Điểm TB, Lượt làm bài...) -->
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8" id="teacher-overview-stats">
+                    <!-- JS sẽ đổ dữ liệu vào đây -->
                 </div>
 
-                <!-- Bảng Phân Tích Chất Lượng Đề -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                    <div class="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-[24px] border border-slate-200/60 dark:border-slate-700 shadow-sm flex flex-col h-[350px]">
-                        <h3 class="text-sm font-extrabold mb-4 text-slate-800 dark:text-slate-200 uppercase tracking-wider shrink-0"><i class="fas fa-layer-group text-blue-500 mr-2"></i>Phân Tích Theo Unit</h3>
-                        <div id="admin-stat-units" class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3"></div>
+                <!-- 2. KHỐI PHÂN TÍCH UNIT & CẢNH BÁO CÂU HỎI -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 items-start">
+                    <div class="bg-white dark:bg-slate-900 p-6 rounded-[20px] border border-slate-200/60 dark:border-slate-800 shadow-sm flex flex-col h-full max-h-[400px]">
+                        <h4 class="font-extrabold text-slate-800 dark:text-white mb-5 uppercase tracking-wider text-sm flex items-center"><i class="fas fa-layer-group text-blue-500 mr-2"></i>Phân Tích Theo Unit</h4>
+                        <div id="teacher-unit-stats" class="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2"></div>
                     </div>
-                    <div class="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-[24px] border border-slate-200/60 dark:border-slate-700 shadow-sm flex flex-col h-[350px]">
-                        <h3 class="text-sm font-extrabold mb-4 text-slate-800 dark:text-slate-200 uppercase tracking-wider shrink-0"><i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>Cảnh Báo Câu Hỏi</h3>
-                        <div id="admin-stat-questions" class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3"></div>
+
+                    <div class="bg-white dark:bg-slate-900 p-6 rounded-[20px] border border-slate-200/60 dark:border-slate-800 shadow-sm flex flex-col h-full max-h-[400px]">
+                        <h4 class="font-extrabold text-slate-800 dark:text-white mb-5 uppercase tracking-wider text-sm flex items-center"><i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>Cảnh Báo Câu Hỏi</h4>
+                        <div id="teacher-question-stats" class="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2"></div>
                     </div>
                 </div>
 
-                <h3 class="text-sm font-extrabold mb-4 text-slate-800 dark:text-slate-200 uppercase tracking-wider"><i class="fas fa-history text-emerald-500 mr-2"></i>Nhật ký nộp bài gần đây</h3>
-                <div class="overflow-x-auto rounded-[20px] border border-slate-200/60 dark:border-slate-700/60 shadow-sm bg-white dark:bg-slate-900">
-                    <table class="w-full text-left border-collapse min-w-[700px]">
-                        <thead>
-                            <tr class="bg-slate-50 dark:bg-slate-800/50 text-slate-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-200/60 dark:border-slate-700">
-                                <th class="p-5">Học Viên Định Danh</th>
-                                <th class="p-5">Cấu trúc đề / Học phần</th>
-                                <th class="p-5">Điểm Tổng</th>
-                                <th class="p-5">Độ Chính Xác</th>
-                                <th class="p-5">Thời Lượng</th>
-                                <th class="p-5">Thời Gian Ghi Nhận</th>
-                            </tr>
-                        </thead>
-                        <tbody id="stats-table-body" class="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-medium">
-                        </tbody>
-                    </table>
+                <!-- 3. KHỐI BẢNG NHẬT KÝ NỘP BÀI -->
+                <div class="bg-white dark:bg-slate-900 rounded-[20px] border border-slate-200/60 dark:border-slate-800 shadow-sm overflow-hidden">
+                    <div class="p-5 border-b border-slate-100 dark:border-slate-800">
+                        <h4 class="font-extrabold text-slate-800 dark:text-white uppercase tracking-wider text-sm flex items-center"><i class="fas fa-history text-emerald-500 mr-2"></i>Nhật ký nộp bài gần đây</h4>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse min-w-[700px]">
+                            <thead>
+                                <tr class="bg-slate-50 dark:bg-slate-800/50 text-slate-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-200/60 dark:border-slate-700">
+                                    <th class="p-5">Học Viên Định Danh</th>
+                                    <th class="p-5">Cấu trúc đề / Học phần</th>
+                                    <th class="p-5">Điểm Tổng</th>
+                                    <th class="p-5">Độ Chính Xác</th>
+                                    <th class="p-5">Thời Lượng</th>
+                                    <th class="p-5">Thời Gian Ghi Nhận</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stats-table-body" class="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-medium">
+                                <!-- JS sẽ đổ các hàng kết quả vào đây -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
+            <!-- TAB 4: QUẢN LÝ TÀI KHOẢN NGƯỜI DÙNG -->
             <div id="panel-users" class="hidden w-full max-w-3xl mx-auto">
                 <div class="bg-white dark:bg-slate-900 p-8 rounded-[24px] border border-slate-200/60 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)]">
                     <h3 class="text-xl font-extrabold mb-6 text-slate-900 dark:text-slate-100 flex items-center gap-2 tracking-tight"><i class="fas fa-user-shield text-blue-600"></i>Quản Lý Đặc Quyền Hệ Thống</h3>
@@ -834,7 +849,25 @@ Câu 3: Câu hỏi lẻ (Không có đoạn văn)...
 
     <script src="script.js"></script>
 <script>
-// [ĐẠO BÙA GHI ĐÈ] Bơm dữ liệu vào MỌI thẻ ID để chống lỗi phân thân
+// =======================================================================
+// [ĐẠO BÙA GHI ĐÈ TỔNG HỢP] BẢO VỆ HỆ THỐNG KHỎI MỌI LỖI PHÂN THÂN
+// =======================================================================
+
+// 1. KHIÊN KIM CANG: Bảo vệ Tab Cộng Đồng khỏi bị hệ thống ngầm quét mất
+const originalRenderHome = window.renderHomeQuizList;
+window.renderHomeQuizList = function() {
+    // Nếu Bệ hạ đang dạo chơi ở Chợ Cộng Đồng, CẤM HỆ THỐNG XÓA MÀN HÌNH!
+    if (currentRole === 'student' && currentStudentTab === 'community') {
+        if (typeof window.fetchAndRenderCommunity === 'function') {
+            window.fetchAndRenderCommunity(); // Bắt nó vẽ lại Cộng Đồng
+        }
+        return; // Đạp văng lệnh xóa màn hình bên dưới
+    }
+    // Nếu ở Kho Cá Nhân hoặc Lịch Sử thì cho phép vẽ bình thường
+    if (originalRenderHome) originalRenderHome();
+};
+
+// 2. LÕI TÍNH TOÁN: Bơm dữ liệu vào MỌI thẻ ID của Đài Quan Sát (Bản cũ)
 window.renderStatsDashboard = function(results) {
     const tableBodies = document.querySelectorAll('#stats-table-body');
     const overviewDivs = document.querySelectorAll('#teacher-overview-stats, #admin-stat-overview');
@@ -979,5 +1012,3 @@ window.renderStatsDashboard = function(results) {
 </script>
 </body>
 </html>
-
-
