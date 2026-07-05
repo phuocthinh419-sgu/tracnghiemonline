@@ -1763,16 +1763,15 @@ window.applyStatsFilter = function() {
 // Cỗ máy tính toán vẽ biểu đồ và bảng (Bản vá lỗi phòng thủ tuyệt đối)
 function renderStatsDashboard(results) {
     const tableBody = document.getElementById('stats-table-body');
-    // Hỗ trợ quét cả 2 ID phòng trường hợp file HTML bị trùng lặp
-    const overviewDiv = document.getElementById('teacher-overview-stats') || document.getElementById('admin-stat-overview');
+    const overviewDiv = document.getElementById('teacher-overview-stats');
     const unitDiv = document.getElementById('teacher-unit-stats');
     const questionDiv = document.getElementById('teacher-question-stats');
 
     if (results.length === 0) { 
         if(tableBody) tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-slate-400 font-medium">Môn học này chưa có dữ liệu nộp bài.</td></tr>'; 
         if(overviewDiv) overviewDiv.innerHTML = '<div class="col-span-full text-center text-slate-500 font-bold mt-4">Chưa đủ dữ liệu phân tích</div>'; 
-        if(unitDiv) unitDiv.innerHTML = '<p class="text-slate-400 text-sm">Trống</p>'; 
-        if(questionDiv) questionDiv.innerHTML = '<p class="text-slate-400 text-sm">Trống</p>';
+        if(unitDiv) unitDiv.innerHTML = '<p class="text-slate-400 text-sm italic">Trống</p>'; 
+        if(questionDiv) questionDiv.innerHTML = '<p class="text-slate-400 text-sm italic">Trống</p>';
         return; 
     }
 
@@ -1804,7 +1803,7 @@ function renderStatsDashboard(results) {
                     let rawContent = q.content || "";
                     let qTextRaw = rawContent.replace(/<[^>]*>?/gm, ''); 
                     let qText = qTextRaw.length > 60 ? qTextRaw.substring(0, 60) + "..." : qTextRaw;
-                    if (qText.trim() === "") qText = "[Câu hỏi hình ảnh/âm thanh]";
+                    if (qText.trim() === "") qText = "[Câu hỏi hình/âm thanh]";
 
                     if (!questionStats[qText]) questionStats[qText] = { correct: 0, total: 0 };
                     questionStats[qText].total++;
@@ -1826,7 +1825,7 @@ function renderStatsDashboard(results) {
 
                     if (isCorrect) questionStats[qText].correct++;
                 });
-            } catch(e) { console.warn("Lỗi phân tích câu hỏi (Đã bỏ qua để không sập trang):", e); }
+            } catch(e) { console.warn("Bỏ qua lỗi phân tích câu hỏi:", e); }
         }
     });
 
@@ -1855,7 +1854,7 @@ function renderStatsDashboard(results) {
             </div>
         `;
     });
-    if(unitDiv) unitDiv.innerHTML = unitHtml || '<p class="text-slate-400 text-sm">Chưa có dữ liệu Unit</p>';
+    if(unitDiv) unitDiv.innerHTML = unitHtml || '<p class="text-slate-400 text-sm italic">Chưa có đủ dữ liệu Unit</p>';
 
     // 3. RENDER CẢNH BÁO CÂU HỎI
     let qArr = Object.keys(questionStats).map(k => {
@@ -1882,7 +1881,7 @@ function renderStatsDashboard(results) {
             </div>
         `;
     });
-    if(questionDiv) questionDiv.innerHTML = qHtml || '<p class="text-slate-400 text-sm italic">Chưa có dữ liệu câu hỏi từ học viên.</p>';
+    if(questionDiv) questionDiv.innerHTML = qHtml || '<p class="text-slate-400 text-sm italic">Chưa có đủ dữ liệu phân tích từng câu hỏi.</p>';
 
     // 4. RENDER BẢNG NHẬT KÝ
     results.forEach((res) => {
