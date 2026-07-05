@@ -833,6 +833,150 @@ Câu 3: Câu hỏi lẻ (Không có đoạn văn)...
     </script>
 
     <script src="script.js"></script>
+<script>
+// [ĐẠO BÙA GHI ĐÈ] Bơm dữ liệu vào MỌI thẻ ID để chống lỗi phân thân
+window.renderStatsDashboard = function(results) {
+    const tableBodies = document.querySelectorAll('#stats-table-body');
+    const overviewDivs = document.querySelectorAll('#teacher-overview-stats, #admin-stat-overview');
+    const unitDivs = document.querySelectorAll('#teacher-unit-stats');
+    const questionDivs = document.querySelectorAll('#teacher-question-stats');
+
+    if (!results || results.length === 0) { 
+        tableBodies.forEach(el => el.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-slate-400 font-medium">Chưa có dữ liệu nộp bài.</td></tr>');
+        overviewDivs.forEach(el => el.innerHTML = '<div class="col-span-full text-center text-slate-500 font-bold mt-4">Chưa đủ dữ liệu phân tích</div>');
+        unitDivs.forEach(el => el.innerHTML = '<p class="text-slate-400 text-sm italic">Trống</p>');
+        questionDivs.forEach(el => el.innerHTML = '<p class="text-slate-400 text-sm italic">Trống</p>');
+        return; 
+    }
+
+    tableBodies.forEach(el => el.innerHTML = '');
+    let totalScore = 0; let minScore = 101; let maxScore = -1; let totalSeconds = 0;
+    let unitStats = {}; let questionStats = {};
+
+    results.forEach(res => {
+        let pct = res.percentage || 0;
+        totalScore += pct;
+        if (pct < minScore) minScore = pct;
+        if (pct > maxScore) maxScore = pct;
+
+        if (res.timeUsed && res.timeUsed !== "Luyện tập") {
+            let parts = res.timeUsed.split(':');
+            if (parts.length === 2) totalSeconds += (parseInt(parts[0]) * 60 + parseInt(parts[1]));
+        }
+
+        let unitName = res.quizTitle || "Đề thi khác";
+        if (!unitStats[unitName]) unitStats[unitName] = { sum: 0, count: 0 };
+        unitStats[unitName].sum += pct;
+        unitStats[unitName].count++;
+
+        if (res.quizQuestionsSnapshot && res.userAnswers) {
+            try {
+                res.quizQuestionsSnapshot.forEach((q, idx) => {
+                    let rawContent = q.content || "";
+                    let qTextRaw = rawContent.replace(/<[^>]*>?/gm, ''); 
+                    let qText = qTextRaw.length > 60 ? qTextRaw.substring(0, 60) + "..." : qTextRaw;
+                    if (qText.trim() === "") qText = "[Câu hỏi hình/âm thanh]";
+
+                    if (!questionStats[qText]) questionStats[qText] = { correct: 0, total: 0 };
+                    questionStats[qText].total++;
+
+                    let uAns = res.userAnswers[idx];
+                    let isCorrect = false;
+
+                    if (!q.type || q.type === 'mcq') {
+                        isCorrect = (uAns === q.correctAnswer);
+                    } else if (q.type === 'sa') {
+                        isCorrect = (uAns !== null && uAns.toString().trim().toLowerCase() === (q.correctAnswer||"").toString().trim().toLowerCase());
+                    } else if (q.type === 'tf') {
+                        if (Array.isArray(uAns) && q.correctAnswers) {
+                            let match = 0;
+                            for(let k=0; k<4; k++) if(uAns[k] === q.correctAnswers[k]) match++;
+                            isCorrect = (match === 4); 
+                        }
+                    }
+
+                    if (isCorrect) questionStats[qText].correct++;
+                });
+            } catch(e) { console.warn("Lỗi phân tích:", e); }
+        }
+    });
+
+    let avgScore = Math.round(totalScore / results.length);
+    let avgSecs = Math.round(totalSeconds / results.length);
+    let avgTimeStr = `${Math.floor(avgSecs / 60).toString().padStart(2, '0')}:${(avgSecs % 60).toString().padStart(2, '0')}`;
+    
+    let overviewHtml = `
+        <div class="p-4 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl shadow-sm text-center"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Lượt Hoàn Thành</p><p class="text-2xl font-black text-blue-600 dark:text-blue-400 font-mono">${results.length}</p></div>
+        <div class="p-4 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl shadow-sm text-center"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Điểm Trung Bình</p><p class="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono">${avgScore}%</p></div>
+        <div class="p-4 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl shadow-sm text-center"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Cao Nhất</p><p class="text-2xl font-black text-emerald-500 font-mono">${maxScore}%</p></div>
+        <div class="p-4 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl shadow-sm text-center"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Thấp Nhất</p><p class="text-2xl font-black text-rose-500 font-mono">${minScore === 101 ? 0 : minScore}%</p></div>
+        <div class="p-4 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl shadow-sm text-center col-span-2 md:col-span-1"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Thời gian TB</p><p class="text-2xl font-black text-amber-500 font-mono">${avgTimeStr}</p></div>
+    `;
+    overviewDivs.forEach(el => el.innerHTML = overviewHtml);
+
+    let unitHtml = "";
+    let unitKeys = Object.keys(unitStats);
+    if(unitKeys.length > 0) {
+        unitKeys.sort((a,b) => (unitStats[b].sum/unitStats[b].count) - (unitStats[a].sum/unitStats[a].count)).forEach(cat => {
+            let uAvg = Math.round(unitStats[cat].sum / unitStats[cat].count);
+            let uColor = uAvg >= 80 ? 'text-emerald-500 border-emerald-500/30 bg-emerald-500/10' : (uAvg >= 50 ? 'text-amber-500 border-amber-500/30 bg-amber-500/10' : 'text-rose-500 border-rose-500/30 bg-rose-500/10');
+            unitHtml += `
+                <div class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 transition-colors">
+                    <span class="font-semibold text-sm text-slate-700 dark:text-slate-300 truncate pr-4">${cat}</span>
+                    <span class="font-mono font-black border px-2 py-0.5 rounded-lg text-xs shadow-sm ${uColor}">${uAvg}%</span>
+                </div>
+            `;
+        });
+    }
+    const finalUnitHtml = unitHtml || '<p class="text-slate-400 text-sm italic">Chưa có đủ dữ liệu Unit</p>';
+    unitDivs.forEach(el => el.innerHTML = finalUnitHtml);
+
+    let qArr = Object.keys(questionStats).map(k => {
+        let wrRate = Math.round(((questionStats[k].total - questionStats[k].correct) / questionStats[k].total) * 100);
+        return { text: k, errorRate: wrRate, total: questionStats[k].total };
+    });
+
+    qArr.sort((a, b) => b.errorRate - a.errorRate);
+
+    let qHtml = "";
+    qArr.forEach((q, idx) => {
+        if(idx > 15) return; 
+        let isHard = q.errorRate >= 70;
+        let isEasy = q.errorRate <= 20;
+        let statusBadge = isHard ? `<span class="text-rose-500 font-extrabold">TỈ LỆ SAI: ${q.errorRate}%</span>` : (isEasy ? `<span class="text-blue-500 font-extrabold">TỈ LỆ SAI: ${q.errorRate}%</span>` : `<span class="text-slate-400 font-extrabold">TỈ LỆ SAI: ${q.errorRate}%</span>`);
+
+        qHtml += `
+            <div class="flex flex-col p-4 bg-slate-50 dark:bg-slate-800/30 rounded-xl border ${isHard ? 'border-rose-200 dark:border-rose-900/50 border-l-4 border-l-rose-500' : 'border-slate-100 dark:border-slate-700/50'}">
+                <div class="flex justify-between items-center mb-2 text-[10px] uppercase tracking-wider">
+                    <span class="text-slate-500 font-bold">#${idx+1} Lỗ hổng kiến thức</span>
+                    ${statusBadge}
+                </div>
+                <p class="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-relaxed">${q.text}</p>
+            </div>
+        `;
+    });
+    const finalQHtml = qHtml || '<p class="text-slate-400 text-sm italic">Học viên chưa làm khảo thí (hoặc dữ liệu phiên bản cũ không lưu câu hỏi).</p>';
+    questionDivs.forEach(el => el.innerHTML = finalQHtml);
+
+    results.forEach((res) => {
+        const formatStr = (res.timestamp && res.timestamp.seconds) ? new Date(res.timestamp.seconds * 1000).toLocaleString('vi-VN') : "Vừa xong";
+        const row = document.createElement('tr'); 
+        row.className = 'border-b border-slate-100 dark:border-slate-700/60 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors';
+        row.innerHTML = `
+            <td class="p-4 font-bold text-slate-800 dark:text-slate-200">${res.studentName || "Ẩn danh"}</td>
+            <td class="p-4 text-slate-600 dark:text-slate-400">
+                <div class="font-bold text-blue-600 dark:text-blue-400 truncate max-w-[200px]" title="${res.quizTitle}">${res.quizTitle || "Bài thi"}</div>
+                <div class="text-[10px] mt-1 uppercase font-bold tracking-wider text-slate-400">${res.category || "Chưa phân loại"}</div>
+            </td>
+            <td class="p-4 font-mono font-extrabold text-slate-700 dark:text-slate-300">${res.score || "0/0"}</td>
+            <td class="p-4 font-extrabold ${res.percentage >= 50 ? 'text-emerald-500' : 'text-rose-500'} font-mono">${res.percentage || 0}%</td>
+            <td class="p-4 text-slate-500 font-mono font-medium">${res.timeUsed || "--:--"}</td>
+            <td class="p-4 text-slate-400 text-xs font-medium">${formatStr}</td>
+        `;
+        tableBodies.forEach(tb => tb.appendChild(row.cloneNode(true)));
+    });
+};
+</script>
 </body>
 </html>
 
