@@ -678,11 +678,12 @@ function switchScreen(screenName) {
             }
         }
     }
-if (screenName === 'pricing' && typeof syncPricingButtons === 'function') {
+    
+    // [VIP] Kích hoạt đổi màu nút khi mở màn hình Bảng giá
+    if (screenName === 'pricing' && typeof syncPricingButtons === 'function') {
         syncPricingButtons();
     }
-}
-}
+} 
 
 // [VIP SAAS] HIỂN THỊ KHO MÔN HỌC & LỊCH SỬ PHONG CÁCH LINEAR / NOTION
 function renderHomeQuizList() {
