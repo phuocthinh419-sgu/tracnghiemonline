@@ -678,6 +678,10 @@ function switchScreen(screenName) {
             }
         }
     }
+if (screenName === 'pricing' && typeof syncPricingButtons === 'function') {
+        syncPricingButtons();
+    }
+}
 }
 
 // [VIP SAAS] HIỂN THỊ KHO MÔN HỌC & LỊCH SỬ PHONG CÁCH LINEAR / NOTION
@@ -2708,6 +2712,7 @@ function updatePlanBadge() {
     if (homeBadge) homeBadge.innerHTML = badgeHTML;
     if (quizBadge) quizBadge.innerHTML = badgeHTML;
     if (statsBadge) statsBadge.innerHTML = statsBadgeHTML;
+    if (typeof syncPricingButtons === 'function') syncPricingButtons();
 }
 
 setTimeout(updatePlanBadge, 500);
@@ -3283,18 +3288,3 @@ function syncPricingButtons() {
         }
     });
 }
-
-// Bùa chú đồng bộ kép: Tự động chạy khi Firebase nạp xong gói cước
-const originalUpdatePlanBadgeForPricing = window.updatePlanBadge;
-window.updatePlanBadge = function() {
-    if (typeof originalUpdatePlanBadgeForPricing === 'function') originalUpdatePlanBadgeForPricing();
-    syncPricingButtons();
-};
-
-// ...Và tự động quét lại mỗi khi Bệ hạ mở màn hình Bảng giá
-const originalSwitchScreenForPricing = window.switchScreen;
-window.switchScreen = function(screenName) {
-    if (typeof originalSwitchScreenForPricing === 'function') originalSwitchScreenForPricing(screenName);
-    if (screenName === 'pricing') syncPricingButtons();
-};
-
