@@ -97,12 +97,24 @@ document.addEventListener("DOMContentLoaded", () => {
             
             db.collection("users").doc(user.uid).onSnapshot(doc => {
                 if(doc.exists) {
-                   currentPlan = doc.data().plan || 'basic';
-                if (checkIsMasterAdmin()) currentPlan = 'ultra';
+                    let fetchedPlan = doc.data().plan || 'basic';
+                    let expireTime = doc.data().planExpiration; // Lấy thời hạn
 
-                localStorage.setItem('cachedPlan', currentPlan); // <--- [VIP] Kim bài chống giật lùi gói cước
+                    // [VIP] Cỗ Máy Thời Gian: Tự động giáng cấp về Basic nếu quá hạn 30 ngày
+                    if (!checkIsMasterAdmin() && fetchedPlan !== 'basic' && expireTime) {
+                        if (Date.now() > expireTime) {
+                            fetchedPlan = 'basic';
+                            db.collection("users").doc(user.uid).update({ plan: 'basic', planExpiration: null });
+                            showToast("Gói cước VIP của ngài đã hết hạn và trở về gói Basic.", true);
+                        }
+                    }
 
-                mockGeneratedThisMonth = doc.data().mockGeneratedThisMonth || 0;
+                    currentPlan = fetchedPlan;
+                    if (checkIsMasterAdmin()) currentPlan = 'ultra';
+
+                    localStorage.setItem('cachedPlan', currentPlan); // <--- [VIP] Kim bài chống giật lùi gói cước
+
+                    mockGeneratedThisMonth = doc.data().mockGeneratedThisMonth || 0;
                     lastMockMonth = doc.data().lastMockMonth || null;
                     
                     let currentMonth = new Date().getMonth();
@@ -2278,8 +2290,20 @@ window.upgradeUserPlanByEmail = function() {
         if (snapshot.empty) return alert("Không tìm thấy thông tin người dùng trong cơ sở dữ liệu.");
         
         snapshot.forEach(doc => {
-            doc.ref.update({ plan: newPlan }).then(() => {
-                alert(`Cập nhật thành công. Tài khoản ${email} đã được chuyển sang Gói ${newPlan.toUpperCase()}.`);
+            // [VIP] Đóng dấu kỳ hạn 30 ngày cho gói mới
+            let updatePayload = { plan: newPlan };
+            if (newPlan !== 'basic') {
+                const futureDate = new Date();
+                futureDate.setDate(futureDate.getDate() + 30); // Cấp phép đúng 30 ngày
+                updatePayload.planExpiration = futureDate.getTime();
+            } else {
+                updatePayload.planExpiration = null; // Basic thì vĩnh viễn
+            }
+
+            doc.ref.update(updatePayload).then(() => {
+                let msg = `Cập nhật thành công. Tài khoản ${email} đã lên Gói ${newPlan.toUpperCase()}`;
+                if(newPlan !== 'basic') msg += ` (Hạn dùng 30 ngày).`;
+                alert(msg);
                 document.getElementById('admin-upgrade-email').value = ""; 
             });
         });
@@ -3220,3 +3244,49 @@ renderSubjectDetailView = function(category) {
     magicRenderSubjectDetailView(category); // Chạy các lệnh cũ
     checkFolderPublishStatus(category);     // Đánh thức nút gạt
 }
+
+// =========================================================================
+// [VIP] HỆ THỐNG ĐỒNG BỘ GIAO DIỆN BẢNG GIÁ THEO THỜI GIAN THỰC
+// =========================================================================
+function syncPricingButtons() {
+    const pricingScreen = document.getElementById('pricing-screen');
+    if (!pricingScreen) return;
+
+    // Lấy 4 nút bấm trong bảng giá
+    const buttons = pricingScreen.querySelectorAll('.group button');
+    if (buttons.length < 4) return;
+
+    // Cấu hình gốc của 4 nút để phục hồi
+    const plansInfo = [
+        { id: 'basic', text: 'Đăng Ký Basic', bgClass: 'w-full py-3.5 mt-auto rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors text-center shadow-sm', click: null },
+        { id: 'plus', text: 'Đăng Ký Plus', bgClass: 'w-full py-3.5 mt-auto rounded-xl font-bold text-sm bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-blue-400 border border-blue-200 dark:border-blue-900 hover:bg-blue-600 hover:text-white hover:border-transparent transition-all duration-300 text-center shadow-sm', click: "openPaymentModal('qr-plus.webp', 'Gói Plus', '20.000đ')" },
+        { id: 'pro', text: 'Đăng Ký Pro', bgClass: 'w-full py-3.5 mt-auto rounded-xl font-bold text-sm bg-blue-600 text-white hover:bg-blue-700 transition-all duration-300 text-center shadow-lg shadow-blue-600/20 active:scale-[0.98]', click: "openPaymentModal('qr-pro.webp', 'Gói Pro', '35.000đ')" },
+        { id: 'ultra', text: 'Trở Thành VIP', bgClass: 'w-full py-3.5 mt-auto rounded-xl font-bold text-sm bg-gradient-to-r from-yellow-500 to-amber-600 text-slate-950 hover:from-yellow-400 hover:to-amber-500 transition-all duration-300 text-center shadow-[0_0_20px_rgba(245,158,11,0.3)] active:scale-[0.98]', click: "openPaymentModal('qr-ultra.webp', 'Gói Ultra', '50.000đ')" }
+    ];
+
+    buttons.forEach((btn, index) => {
+        if (index >= 4) return;
+        const pInfo = plansInfo[index];
+
+        if (currentPlan === pInfo.id) {
+            // Biến hình thành nút "Đang sử dụng" (Màu xám, cấm click)
+            btn.innerText = "Đang Sử Dụng";
+            btn.className = "w-full py-3.5 mt-auto rounded-xl font-bold text-sm bg-slate-50 text-slate-400 dark:bg-slate-800/50 dark:text-slate-500 cursor-not-allowed text-center border border-slate-200 dark:border-slate-700 transition-colors";
+            btn.removeAttribute('onclick');
+        } else {
+            // Phục hồi lại nút đăng ký bình thường
+            btn.innerText = pInfo.text;
+            btn.className = pInfo.bgClass;
+            if (pInfo.click) btn.setAttribute('onclick', pInfo.click);
+        }
+    });
+}
+
+// Cắm thuật toán này vào sự kiện mỗi khi mở màn hình Bảng giá
+const originalSwitchScreen = window.switchScreen;
+window.switchScreen = function(screenName) {
+    if (typeof originalSwitchScreen === 'function') originalSwitchScreen(screenName);
+    if (screenName === 'pricing') {
+        syncPricingButtons();
+    }
+};
