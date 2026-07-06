@@ -3264,11 +3264,13 @@ function syncPricingButtons() {
         { id: 'ultra', text: 'Trở Thành VIP', bgClass: 'w-full py-3.5 mt-auto rounded-xl font-bold text-sm bg-gradient-to-r from-yellow-500 to-amber-600 text-slate-950 hover:from-yellow-400 hover:to-amber-500 transition-all duration-300 text-center shadow-[0_0_20px_rgba(245,158,11,0.3)] active:scale-[0.98]', click: "openPaymentModal('qr-ultra.webp', 'Gói Ultra', '50.000đ')" }
     ];
 
+    const planToUse = (currentPlan || 'basic').toLowerCase();
+
     buttons.forEach((btn, index) => {
         if (index >= 4) return;
         const pInfo = plansInfo[index];
 
-        if (currentPlan === pInfo.id) {
+        if (planToUse === pInfo.id) {
             // Biến hình thành nút "Đang sử dụng" (Màu xám, cấm click)
             btn.innerText = "Đang Sử Dụng";
             btn.className = "w-full py-3.5 mt-auto rounded-xl font-bold text-sm bg-slate-50 text-slate-400 dark:bg-slate-800/50 dark:text-slate-500 cursor-not-allowed text-center border border-slate-200 dark:border-slate-700 transition-colors";
@@ -3282,11 +3284,16 @@ function syncPricingButtons() {
     });
 }
 
-// Cắm thuật toán này vào sự kiện mỗi khi mở màn hình Bảng giá
-const originalSwitchScreen = window.switchScreen;
+// Bùa chú đồng bộ kép: Tự động chạy khi Firebase nạp xong gói cước
+const originalUpdatePlanBadgeForPricing = window.updatePlanBadge;
+window.updatePlanBadge = function() {
+    if (typeof originalUpdatePlanBadgeForPricing === 'function') originalUpdatePlanBadgeForPricing();
+    syncPricingButtons();
+};
+
+// ...Và tự động quét lại mỗi khi Bệ hạ mở màn hình Bảng giá
+const originalSwitchScreenForPricing = window.switchScreen;
 window.switchScreen = function(screenName) {
-    if (typeof originalSwitchScreen === 'function') originalSwitchScreen(screenName);
-    if (screenName === 'pricing') {
-        syncPricingButtons();
-    }
+    if (typeof originalSwitchScreenForPricing === 'function') originalSwitchScreenForPricing(screenName);
+    if (screenName === 'pricing') syncPricingButtons();
 };
