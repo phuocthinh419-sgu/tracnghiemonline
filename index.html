@@ -6,13 +6,12 @@
     <title>Hệ Thống Luyện Thi Trực Tuyến</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
     
-    <!-- [VIP] THÊM DEFER ĐỂ TRÌNH DUYỆT TẢI NGẦM, KHÔNG CHẶN GIAO DIỆN -->
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script defer src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-    <script defer src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-    <script defer src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -105,8 +104,8 @@
 </head>
 <body class="bg-[#F8FAFC] dark:bg-[#0F172A] text-slate-800 dark:text-slate-200 min-h-screen antialiased selection:bg-blue-100 selection:text-blue-900 transition-colors duration-300 flex justify-center w-full">
 
-    <!-- [VIP] TẤM MÀN CHE MẮT SIÊU TỐC -->
-    <div id="initial-global-loader" style="position: fixed; inset: 0; background-color: #0F172A; z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease-out;">
+    <!-- [VIP] TẤM MÀN CHE MẮT SIÊU TỐC (Hiển thị ngay khi vào web) -->
+    <div id="initial-global-loader" style="position: fixed; inset: 0; background-color: #0F172A; z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease-out;">
         <style>
             .loader-spinner { width: 50px; height: 50px; border: 4px solid rgba(255, 255, 255, 0.1); border-left-color: #3b82f6; border-radius: 50%; animation: spin-loader 1s linear infinite; }
             @keyframes spin-loader { to { transform: rotate(360deg); } }
