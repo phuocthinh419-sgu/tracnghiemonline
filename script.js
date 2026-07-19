@@ -1403,7 +1403,15 @@ function loadQuestion(index) {
                     if (userAnswers[index] === optIndex) {
                         btnBorder = 'border-blue-600 dark:border-blue-500'; btnBg = 'bg-blue-50/40 dark:bg-blue-900/20'; btn.classList.add('ring-2', 'ring-blue-600/20'); labelBg = 'bg-blue-600 dark:bg-blue-500'; labelText = 'text-white';
                     }
+                    
                     btn.onclick = () => { 
+                        // [VIP] KHIÊN BĂNG PHÒNG THỦ: Cấm click chọn nếu đáp án đã bị gạch
+                        if (btn.classList.contains('line-through')) {
+                            // Bệ hạ có thể mở khóa dòng dưới nếu muốn hiện thông báo nhắc nhở học viên
+                            // showToast("Đáp án đã bị gạch. Click chuột phải để mở khóa nếu muốn chọn.", false);
+                            return; 
+                        }
+
                         userAnswers[currentQuestionIndex] = optIndex; 
                         loadQuestion(currentQuestionIndex); 
                         saveProgressLocally(); 
