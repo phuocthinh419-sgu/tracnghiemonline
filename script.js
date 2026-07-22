@@ -2119,9 +2119,21 @@ window.addManualQuestionForm = function(existingData = null) {
     let mcqAnswer = 0;
 
     if (existingData) {
-        if (qType === "mcq" && existingData.options) opts = existingData.options;
+        if (qType === "mcq" && existingData.options) {
+            // [VIP] Khôi phục giải thích nhiễu cho Trắc nghiệm 4 chọn 1
+            opts = existingData.options.map((opt, idx) => {
+                let exp = (existingData.optionExplanations && existingData.optionExplanations[idx]) ? existingData.optionExplanations[idx] : "";
+                if (exp && !opt.includes("::")) return opt + " :: " + exp;
+                return opt;
+            });
+        }
         if (qType === "tf" && existingData.options) {
-            opts = existingData.options;
+            // [VIP] Khôi phục giải thích nhiễu cho Đúng/Sai
+            opts = existingData.options.map((opt, idx) => {
+                let exp = (existingData.explanations && existingData.explanations[idx]) ? existingData.explanations[idx] : "";
+                if (exp && !opt.includes("::")) return opt + " :: " + exp;
+                return opt;
+            });
             if (existingData.correctAnswers) tfAnswers = existingData.correctAnswers;
         }
         if (qType === "sa") saAnswer = existingData.correctAnswer || "";
