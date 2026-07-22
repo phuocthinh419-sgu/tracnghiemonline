@@ -2413,23 +2413,22 @@ function switchSubjectTab(tab) {
 function renderSubjectStats() {
     if (!currentSelectedCategory) return;
     
-    const safeCategory = (currentSelectedCategory || "").trim().toLowerCase();
+   const safeCategory = (currentSelectedCategory || "").trim().toLowerCase();
     
-    const baseQuizzes = quizDatabase.filter(q => 
-        (q.category || "").trim().toLowerCase() === safeCategory && !q.isTestOnly
-    );
-    let totalChapters = baseQuizzes.length; 
-    
+    // [VIP] Chốt chặt danh sách ID đề GỐC của chương (Tuyệt đối không lấy đề ảo)
     const folderQuizIds = quizDatabase.filter(q => 
         (q.category || "").trim().toLowerCase() === safeCategory
     ).map(q => q.id);
 
+    // Lấy chuẩn tổng số đề/chương thực tế
+    let totalChapters = folderQuizIds.length; 
+
+    // [VIP] Lưới lọc thép: Cắt đứt nguồn lây nhiễm từ các đề tự động
     const relevantHistory = historyDatabase.filter(h => {
         if (!h.data.quizId) return false;
-        if (folderQuizIds.includes(h.data.quizId)) return true;
-        if ((h.data.category || "").trim().toLowerCase() === safeCategory) return true;
-        
-        return false;
+        // Chỉ chấp nhận những bài nộp có ID nằm trong danh sách đề gốc!
+        // Các đề Vá Lỗi Sai hay Thi Thử Tổng Hợp sẽ tự động bị đá văng ra.
+        return folderQuizIds.includes(h.data.quizId);
     });
 
     let totalQuizzesTaken = relevantHistory.length;
